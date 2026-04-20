@@ -10,14 +10,22 @@ sudo apt autoremove
 
 ## Latest NVidia drivers (580)
 
+Confirm with `nvidia-smi`
+
 ## Swappiness 10 - less dumping of RAM contents to SSD 
 ```
-/etc/sysctl.conf -> swappiness=10
+sudo nano /etc/sysctl.conf
+Add `swappiness=10` at the end of the file
+CTRL+O -> save CTRL + X to exit nano
 ```
 
-## VS Code Insiders snap
+## VS Code Insiders snap or deb
+
+https://code.visualstudio.com/insiders
 
 ## Slack snap
+
+https://snapcraft.io/slack
 
 ## Kitty apt (rich terminal emulator, run CLIs there)
 ```
@@ -25,6 +33,7 @@ sudo apt update && sudo apt install kitty
 ```
 
 ## Node (from nodesource, needed to install Gemini)
+**DON'T** download from apt, version is stale there, do the following:
 ```
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs
@@ -46,8 +55,14 @@ curl -fsSL https://claude.ai/install.sh | bash
 curl -fsSL https://gh.io/copilot-install | bash
 ```
 
-## clang, cmake, ninja-build
-
+## C++, Vulkan and Other Graphics Dependencies
+```
+sudo apt install -y \
+  clang cmake ninja-build pkg-config git \
+  xorg-dev libx11-dev libxi-dev libxcursor-dev libxrandr-dev libxinerama-dev \
+  libgl1-mesa-dev mesa-common-dev \
+  libvulkan-dev vulkan-tools vulkan-validationlayers spirv-tools glslang-tools
+```
 
 ---
 

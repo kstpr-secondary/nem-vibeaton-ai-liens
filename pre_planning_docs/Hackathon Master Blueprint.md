@@ -83,9 +83,59 @@ All items **FIXED** unless noted.
 
 **FIXED:** Shaders are `.glsl` files under `/shaders/renderer/` or `/shaders/game/`. Runtime file loading is the default.
 
+**FIXED (Iter 9):** Build-time shader validation via `glslangValidator -V` on all `shaders/**/*.{vert,frag}.glsl` — CMake `validate_shaders` target, added as dependency of `renderer`, output discarded (`-o /dev/null`). Catches syntactic/semantic errors without changing the runtime-load path.
+
+**FIXED (Iter 9):** Runtime shader-compile callback must log file path + compiler log on failure and fall back to a magenta error shader — never crash. Acceptance criterion on the shading milestone.
+
+**Open (Iter 9):** Precompiled shaders (`sokol-shdc` or pre-SPIR-V) are under active consideration. If adopted, replaces runtime GLSL loading — decide before Renderer SpecKit freeze.
+
 ### 3.4 Assets
 
 Pre-verified for integrity, format, and licensing. Prefer **glTF/GLB**; OBJ as fallback. Max two mesh formats.
+
+### 3.5 Build Topology and Per-Workstream Commands
+
+**FIXED (Iter 9):** CMake targets. Renderer and engine are consumed as static libs by downstream workstreams **and** have standalone driver executables so each workstream can iterate on procedural scenes without building the game.
+
+| Target | Kind | Source | Links | Purpose |
+| :-- | :-- | :-- | :-- | :-- |
+| `renderer` | static lib | `src/renderer/` | sokol, glm | Linked by `engine`, `game`, drivers |
+| `renderer_app` | executable | `src/renderer/app/` | `renderer` | Standalone renderer driver — procedural scene, no engine/game |
+| `engine` | static lib | `src/engine/` | `renderer`, entt, cgltf | Linked by `game`, `engine_app` |
+| `engine_app` | executable | `src/engine/app/` | `engine`, `renderer` | Standalone engine driver — procedural ECS scene, no game |
+| `game` | executable | `src/game/` | `engine`, `renderer` | Full game |
+| `renderer_tests` | executable | Catch2 | `renderer` | Unit tests |
+| `engine_tests` | executable | Catch2 | `engine` | Unit tests |
+
+Driver `main.cpp` files own `sokol_app` entry, build a hardcoded procedural scene against the workstream's public API, and stay small (demo/iteration harness only — not shipped with the game).
+
+One-time configure (repo root):
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+```
+
+Per-workstream iteration builds — **do not rebuild unrelated targets**:
+```bash
+cmake --build build --target renderer_app renderer_tests   # renderer workstream
+cmake --build build --target engine_app engine_tests       # engine workstream
+cmake --build build --target game                          # game workstream
+cmake --build build                                        # full milestone-sync
+```
+
+Rule: after a milestone merge the downstream workstream runs the full build once to refresh upstream static libs; routine iteration stays target-scoped. Ninja + static libs yield correct incremental behavior with no extra caching infra.
+
+### 3.6 Asset and Shader Path Resolution
+
+**FIXED (Iter 9):** Absolute paths baked at configure time — no cwd dependency. `cmake/paths.h.in` → `${CMAKE_BINARY_DIR}/generated/paths.h`, included by `renderer` (PUBLIC):
+
+```c
+#define PROJECT_SOURCE_ROOT "@CMAKE_SOURCE_DIR@"
+#define SHADER_ROOT         PROJECT_SOURCE_ROOT "/shaders"
+#define ASSET_ROOT          PROJECT_SOURCE_ROOT "/assets"
+```
+
+Rule (add to `AGENTS.md`): never hard-code relative asset/shader paths; always compose from `SHADER_ROOT` / `ASSET_ROOT`. Trade-off: binary is not relocatable across machines — acceptable for hackathon demo; add a `--asset-root` CLI override only if relocation becomes necessary.
 
 ---
 
@@ -141,7 +191,7 @@ Game workstream starts from frozen interfaces + mocks; must not block on full en
 2. GitHub Copilot agent mode/CLI — primary backup and medium-task worker
 3. Gemini CLI — validation, review, research, overflow
 4. z.ai GLM 5.1 — backup for Claude-heavy work; parallel hard-task executor in second half
-5. Local GLM-4.7-Flash on RTX 3090 — tests, spec checks, shader review, small-file analysis
+5. Local Qwen3.6-35B-A3B on RTX 3090 — tests, spec checks, shader review, small-file analysis. Larger/more capable than the previously planned GLM-4.7-Flash; still treated as bounded-context per §7.3.
 6. Claude Opus — escalation-only for thorny math/architecture
 
 **Trigger:** If agent stalls >90 seconds, escalate immediately and log in `BLOCKERS.md`.
@@ -350,7 +400,7 @@ When starting a task:
 
 **FIXED (Iter 8):** `Owner` = `<agent_name>@<machine>` (not `person@machine`), so multiple agents on the same machine can be distinguished.
 
-- `agent_name`: lowercase tool name — `claude`, `gemini`, `copilot`, `glm`, `local-glm`.
+- `agent_name`: lowercase tool name — `claude`, `gemini`, `copilot`, `glm`, `local-qwen`.
 - `machine`: short agreed hostname (see table).
 - Two instances of same agent: append suffix — `claude-2@laptopA`.
 - Human manual path: `FirstName@machine` (e.g., `Alice@laptopA`).
@@ -647,6 +697,9 @@ If time runs short, cut in this order:
 14. SpecKit runs **once per workstream** (three runs: renderer, engine, game) then Systems Architect synthesis → `MASTER_TASKS.md`. Interface contracts frozen before individual passes.
 15. Skills are lazy-loaded: agents load only skills relevant to current task and workstream.
 16. SpecKit outputs are precursor artifacts; must be synthesized into stable schema before hackathon starts.
+17. **(Iter 9)** Build topology: `renderer` + `engine` static libs with standalone `renderer_app` / `engine_app` driver executables for solo iteration against procedural scenes; `game` executable; per-workstream target-scoped builds; full rebuild only at milestone sync (§3.5).
+18. **(Iter 9)** Shaders validated at build time via `glslangValidator`; runtime compile failures log and fall back to magenta shader, never crash (§3.3).
+19. **(Iter 9)** Asset/shader paths resolved via configure-time `SHADER_ROOT` / `ASSET_ROOT` macros from generated `paths.h`; no relative-path lookups (§3.6).
 
 ---
 
