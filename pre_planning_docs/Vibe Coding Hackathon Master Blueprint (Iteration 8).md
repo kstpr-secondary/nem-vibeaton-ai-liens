@@ -50,7 +50,7 @@ Humans supervise sessions, approve interface changes, run behavioral checks, and
 | Laptop A | Person A | Rendering engine workstream | Ubuntu 24.04 LTS |
 | Laptop B | Person B | Game engine workstream | Ubuntu 24.04 LTS |
 | Laptop C | Person C | Game workstream | Ubuntu 24.04 LTS |
-| RTX 3090 PC | Shared | Local agent, validation, tests | Ubuntu 24.04 LTS |
+| RTX 3090 PC | Shared | Local agent, validation, tests, Primary Demo Machine | Ubuntu 24.04 LTS |
 
 ### 2.2 Graphics and Build Baseline
 
@@ -84,13 +84,18 @@ All items below are **FIXED** unless explicitly marked otherwise.
 
 - Language: **C++17**.
 - Build: **CMake + Ninja** on all machines.
+- **Warning Discipline:** Project code uses `-Wall -Wextra -Wpedantic`. `-Werror` is disabled to avoid blocker friction from library headers. Sokol headers are wrapped in `-w` or a suppression header to silence third-party warnings.
 - Dependencies: **FetchContent only**; no Conan or vcpkg.
 - Explicit cuts: no audio, networking, skeletal animation, particle system, or editor tooling.
 
 
-### 3.3 Shader Pipeline
+### 3.3 Shader Pipeline and Graphics Backend
 
-**FIXED:** Shader code is generated during the hackathon in `.glsl` files under `/shaders/`. Runtime file loading is the default path; `sokol-shdc` is a stretch goal only if tooling friction is negligible.
+**FIXED:** The primary graphics backend is **Vulkan** on desktop Linux. A secondary `CMakeLists.txt` or build flag will exist for **OpenGL 3.3 Core** as a fallback if Vulkan issues arise.
+
+**FIXED:** The **Rendering Engine owns `sokol_app`** initialization and the main frame callback loop. It exposes `init()`, `frame()`, and `shutdown()` hooks. The **Game Engine runs its tick and logic from inside the renderer's frame callback**. Input events are captured by `sokol_app` and passed from the renderer to the engine.
+
+**FIXED:** Shader code is generated during the hackathon in `.glsl` files under `/shaders/renderer/` or `/shaders/game/`. Runtime file loading is the default path.
 
 ### 3.4 Assets and Format Policy
 
@@ -177,6 +182,8 @@ Workflow is **task-queue driven**, not hook-driven. Any coding tool can implemen
 4. z.ai GLM 5.1 — backup for Claude-heavy work and parallel hard-task executor in second half of hackathon.
 5. Local GLM-4.7-Flash on RTX 3090 — auxiliary worker for tests, spec checks, shader review, small-file analysis.
 6. Claude Opus — escalation-only for mathematically or architecturally thorny tasks.
+
+**Trigger:** If an agent stalls or fails to respond within **90 seconds**, escalate to the next tier immediately and log in `BLOCKERS.md`.
 
 ### 7.5 Local Agent Role and Limits
 
@@ -302,12 +309,25 @@ Key simplifications:
 │       ├── REVIEW_QUEUE.md
 │       └── TEST_QUEUE.md
 ├── shaders/
-└── src/...
+│   ├── renderer/
+│   │   ├── lambertian.frag.glsl
+│   │   ├── phong.frag.glsl
+│   │   └── skybox.frag.glsl
+│   └── game/
+│       ├── explosion.frag.glsl
+│       └── plasma.frag.glsl
+├── src/
+│   ├── renderer/
+│   ├── engine/
+│   └── game/
+└── ...
 ```
 
 - `docs/` holds **stable reference**: architecture, interfaces, design, planning artifacts.
 - `_coordination/` holds **live operational state**: tasks, progress, blockers, merge queue, validation and review notes.
 - `.agents/skills/` holds reusable **skills and distilled APIs** to avoid constantly loading large headers.
+- `src/` contains the separate project directories: `renderer`, `engine`, and `game`.
+- `shaders/` is split between built-in engine shaders and game-specific effect shaders.
 
 
 ### 8.4 `_coordination` Contents and Task Files
@@ -316,7 +336,10 @@ Key simplifications:
 - `_coordination/{renderer,engine,game}/`: each has `TASKS.md`, `PROGRESS.md`, and `VALIDATION/`, `REVIEWS/` directories.
 - Queue files under `_coordination/queues/`: `VALIDATION_QUEUE.md`, `REVIEW_QUEUE.md`, `TEST_QUEUE.md`.
 
-Per-workstream `TASKS.md` is the **operational source of truth** for that stream; `MASTER_TASKS.md` is a compact integration dashboard listing only milestones and cross-stream dependencies.
+**FIXED (Iter 8): Coordination Branch Policy**
+Workstream-specific `TASKS.md` files are only expected to be up-to-date on their respective **feature branches**. Progress becomes visible to other workstreams only upon a milestone merge to `main` followed by a `git pull` in other branches. `MASTER_TASKS.md` is maintained by the human supervisor as an integration dashboard.
+
+Per-workstream `TASKS.md` is the **operational source of truth** for that stream.
 
 A task row keeps the existing schema:
 
@@ -333,7 +356,7 @@ A task row keeps the existing schema:
 `AGENTS.md` is kept deliberately short. It should contain at most:
 
 1. Before editing code, read the relevant workstream `TASKS.md` and any referenced spec for that task.
-2. Claiming a task means **editing `TASKS.md`, committing that change, and pushing it** when any other human or machine may touch that workstream.
+2. Claiming a task means the human supervisor updates `TASKS.md`, commits that change, and pushes it before triggering an agent to perform the task.
 3. Do not change frozen shared interfaces without explicit human approval.
 4. Every implementation task should reference which milestone it unlocks or depends on.
 5. Respect the `Validation` column; do not silently downgrade required checks.
@@ -341,7 +364,12 @@ A task row keeps the existing schema:
 7. Review and validation are triggered via queue files, not hidden hooks.
 8. When multiple people or machines touch the same workstream, pull before starting new work and after any remote task-claim or milestone-sync commit.
 9. When working with a major library that has a dedicated SKILL, load and follow the SKILL first, and only read minimal header snippets when the SKILL's distilled API is insufficient.
-10. Claim a task by setting `Owner = <agent_name>@<machine>` (e.g., `claude@laptopA`, `gemini@laptopC`). If you cannot determine the machine name, do not overwrite a populated owner; add a note in the `Notes` column instead.
+10. Claim a task by setting `Owner = <agent_name>@<machine>` (e.g., `claude@laptopA`, `gemini@laptopC`). Humans trigger the agents to perform tasks. If an agent cannot determine the machine name, do not overwrite a populated owner; add a note in the `Notes` column instead.
+11. **CMakeLists.txt ownership:** The top-level `CMakeLists.txt` is owned by the **Renderer workstream** or Systems Architect. Cross-workstream changes to the build system require a 2-minute notice to all teams.
+12. **Agent Outage Fallback:** If an agent stalls or fails to respond for more than **90 seconds**, the human supervisor should immediately switch to the next agent in the priority stack and log the event in `BLOCKERS.md`.
+13. **Emergency Manual Path:** If an agent fails a task twice or is more than 30 minutes behind a milestone deadline, the human supervisor should switch to the manual path (`FirstName@machine`).
+14. **SKILL Drift:** If an agent discovers an error or missing API in a SKILL, the human supervisor must fix it and push the change to `main` (or a dedicated `skills` branch) immediately so other agents benefit.
+15. **Milestone Validation:** Every milestone merge to `main` requires a behavioral check by a **different** person than the one who supervised the implementation, if possible. If not, the human supervisor must explicitly verify each acceptance criterion on the demo machine.
 
 Everything more specific (library usage, workstream details, agent examples) lives in SKILLs or architecture/interface docs.
 
@@ -351,6 +379,7 @@ Everything more specific (library usage, workstream details, agent examples) liv
 - **Medium tasks:** spec validation or review when they modify nontrivial logic or integration surfaces.
 - **High / hard tasks:** at least one secondary check before merge.
 - **Every milestone:** always gets milestone-level validation (spec validator + human behavior check + lightweight review) before merge.
+- **Testing Focus:** Unit tests (Catch2) are preferred for math, parsers, and ECS logic. Rendering correctness (z-fighting, shaders, lighting) is verified via **human behavioral check** and smoke-test visuals, not unit tests.
 
 The **milestone** is the mandatory backstop; task checks are risk-based.
 
@@ -369,11 +398,13 @@ Agents working within a workstream prefer local architecture/spec files plus the
 
 **Rationale:** Running a single SpecKit pass over all three workstreams at once risks scope explosion that derails the planning phase. Each workstream (renderer, engine, game) is a genuinely distinct technical domain with its own task graph, dependency surface, and milestone cadence. Three separate passes keep each plan focused and tractable.
 
-**Maintaining the big picture:** The risk of losing cross-workstream coherence is real and must be explicitly managed:
+**Maintaining the big picture:** Individual SpecKit runs are performed **sequentially**:
 
-- The **Systems Architect agent** runs a short cross-workstream synthesis pass *after* all three individual SpecKit plans are complete. This pass reads the three `tasks.md` outputs side-by-side and produces or updates `MASTER_TASKS.md` with cross-stream dependencies and integration milestones.
-- The cross-workstream interface contracts (`docs/interfaces/INTERFACE_SPEC.md`) must be frozen *before* individual SpecKit passes begin, so that each plan is already aware of boundary conditions.
-- Any task or milestone in one workstream that touches a frozen interface must be flagged with `Depends_on` referencing the relevant interface spec version.
+1. **Renderer SpecKit Pass:** produces tasks, architecture, and core interface contracts (`renderer-interface-spec.md`).
+2. **Engine SpecKit Pass:** uses frozen renderer interfaces; produces engine tasks and its own interface contracts.
+3. **Game SpecKit Pass:** uses frozen renderer and engine interfaces; produces game tasks.
+
+The **Systems Architect agent** then runs a final synthesis pass to produce `MASTER_TASKS.md`. Any task or milestone in one workstream that touches a frozen interface must be flagged with `Depends_on` referencing the relevant interface spec version.
 
 **SpecKit outputs per workstream** are stored under `docs/planning/speckit/{renderer,engine,game}/` and translated into the stable coordination schema as per section 8.9 below.
 
@@ -384,7 +415,7 @@ SpecKit-style planning remains **precursor**; outputs are mapped into the stable
 - `plan.md` / `research.md` → architecture and planning notes under `docs/architecture/` or `docs/planning/speckit/<workstream>/`.
 - `contracts/` → `docs/interfaces/INTERFACE_SPEC.md` and workstream-local interface specs.
 - `tasks.md` → per-workstream `_coordination/.../TASKS.md` plus a compact `MASTER_TASKS.md`.
-- `quickstart.md` → optional setup/runbook doc.
+- `quickstart.md` → **Mandatory** setup/runbook doc covering build/run commands and environment assumptions.
 
 SpecKit's directory layout is not used directly for live coordination; it is translated once and then treated as read-only planning context.
 
@@ -487,8 +518,10 @@ feature/engine
 feature/game
 ```
 
-Worktrees:
+**Worktrees and Concurrency:**
+The team uses one worktree per primary workstream on each machine. **Multiple agents may work in the same worktree/branch simultaneously**, provided they are working on tasks with **disjoint file sets** (as per section 10.4). This avoids the overhead of managing dozens of worktrees per machine.
 
+Worktrees:
 ```text
 hackathon/
 hackathon-renderer/
@@ -573,28 +606,28 @@ When one agent holds a BOTTLENECK task and others cannot proceed:
 - The BOTTLENECK convention is used sparingly; most tasks should be parallelizable or sequential rather than true bottlenecks.
 
 
-### 10.6 Worked Example — Renderer Shading Milestone Group
+### 10.6 Worked Example — Renderer Core Milestone Group
 
-```markdown
-## Milestone Group — Shading
+> **Note:** The following example is for **process clarification only** and does not correspond to the actual milestones and tasks of the project. Actual tasks and milestones are devised during the task creation procedure.
 
-### Milestone M2 — Frustum Culling
+#### Milestone M2 — Frustum Culling
 Bottleneck: NO  
-Parallel Groups: PG-M2-A (all tasks are in one coherent unit for this milestone)
+Parallel Groups: PG-M2-A (C++ implementation), PG-M2-B (Independent utility)
 
 Tasks:
 | ID   | Task                                                  | Tier | PG       | files                                      |
 |------|-------------------------------------------------------|------|----------|--------------------------------------------|
 | R-10 | Compute frustum planes from camera/projection matrix  | MED  | PG-M2-A  | frustum.cpp, frustum.h                     |
-| R-11 | AABB vs frustum test for all scene objects            | MED  | PG-M2-A  | frustum.cpp (extends R-10 — SEQUENTIAL)    |
-| R-12 | Filter draw list to culled objects only               | MED  | PG-M2-A  | renderer.cpp (post R-11 — SEQUENTIAL)      |
+| R-11 | AABB vs frustum test for all scene objects            | MED  | SEQUENTIAL | frustum.cpp (depends on R-10)             |
+| R-12 | Filter draw list to culled objects only               | MED  | SEQUENTIAL | renderer.cpp (depends on R-11)            |
+| R-12b| Frustum visualization helper (for debug)             | LOW  | PG-M2-B  | debug_draw.cpp, debug_draw.h               |
 
 Expected outcome: In a procedural scene, disabling frustum culling noticeably drops FPS; enabling it recovers it.  
 Integration event: merge feature/renderer → integration; downstream workstreams sync.
 
 ---
 
-### Milestone M3 — Directional Light and Lambertian Shading
+#### Milestone M3 — Directional Light and Lambertian Shading
 Bottleneck: R-13 (light uniform struct — shared between renderer.h and shader)  
 Parallel Groups: PG-M3-A (cpp side), PG-M3-B (shader side, starts after R-13)  
 Depends on: M2 complete for renderer.cpp stability; M3 shader tasks depend only on R-13 (BOTTLENECK)
@@ -605,7 +638,7 @@ Tasks:
 | R-13 | Define sg_directional_light_t uniform struct; add to header | HIGH | BOTTLENECK | renderer.h                     |
 | R-14 | Add light uniform block upload in renderer frame loop       | MED  | PG-M3-A    | renderer.cpp                   |
 | R-15 | Define Lambertian material param struct                     | MED  | PG-M3-A    | material.h, material.cpp       |
-| R-16 | Write Lambertian fragment shader                            | MED  | PG-M3-B    | shaders/lambertian.frag.glsl   |
+| R-16 | Write Lambertian fragment shader                            | MED  | PG-M3-B    | shaders/renderer/lambertian.frag.glsl |
 | R-17 | Wire shader + material + uniform in pipeline creation       | MED  | SEQUENTIAL | renderer.cpp (after R-14..R-16)|
 
 Expected outcome: Scene objects are lit from a directional source with Lambertian diffuse shading.  
@@ -613,17 +646,16 @@ Integration event: merge → integration; game engine workstream may swap mock l
 
 ---
 
-### Milestone M4 — Blinn-Phong Shading
+#### Milestone M4 — Blinn-Phong Shading
 Bottleneck: NO  
 Parallel Groups: PG-M4-A (material/cpp), PG-M4-B (shader)  
 Depends on: M3 complete (R-13 struct frozen)  
-Note: M4 and M2 are independent — can run in parallel across agents if M3 bottleneck is cleared.
 
 Tasks:
 | ID   | Task                                                       | Tier | PG      | files                              |
 |------|-----------------------------------------------------------|------|---------|------------------------------------|
 | R-18 | Extend material param struct for Blinn-Phong (specular)   | MED  | PG-M4-A | material.h, material.cpp           |
-| R-19 | Write Blinn-Phong fragment shader                         | MED  | PG-M4-B | shaders/blinn-phong.frag.glsl      |
+| R-19 | Write Blinn-Phong fragment shader                         | MED  | PG-M4-B | shaders/renderer/phong.frag.glsl   |
 | R-20 | Add toggle between Lambertian and Blinn-Phong pipelines   | MED  | SEQUENTIAL | renderer.cpp (after R-18, R-19) |
 
 Expected outcome: Shading can be toggled between Lambertian and Blinn-Phong at runtime; specular highlights visible.  
@@ -631,27 +663,26 @@ Integration event: merge → integration.
 
 ---
 
-### Milestone M5 — Background Skybox
+#### Milestone M5 — Background Skybox
 Bottleneck: NO  
 Parallel Groups: PG-M5-A (independent of M3/M4 cpp, only touches skybox files)  
-Note: M5 is fully parallel with M4 since file sets are disjoint.
+Note: M5 and M4 can proceed in parallel *if* they do not touch the same files (e.g., if R-23 integration is deferred).
 
 Tasks:
 | ID   | Task                                           | Tier | PG      | files                                   |
 |------|------------------------------------------------|------|---------|-----------------------------------------|
 | R-21 | Load equirectangular or cubemap texture        | MED  | PG-M5-A | skybox.cpp, skybox.h                    |
-| R-22 | Write skybox vertex + fragment shaders         | MED  | PG-M5-A | shaders/skybox.vert.glsl, skybox.frag.glsl |
+| R-22 | Write skybox vertex + fragment shaders         | MED  | PG-M5-A | shaders/renderer/skybox.vert.glsl, shaders/renderer/skybox.frag.glsl |
 | R-23 | Integrate skybox pass into renderer frame loop | MED  | SEQUENTIAL | renderer.cpp (after R-21, R-22)      |
 
 Expected outcome: A skybox is rendered behind all scene geometry with no z-fight or depth artifacts.  
 Integration event: merge → integration.
-```
 
 This example illustrates that M4 and M5 can proceed in parallel with each other (disjoint file sets) once M3's bottleneck task (R-13) is cleared, without requiring a dedicated integration sync between M4 and M5 themselves.
 
 ### 10.7 Milestone Integration Cadence
 
-**Guideline:** Aim for **one milestone merge per 25–35 minutes** per workstream. With three workstreams operating in parallel the total integration rate across all streams may be higher, but each stream's individual merge cadence should be predictable enough that humans are not context-switching between integration events every few minutes.
+**Guideline:** Aim for **one milestone merge per hour** per workstream (roughly 5 per workstream total). This reduced cadence minimizes coordination overhead while maintaining integration discipline.
 
 - Milestones that are fully contained in one workstream (no cross-stream impact) are merged with a lightweight protocol: build passes, smoke test passes, human spot-check, push.
 - Milestones that unlock or update a shared interface require the full sync protocol from section 9.2, including downstream workstream sync and mock-to-real swap where applicable.
@@ -666,13 +697,18 @@ Pre-hackathon tasks include:
 
 - Environment setup on all machines, including agreed hostnames set in `/etc/hostname`.
 - Repo and worktree creation.
-- Systems Architect planning and per-workstream SpecKit planning (three separate runs).
-- Systems Architect cross-workstream synthesis pass producing initial `MASTER_TASKS.md`.
+- **Sequential SpecKit Planning:** Renderer → Engine → Game (three separate runs, each feeding interfaces to the next).
+- Systems Architect final synthesis pass producing `MASTER_TASKS.md`.
 - Human review and freeze of interfaces, milestones, and queue formats.
+- `GAME_DESIGN.md` authored and frozen.
 - Asset manifest preparation and integrity checks.
 - Local-model runtime validation on RTX 3090.
 - Copilot and Gemini context-loading verification.
 - Per-aspect library reference files generated and reviewed.
+- Dependencies pre-downloaded and verified for offline/local-fetch resilience on all machines.
+- Asset and shader runtime path policy decided (e.g., relative to binary, or fixed structure).
+- Mandatory `quickstart.md` / runbook created and tested.
+- Shared API header and mock generation paths rehearsed and verified for zero-friction execution.
 - Optional tooling checks for `sokol-shdc`.
 
 
@@ -680,9 +716,11 @@ Pre-hackathon tasks include:
 
 At T+0:00:
 
-1. Freeze docs and task lists.
+1. Freeze docs and task structure (numbering, descriptions, milestones, interfaces). Live status and ownership continue to be updated in `TASKS.md`.
 2. Generate shared API headers from interface spec.
 3. Generate mock implementations to enable parallelism.
+   - **Mock Mechanics:** Mocks live in `src/<workstream>/mocks/`. They are toggled via a CMake option (e.g., `-DUSE_RENDERER_MOCKS=ON`).
+   - **Swap Procedure:** When a real implementation is milestone-ready, the human supervisor flips the CMake toggle, verifies the build, and deletes the mock once the real path is stable.
 4. Start three main workstreams in parallel.
 5. Start queue-driven secondary workflow on RTX 3090 and overflow channels.
 
@@ -718,6 +756,22 @@ The blueprint keeps the spec-driven planning approach but emphasizes:
 | G6 | `main` remains demo-safe | Humans | Continuous |
 | G7 | Parallel group file sets remain disjoint | Task author (pre-claim) + claiming agent (pre-edit) | Before task claim |
 
+### 13.5 Scope-Cut Order (Contingency)
+
+If time runs short, features are cut in this order to protect the demo:
+1. Advanced VFX / Shields
+2. Blinn-Phong shading (fallback to Lambertian)
+3. Enemy AI steering (fallback to static/random)
+4. Procedural asteroid field complexity
+5. Normal mapping / Textures
+
+### 13.6 Finalization and Demo Strategy
+
+- **T-30 Minutes:** **Feature Freeze.** No new feature merges to `main`. Only bugfixes, asset/shader tweaks, and demo stabilization are allowed.
+- **T-10 Minutes:** **Branch Freeze.** No further merges. All focus moves to the primary demo machine (`rtx3090`).
+- **Demo Machine:** The RTX 3090 machine is the authoritative demo platform. It must be kept synced with `main` throughout the final 60 minutes.
+- **Fallback:** If a feature workstream is broken at T-30, its mocks are re-enabled on `main` to ensure the demo remains launchable.
+
 Validation is risk-based per task and mandatory per milestone.
 
 ***
@@ -726,12 +780,15 @@ Validation is risk-based per task and mandatory per milestone.
 
 ### Infrastructure
 
-- [ ] Ubuntu 24.04 LTS verified on all machines.
+- [ ] Ubuntu 24.04 LTS verified on all machines. **(VERIFY BEFORE HACKATHON: NVidia drivers and Vulkan support)**
 - [ ] Agreed hostnames set in `/etc/hostname` on all machines and recorded in `AGENTS.md` hostname table.
 - [ ] Clang, CMake, Ninja installed and tested.
 - [ ] Repo and worktrees created on all machines, including RTX 3090.
+- [ ] Dependencies pre-downloaded and verified on all machines (FetchContent cache warmed). **(VERIFY BEFORE HACKATHON)**
+- [ ] Asset and shader runtime paths configured and verified.
 - [ ] Queue and helper scripts tested.
 - [ ] Build baseline opens a Linux window and clears the screen.
+- [ ] Mandatory `quickstart.md` / runbook created and tested.
 
 
 ### Agent Configuration
@@ -739,15 +796,15 @@ Validation is risk-based per task and mandatory per milestone.
 - [ ] `AGENTS.md` finalized and shortened to global rules only, including hostname table and `agent_name@machine` convention.
 - [ ] `CLAUDE.md` imports `AGENTS.md` and contains only Claude-specific notes.
 - [ ] `.github/copilot-instructions.md` mirrors critical rules directly.
-- [ ] `.gemini/settings.json` points its context file to `AGENTS.md`.
+- [ ] `.gemini/settings.json` points its context file to `AGENTS.md`. **(VERIFY BEFORE HACKATHON: settings syntax and path resolution)**
 - [ ] Role and domain skills generated and reviewed, including `sokol-api`, `entt-ecs`, `cgltf-loading`, `glsl-patterns`, `physics-euler`.
-- [ ] Copilot, Claude, Gemini, and z.ai workflows verified on the real repo structure.
+- [ ] Copilot, Claude, Gemini, and z.ai workflows verified on the real repo structure. **(VERIFY BEFORE HACKATHON: Copilot CLI availability and Gemini throughput)**
 
 
 ### Local Agent
 
 - [ ] Local context configured, with documented operational prompt budget smaller than the max.
-- [ ] Real tests performed for narrow validation prompts and medium-sized test-file generation.
+- [ ] Real tests performed for narrow validation prompts and medium-sized test-file generation. **(VERIFY BEFORE HACKATHON: model latency and context limits)**
 - [ ] Output-cap-aware prompting strategy documented.
 - [ ] `validate_task.sh` or equivalent helper created.
 
@@ -776,11 +833,14 @@ Validation is risk-based per task and mandatory per milestone.
 - [ ] Per-workstream SpecKit runs completed (renderer, engine, game — three separate runs).
 - [ ] Systems Architect cross-workstream synthesis pass run; `MASTER_TASKS.md` populated.
 - [ ] Interface contracts frozen before individual SpecKit passes begin.
+- [ ] Shared API header and mock generation rehearsed and tested. **(VERIFY BEFORE HACKATHON)**
 - [ ] Milestone sync rules documented.
-- [ ] Task claim semantics ("edit + commit + push" when concurrency exists) confirmed.
+- [ ] Task claim semantics (human commit and trigger) confirmed.
 - [ ] Milestone acceptance, unlock, and merge conditions written for every MVP milestone.
-- [ ] GLM 5.1 backup and parallel-hard-task policy documented.
+- [ ] GLM 5.1 backup and parallel-hard-task policy documented. **(VERIFY BEFORE HACKATHON: Quota and latency)**
 - [ ] Local validator fallback path to Gemini documented.
+- [ ] Final demo strategy: RTX 3090 machine, from `main`, with improvisation for late-stage integration.
+- [ ] **10-minute demo rehearsal completed** at T-1h on the authoritative demo machine.
 
 ***
 
