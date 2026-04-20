@@ -19,7 +19,7 @@ All three live in one repo in separate directories, integrated at milestone boun
 
 ### 1.2 Goals
 
-Live demo where every line of C++ is AI-generated under human supervision. **Speed over quality.** Behavioral correctness, milestone predictability, and integration discipline take priority over elegance or extensibility.
+Live demo where every line of C++ is AI-generated under human supervision. **Speed over long-term maintainability.** Behavioral correctness, milestone predictability, and integration discipline take priority over elegance or extensibility.
 
 ### 1.3 The Human Team
 
