@@ -6,7 +6,10 @@ This is a first working iteration. Note the following:
 
 The milestones below are to be analyzed deeply for feasibility. 
 
+
 ## Rendering engine
+
+A simple, but effective to demo rendering engine with capabilities or around early 2010s.
 
 ---
 
@@ -29,7 +32,7 @@ Tasks in this milestone should result to working:
 - Shader objects compilation
 - Unlit solid color shading
 - Opaque objects render queue
-- API for the game engine to enqueue which meshes to be drawn.
+- API for the game engine to enqueue meshes to be drawn with given visual characteristics
 - Procedural scene - **low effort only, no sophisticated scene generation** - a bunch of (hardcoded number) of colored unlit spheres, cubes, capsules with different sizes and orientations should be generated in front of a fixed camera.
 
 **Expected outcome:** After milestone 1 an unoptimized (unsorted, no culling) procedural scene (spheres, cubes, capsules) should be rendered. During this milestone it will be decided if the experimental Vulkan backend is viable or we should fall back to OpenGL. Milestone 1 is a sync point for the game engine. After syncing the game engine can pass meshes/mesh ids with transforms so they are rendered by the engine for each frame.
@@ -80,7 +83,8 @@ Tasks in this milestone should result to working:
 > **Human comment**: I expect to be able to explore at least some of those goals in the last hour of the hackathon, but only in the case of everything else working, if there's still agent quota left, and if other workstreams are not requiring resource (human + agnets) reschedule. Somewhat realistic - shadows from the shadows sample adaptation, PBR model.
 
 ### Milestone 6 - Unrealistic goals
-- Deferred or clustered forward rendering, multiple lights (10s to 1000s)
+- MSAA levels
+- Deferred or clustered forward rendering, multiple lights (10s to 100s)
 - Ambient occlusion
 - Should be able to render a large number of objects (10s or 100s of 1000s), CPU techniques - GPU-instancing, draw call batching, OR potentially GPU-driven (MultiDrawIndirect), GPU frustum culling
 
@@ -91,71 +95,120 @@ Tasks in this milestone should result to working:
 
 Implementation not covering the MVP is NOT acceptable, Milestones 3 and 4 are highly desirable, from 5 on - most likely unrealistic but still desirable. Consider all those milestones **extremely tentative** and **a subject to change**.
 
+---
 
-## Game engine MVP
-**Milestones in progress**
+## Game Engine
 
-### Milestone 1
-- Game loop (update loop) in sync with the rendering loop 
-- Way to create simple procedural shapes - spheres, cubes, capsules for usage in the game consumers. 
-- Simple assets importing pipeline - import assets in a given format (obj, gltf). Ingest using some open source library like assimp or cgltf. 
-- A scene should be controlled by a scene graph or ECS
+A simple game engine catering to the space shooter in an asteroid field game. Should be able to load assets and build a procedural scene. Should be able to run a simulation of N physical bodies (asteroids) that have mass and velocity, float in zero gravity and collide with each other. Should be able to do very simple pathfinding (e.g. for enemies). What the engine won't do - no animation system (bones, skins, etc.), no networking, no post-processing, no particle systems.
+
+---
+
+### Milestone Group MVP
+
+### Milestone 1 Assets Ingestion to Scene Building
+- Game loop (update loop) in sync with the rendering loop - comes from sokol; potentially 
+- Way to create a simple procedural shapes - spheres, cubes, capsules for usage in the game consumers. 
+- Simple assets importing pipeline - import assets in a given format (obj, gltf) from a relative path (e.g. `/assets` folder in the root of the project). Ingest assets using cgltf, simple obj as a fallback. Assets will be gathered in advance. 
+- A scene should be controlled by an ECS by the entt library.
+- Have one directional light and one perspective camera
+- A component combination schema should be proposed for expected objects: moving objects with mass (e.g. mesh, transform (position, rotation), mass, collider, linear velocity, anglular velocity, moment of inertia), immovable object (mesh, transform), player object (spaceship with mass, controlled by thrust). Only component schemas are created. 
+- An API should expose the scene to the game. Component schema abstraction should be exposed (movable with mass, immovable, etc.)
 - Ingested asset to scene object pipeline
-- Way to associate a transform with mesh/material (scene node vs ECS association)
-- Dynamic vs static objects in the scene
+- A procedural scene using a combination of ingested assets and procedural shapes should be built.
 
+> **Human comment** - The component schemas are highly speculative, a better ones should be proposed. API should be specified if it should expose entt components or only game engine abstractions. A procedural scene with simple procedural shapes is also used in the renderer. It should be decided if some of the functionality can/should be reused or if more friction is added if reusing - simply duplicated. 
 
-Expected outcome: After milestone 1 assets can be ingested and a procedural scene with a scene graph/ECS controlled and exposed by the engine can be built and manipulated by a consumer (game). IF Render engine Milestone 1 is ready at this point the scene can be visualized. 
+**Expected outcome:** After Milestone 1 assets can be ingested and a scene with a ECS controlled and exposed (abstraction or raw) by the engine that can be built and manipulated by a consumer (game). A test procedural scene should be built in the game engine for local tests. If Render Engine Milestone 1 is ready at this point the scene can be visualized. Every other render engine milestone after 1 adds only better visualization/optimizations. 
 
-
-### Milestone 2
+### Milestone 2 Movement, Raycasting and Collision detection
 - Move player (camera) - input handling and translation to camera transform
-- Have one directional light
 - Interactable vs uninteractable objects
-- Raycasting and hit testing
+- Dynamic vs static objects in the scene
+- Simple Colliders creation (AABB), 
+- Raycasting and hit testing: ray-collider hit detection
+- Collision detection algorithms in place - collider-collider hit detection
 
+**Expected outcome:** Input controlled camera in the procedural scene build with ingested assets and procedural shapes. Collision between camera and objects and hit testing in the scene - camera collider can't pass through objects. Hit testing - click on an object translates to ray-object hit test. If render engine Milestone 2 is ready at this point the lit scene can be visualized. 
 
-Expected outcome: Input controlled camera in the procedural scene (ingested assets). IF Render engine Milestone 2 is ready at this point the lit scene can be visualized.  Hit testing is working.
+### Milestone 3 Physics and Navigation
+- Simplest physics engine - Euler - moving objects, Newton's 2nd law, applying forces to each other, ellastic collision acting on all entities with physics-compatible components
+- Time tracking by sokol, API access to time for the game
+- Pathfinding/AI - object seeks end position in a dynamic scene algorihm, simplest possible (enemies homing at player)
 
+**Expected outcome**: Input controlled camera in the procedural scene where dynamic ingested objects collide and bounce from each other in a reallistic way and with static objects (procedural shapes) in the scene. 
 
-### Milestone 3
-- Simplest physics (Newton's 2nd law, applying forces, etc)
-- Time tracking (time class)
+---
 
+### Milestone Group - Stretch Goals
 
-### Milestone 4 - game engine optional:
-- Have multiple other lights (used for explosions, space ship light beams?)
-- Pathfinding/AI
-- More complex physics
+### Milestone 4 - Pathfinding 
 
+- Advanced pathfinding and obstacle avoidance algorithms
+- Better colliders - convex hull colliders, collision algorithms improved
+- Better collision detection - brute force to spatial partitioning optimized, acceleration structures
+- Have multiple other point lights in the scene (e.g. used for explosions in the game)
 
-No animation system (bones, skins, etc.), no networking, no post-processing, no particle systems.
+**Expected outcome**: Stretch goals, unrealistic in the time frame
 
+---
 
+> **Human comment** - most likely some concepts should be cut from the MVP and moved to stretch goals
+
+---
 
 ## Game Concept
 
 
-The game should be a space shooter (spaceships shoot each other), entirely 3D, happening in an asteroid field. Asteroids are with different sizes. Space ships have 3 attacks:
-- Laser beam - instantaneous hit, mid damage, sniper-like, very slow recharge (10s), visualization is flashing and then fading straight line. Can give impulse to small asteroids. Default is zero laser guns, can be upgraded to 2 alternating ones with power-ups and damage can be increased by 50% (per individual beam).
-- Plasma gun - shoots high-intensity burst of low damage plasma (glowing) projectiles. Weakest gun, plasma projectiles travel fast, but not instantaneous, fast enemies can try to avoid them. Default is just one gun, can be upgraded to 4 with power-ups. Damage can be increased by 50% per indivudual gun
-- Rocket launcher - slow, but high damage, mid recharge time (2 sec). Up to 2 launchers by power ups, default is 0. More easily dodged than plasma gun fire.
+The game should be a space shooter (spaceships shoot each other), entirely 3D, happening in an asteroid field. Asteroids are with different sizes. The game will be a third-person shooter. The spaceship is visible. The space navigation, shooting mechanics and to some extent - visuals, should be influenced by the game Freelancer from 2003.
 
+Space ships - several asset models. Same initial health and shield.
 
-Health and shields:
-- Every ship has a number of hit points
-- Hit points can be increased by power-ups
-- Damage by enemy hits subtracts hit points from the total amount
-- Hit points can be regenerated in several ways - small space stations which when approached regenerate hit points and cast an unpenetrable shield on the ship - e.g. regenerate for 15 sec (fixed num points) then shield is down on the ship and it's vulnerable again. Another way to regenerate hit points is by passing through a consumable - targeting some asteroids that can drop power-ups can drop a hit points consumable.
-- Shield points are analogous.
+### Stats
+- Health - O to 100. If shield is 0 it's drained when shot at or in collisions with asteroids. Otherwise the shield is drained. Very slowly regenerates. If power ups are used it can be regenerated faster.
+- Shield - 0 to 100. Drained when shot at or in collisions with asteroids. If power ups are used it can be regenerated.
+- Boost Speed - 0 to 100. Move 2x faster if a button trigger is pressed. Drains to 0 when consumed, drains for 5 seconds. Then regenerates at 4x time as its drained (20s). Used mostly for evading enemies.
 
+### Attacks
 
-Dynamics:
-- The asteroids in the field can be moved by explosions and can cause damage to ships. Large asteroids are much harder to move.
-- The asteroids are contained by a spherical (hexagonal tiles sphere, ghostly glow if nearby) containment field that's large enough for the game to feel in space. 
-- If an asteroid hits the containment hex tile it's reflected back. Thus the total energy in the system is increasing, so there are damper objects in the play area - when hit by an asteroid they absorb 50% of the kinetic energy slowing it down. 
+Space ships have 2 or more attacks, one at a time:
+- Laser beam (railgun) - instantaneous hit, mid damage, sniper-like, like railgun in Quake 2 and Quake 3. Very slow recharge cooldown (10s), visualization is flashing and then fading straight line. Can give impulse to small asteroids. Default is zero laser guns if power-ups will be implemented or one if not.
+- Plasma gun - shoots a high-intensity burst of low damage plasma (glowing) projectiles. Plasma gun from quake is similar. Weakest gun, plasma projectiles travel fast, but not instantaneous, fast enemies can try to avoid them. Default is just one gun if no power-ups and up to 4 if power-ups are implemented.
+
+Optional:
+- Rocket launcher - slow, but high damage, mid recharge time (2 sec), shoots homing missiles. Somewhat easier to avoid than plasma gun. One launcher if no power ups, 2 if power ups are implemented.  
+
+### Power-ups (optional)
+Power-ups are consumables that can be randomly found with some probability when enemies are killed or are spawned randomly in the scene. Power-ups are gathered by passing through them.
+
+Visualization: Can be simple glowing spheres with different color. 
+
+- Laser gun - Can be upgraded to 2 alternating guns by taking a power-up and damage can be increased by 50% (per individual beam) by next passing through the same power-up. Potential visualization: Green glowing sphere.
+- Plasma gun - Two power-ups can be upgraded to 4 with power-ups. Damage can be increased by 50% per indivudual gun. Potential visualization: Cyan glowing sphere.
+- Rocket launcher -  Up to 2 launchers by power ups.
+- Health - +20 health (e.g. if on 15 health add +10 health to 25 health). Cannot exceed max health.
+- Extra health - + 10 health over max (100). Rarer than normal health. Extra health can increase the health maximum just when taken, but not permanently. If damage is taken to below 100 health and standard health is taken then it can't go pass 100 again.
+- Shield and extra shield - similar to health.
+- Extra Boost Speed - same effect on speed as normal boost, but normal boost is consumed 2x as slow / is regenerated 2x as fast for the first 20 seconds after the power up is used (e.g. if boost speed is continuously used right after the power up it's taking 10s to use up instead of 5. Then it's regenerated 2x as fast for the next 10 seconds.).
+
+### Dynamics
+- Some asteroids in the field have linear and angular velocity. Smaller asteroids have higher velocity.
+- The asteroids in the field can be moved by explosions (rocket launcher or when an enemy is destroyed) and direct fire like plasma and laser (albeit slowly) and can cause damage to ships if not avoided. Large asteroids are much harder to move.
+- The asteroids are contained by a spherical (optional ghostly glow if nearby) containment field that's large enough for the game to feel in space, e.g. 1 km. 
+- If an asteroid hits the containment field it's reflected back. Thus the total energy in the system is increasing, so there are damper objects in the play area - when hit by an asteroid they absorb 50% of the kinetic energy slowing it down. 
 - If a ship hits the field it's reflected back a bit without damage to the ship.
 
+### Game Mechanics
+- Spaceship can move (strafe) by WASD. Forward vector control - left mouse click + hold.
+- Space to boost speed.
+- Right mouse to shoot weapon.
+- Weapons buttons - Q switches to plasma, E switches to laser/railgun, R switches to rocket launcher (if implemented).
+- Esc exits the game.
+- Enter restarts the game.
+- If the player dies the game is also restarted.
 
-Power-ups and other aspects are to be discussed later. 
-MVP and milestones are to be discussed later. 
+### UI
+Minimum UI
+- Health bar, 0 to 100, red color, if extra health can be extended to 200
+- Shield bar, 0 to 100, blue color, if extra shield can be extended to 200
+- Speed boost bar, 0 to 100, yellow. Light blue if boost speed power-up is consumed
+- Crosshair on cursor position.
