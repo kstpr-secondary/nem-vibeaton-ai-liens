@@ -252,3 +252,6 @@ Freelancer-style flight with strafe overlay.
 - Acceptance per milestone: build passes, game runs end-to-end, human behavioral check confirms the milestone's expected outcome, no regressions in earlier milestones.
 - Feature-freeze discipline (blueprint §13.2): at T-30 min, all game feature work stops; only bug fixes and asset tweaks beyond that point.
 - Fallback plan (blueprint §13.2): if the game workstream is broken at T-30, re-enable engine+renderer mocks so `game` still launches and shows *something* — even if it's just a fly-through with no combat.
+
+
+---
