@@ -6,7 +6,7 @@ Seed document for Renderer SpecKit. Concise but complete. Supersedes the rendere
 
 ## Concept
 
-A forward-rendered, mid-2010s-era graphics library built on `sokol_gfx` (graphics) and `sokol_app` (window + input). Target: desktop Linux; primary backend **Vulkan**, fallback **OpenGL 3.3 Core** via CMake flag. Shaders are authored as annotated `.glsl` and **precompiled via `sokol-shdc`** into per-backend headers (no runtime GLSL). Renderer owns `sokol_app` init, the main frame callback, and input plumbing; the game engine ticks from inside the frame callback.
+A forward-rendered, mid-2010s-era graphics library built on `sokol_gfx` (graphics) and `sokol_app` (window + input). Target: desktop Linux; fixed backend **OpenGL 3.3 Core**. Shaders are authored as annotated `.glsl` and **precompiled via `sokol-shdc`** into per-backend headers (no runtime GLSL). Renderer owns `sokol_app` init, the main frame callback, and input plumbing; the game engine ticks from inside the frame callback.
 
 Scene philosophy: the renderer does not own a scene graph. The game engine enqueues draws each frame; the renderer executes them.
 
@@ -18,10 +18,10 @@ Cuts (fixed): shadows (until stretch), PBR, deferred / clustered forward, post-p
 
 Callable by engine (and `renderer_app`) — names illustrative, SpecKit confirms final signatures.
 
-- **Lifecycle:** `init(config)`, `shutdown()`, `run()` (owns `sokol_app` main loop). `config` carries resolution, backend override, clear color.
-- **Per-frame:** `begin_frame()`, `enqueue_draw(mesh, transform, material)`, `enqueue_line(p0, p1, color, thickness)`, `end_frame()`.
+- **Lifecycle:** `init(config)`, `shutdown()`, `run()` (owns `sokol_app` main loop). `config` carries resolution, clear color.
+- **Per-frame:** `begin_frame()`, `enqueue_draw(mesh, transform, material)`, `enqueue_line_quad(p0, p1, width, color)`, `end_frame()`.
 - **Meshes:**
-  - Procedural builders: `make_sphere_mesh(radius, subdiv)`, `make_cube_mesh(extents)`, `make_capsule_mesh(radius, height, subdiv)`. **Live in renderer** — engine and `renderer_app` consume; no duplication elsewhere.
+  - Procedural builders: `make_sphere_mesh(radius, subdiv)`, `make_cube_mesh(extents)`. **Live in renderer** — engine and `renderer_app` consume; no duplication elsewhere.
   - Upload path: `upload_mesh(vertices, indices, layout)` for engine-imported assets (glTF/OBJ).
 - **Materials:** `make_material(base_color, shading_model [, texture_handle, custom_shader_handle])`. Shading model enum: `Unlit`, `Lambertian`, `BlinnPhong` (later).
 - **Textures:** `upload_texture_2d(pixels, w, h, format)`, `upload_cubemap(...)`.
@@ -37,15 +37,15 @@ Callable by engine (and `renderer_app`) — names illustrative, SpecKit confirms
 ### R-M0 — Bootstrap
 *Target: ≤45 min. Skippable as a sync point (no downstream deliverable).*
 
-- Sokol init with Vulkan primary + GL 3.3 fallback toggled via CMake flag (`-DRENDERER_BACKEND=VULKAN|GL`).
+- Sokol init with OpenGL 3.3 Core backend.
 - `sokol_app` window (fixed resolution, fullscreen), clear-color frame.
 - Input event pump exposed to engine via callback.
 - `renderer_app` driver renders a solid clear color.
-- **Hard gate:** decide Vulkan-vs-GL here. If Vulkan experimental backend misbehaves on any of the three laptops, switch the default to GL before R-M1 starts. Do *not* let this decision slip into shader work.
+- **Hard gate:** Confirm OpenGL 3.3 initialization is stable on all laptops.
 
 **Expected outcome:** `renderer_app` runs; window clears to color; keyboard/mouse events print to log.
 
-**Files (indicative):** `renderer_core.{cpp,h}`, `renderer_app/main.cpp`, CMake backend flag.
+**Files (indicative):** `renderer_core.{cpp,h}`, `renderer_app/main.cpp`.
 
 ### R-M1 — Unlit Forward Rendering + Procedural Scene
 *Target: ~1h. **Sync point for engine workstream.***
@@ -55,7 +55,7 @@ Callable by engine (and `renderer_app`) — names illustrative, SpecKit confirms
 - `sokol-shdc` CMake custom command producing `<name>.glsl.h`; one unlit vertex+fragment program through it end-to-end.
 - Unlit solid-color shader.
 - Public API for `enqueue_draw` + mesh + material + camera.
-- Procedural shape builders (sphere / cube / capsule) in renderer public API.
+- Procedural shape builders (sphere / cube) in renderer public API.
 - `renderer_app` driver: hardcoded procedural scene — assorted colored primitives at varied positions/rotations/sizes in front of a fixed camera.
 
 **Expected outcome:** `renderer_app` displays colored unlit primitives. Engine workstream can begin wiring its mock against the real API.
@@ -78,15 +78,16 @@ Callable by engine (and `renderer_app`) — names illustrative, SpecKit confirms
 
 **Parallel hints:** `lambertian.glsl` (shader) and C++ uniform-block/pipeline plumbing are file-disjoint → natural PG-A/PG-B split. Uniform block struct is a bottleneck: define `sg_directional_light_t` first, mark BOTTLENECK.
 
-### R-M3 — Skybox + Line Rendering
+### R-M3 — Skybox + Line-Quads + Alpha Blending
 *Target: ~45 min. Depends on R-M2 (or concurrent with it after the uniform-block bottleneck clears — file sets are disjoint).*
 
+- Alpha-blended transparency support (basic `SG_BLENDSTATE_ALPHA`).
 - Skybox: cubemap texture; separate pass behind all opaque geometry; depth write off, depth test off, draw first or use depth-trick.
-- Depth-tested line primitive: thickness via geometry shader or CPU-side quad expansion. Supports colored segments for laser beams.
+- World-space quad lines for lasers: procedural quad generation between two points; unlit shader.
 
-**Expected outcome:** Starfield / space background renders behind the scene without z-fighting; lines render with correct depth occlusion against scene geometry. **Renderer MVP complete** — sufficient for the game: lit meshes, starfield, laser visuals.
+**Expected outcome:** Starfield / space background renders behind the scene; laser quads render with alpha blending and correct depth occlusion. **Renderer MVP complete.**
 
-**Files:** `skybox.{cpp,h}`, `shaders/renderer/skybox.glsl`, `debug_draw.{cpp,h}`, `shaders/renderer/line.glsl`. Two file-disjoint sub-efforts → parallel group.
+**Files:** `skybox.{cpp,h}`, `shaders/renderer/skybox.glsl`, `debug_draw.{cpp,h}`, `shaders/renderer/line_quad.glsl`. Two file-disjoint sub-efforts → parallel group.
 
 ---
 
@@ -99,11 +100,12 @@ Callable by engine (and `renderer_app`) — names illustrative, SpecKit confirms
 - 2D texture sampling (albedo only), texture upload API + loader (stb_image or equivalent).
 - Scene demo: mix of Lambertian and Blinn-Phong materials, some textured.
 
-### R-M5 — Custom Shader Hook + Alpha-Blended Queue
+### R-M5 — Custom Shader Hook + Sorted Transparency
 *Depends on R-M4.*
 
 - API for engine-supplied fragment shader attached to a material (plasma, fresnel, explosion). Applied on quads or simple primitives or lines.
 - Alpha-blended transparency queue, sorted back-to-front.
+- Procedural shape builder: `make_capsule_mesh(radius, height, subdiv)`.
 - Scene demo: animated plasma-shader sphere on top of an opaque/textured object.
 
 ### R-M6 — Frustum Culling + Front-to-Back Sort + Stress Test
@@ -147,11 +149,12 @@ Callable by engine (and `renderer_app`) — names illustrative, SpecKit confirms
 
 ## Resolved Open Decisions
 
-- **Alpha-blended queue:** desirable (R-M5), *not* MVP. MVP laser and plasma are opaque.
+- **Alpha-blended queue:** basic blending in MVP (R-M3); sorted queue in Desirable (R-M5).
 - **Shader pipeline:** precompiled via `sokol-shdc`. Runtime GLSL cut. Hot-reload cut.
-- **Vulkan vs GL:** decided inside R-M0; GL fallback via build flag always available.
+- **Graphics API:** **OpenGL 3.3 Core** (Fixed). Vulkan removed for hardware compatibility.
 - **Culling / sorting / stress test:** demoted to R-M6 (desirable), not MVP.
-
+- **Lines:** standard 1px lines forfeited; replaced with world-space quads (R-M3).
+- **Capsules:** Demoted to Desirable (R-M5).
 ---
 
 ## Notes for SpecKit
