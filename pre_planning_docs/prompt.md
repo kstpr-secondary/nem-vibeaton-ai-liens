@@ -1,0 +1,2 @@
+Analyze deeply the document "Hackathon Master Blueprint.md". Then analyze the documents Renderer/Game Concept/Game and Milestones.md. 
+Ignore files in archived-IGNORE folder. Use the "Agent Action Items - Post Validation.md" where a list of changes in the documents is given. Apply those changes surgically. Do not alter any other knowledge in the documents.

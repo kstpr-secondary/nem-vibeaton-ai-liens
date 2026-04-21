@@ -23,7 +23,7 @@ The game fully runs against engine + renderer mocks at T+0 so the game workstrea
 - Two weapons: **laser (railgun)** and **plasma gun**, switchable (Q/E)
 - One enemy ship with simple "seek + shoot" behavior (AI lives in game code for MVP)
 - HP + shield + boost resources on player; HP + shield on enemy
-- Minimal explosion VFX (simple primitive flash or expanding sphere) on death
+- **Minimal explosion VFX** (simple primitive flash or expanding sphere with basic alpha blending) on death. Shader-based VFX deferred to Desirable (requires renderer R-M5).
 - ImGui HUD: HP / shield / boost bars + crosshair + weapon cooldowns
 - Restart flow: Enter → reset, Esc → quit, death → auto-restart
 - Win condition: all enemies destroyed
@@ -159,6 +159,8 @@ Freelancer-style flight with strafe overlay.
 
 **Expected outcome:** Player can fly through a static field of 200 asteroids. Camera follows. Nothing collides, nothing shoots. Demoable only if renderer/engine milestones are synced. Most likely "headless" development during the first hour, asset pipeline most likely not working yet.
 
+**Contingency:** If third-person camera rig stalls beyond T+1h, switch to first-person (camera entity as child of player entity with no offset). Document decision in TASKS.md and notify Person A. First-person requires ~5 min of code changes; third-person rig can take 30–45 min.
+
 ### G-M2 — Physics, Containment, Asteroid Dynamics
 *Needs: E-M3 (colliders, raycast), E-M4 (physics). Swap mocks for real engine physics when E-M4 merges.*
 *Target: ~45 min.*
@@ -208,9 +210,8 @@ Freelancer-style flight with strafe overlay.
 - Swap game-local seek AI for engine's E-M5 steering (seek + raycast obstacle avoidance). Behavior improves visibly: enemies stop ramming asteroids.
 - Increase enemy count to 3 (up to 8).
 
-### G-M6 — Physics & Visual Polish
-- Enable asteroid-asteroid collisions.
-- Explosion VFX via renderer R-M5 custom shader hook. - Enemy / asteroid destruction triggers an expanding transparent sphere with a plasma-like shader, short lifetime. Small radial impulse on nearby asteroids at detonation.
+### G-M6 — Visual Polish
+- Explosion VFX via renderer R-M5 custom shader hook.
 - Laser hit-flash on asteroid surface.
 
 ### G-M7 — Feel Tuning Pass
@@ -223,6 +224,7 @@ Freelancer-style flight with strafe overlay.
 - **Screen-space damage numbers:** Display dmg values over hit enemies.
 - **Power-ups:** weapon upgrades (2× laser, 4× plasma), HP / shield / extra-variants, boost booster. Pickup sphere meshes with different colors. Multiplies UI and weapon state complexity — only land with clear headroom.
 - **Rocket launcher:** homing projectile + AoE detonation.
+- **Asteroid-asteroid collisions:** Elastic response via game-layer collision detection (engine provides AABB tests). O(n²) with 200 asteroids; only viable if agent finds a trivial optimization or reduces active asteroid count.
 
 ---
 

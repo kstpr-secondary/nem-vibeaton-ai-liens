@@ -151,7 +151,7 @@ Callable by engine (and `renderer_app`) — names illustrative, SpecKit confirms
 
 - **Alpha-blended queue:** basic blending in MVP (R-M3); sorted queue in Desirable (R-M5).
 - **Shader pipeline:** precompiled via `sokol-shdc`. Runtime GLSL cut. Hot-reload cut.
-- **Graphics API:** **OpenGL 3.3 Core** (Fixed). Vulkan removed for hardware compatibility.
+- **Graphics API:** **OpenGL 3.3 Core** only (Vulkan removed for hardware compatibility).
 - **Culling / sorting / stress test:** demoted to R-M6 (desirable), not MVP.
 - **Lines:** standard 1px lines forfeited; replaced with world-space quads (R-M3).
 - **Capsules:** Demoted to Desirable (R-M5).
