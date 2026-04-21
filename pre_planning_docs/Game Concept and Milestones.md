@@ -260,8 +260,10 @@ Freelancer-style flight with strafe overlay.
 
 - **Mouse flight model:** direct-delta control vs cursor-on-screen drag-aim (Freelancer-style). Pick one before G-M1 coding starts.
 - **Strafe axis mapping:** A/D = roll vs yaw vs strafe-left/right; W/S = pitch vs forward/back vs strafe-up/down. Pick a specific scheme before G-M1.
+> **Human comment** - A/D = strafe-left/right; W/S = forward(acceleration)/back(deceleration/reverse)
 - **ImGui ownership:** renderer vs game (recommended: renderer — see above).
 - **Numerical tuning targets:** asteroid count, enemy count, damage values, cooldowns, boost timings — tune during G-M7 or earlier if demo looks bad.
+> **Human comment** - asteroid count (default to 200, different sizes, will experiment so the field is denser but not tank performance), enemy count (default to 3, don't attack each other, up to 8), damage values (laser 10 dmg, plasma bolt 0.5 dmg, displayed over enemy in screen space, if too hard to do - skip), cooldowns (displayed in HUD), boost timings — OK
 - **Asset slate:** which ship mesh(es) + asteroid mesh(es) to pre-verify. Humans decide before T+0.
 
 ---
