@@ -81,13 +81,15 @@ All items **FIXED** unless noted.
 
 **FIXED:** Rendering engine owns `sokol_app` init and main frame callback. Game engine runs its tick from inside the renderer's frame callback. Input flows from `sokol_app` through renderer to engine.
 
-**FIXED:** Shaders are `.glsl` files under `/shaders/renderer/` or `/shaders/game/`. Runtime file loading is the default.
+**FIXED (Iter 9, revised):** Shaders are annotated `.glsl` files under `/shaders/renderer/` or `/shaders/game/`, **precompiled ahead of time via `sokol-shdc`** into per-backend headers (`${CMAKE_BINARY_DIR}/generated/shaders/<name>.glsl.h`). Consumed via `#include` + `shd_<name>_shader_desc(sg_query_backend())`. Reverses the earlier "runtime file loading is default" decision.
 
-**FIXED (Iter 9):** Build-time shader validation via `glslangValidator -V` on all `shaders/**/*.{vert,frag}.glsl` — CMake `validate_shaders` target, added as dependency of `renderer`, output discarded (`-o /dev/null`). Catches syntactic/semantic errors without changing the runtime-load path.
+**Rationale:** `sokol_gfx`'s Vulkan backend requires SPIR-V bytecode plus reflection descriptors (uniform block layout, vertex attributes, sampler bindings) on `sg_shader_desc`. A runtime GLSL path requires glslang/shaderc + SPIRV-Cross integration and dual GL/Vulkan code paths — estimated 2–4h of plumbing with no visible output. `sokol-shdc` is the intended sokol path and gives backend-portable bytecode + reflection for free. Build-time errors replace runtime errors; a separate `validate_shaders` target is no longer needed (the sokol-shdc CMake custom command is the validation).
 
-**FIXED (Iter 9):** Runtime shader-compile callback must log file path + compiler log on failure and fall back to a magenta error shader — never crash. Acceptance criterion on the shading milestone.
+**FIXED (Iter 9):** Shader author format follows sokol-shdc annotations (`@vs`, `@fs`, `@module`, `@program`, `@block`). Dedicated `.agents/skills/sokol-shdc/SKILL.md` covers the dialect for agents.
 
-**Open (Iter 9):** Precompiled shaders (`sokol-shdc` or pre-SPIR-V) are under active consideration. If adopted, replaces runtime GLSL loading — decide before Renderer SpecKit freeze.
+**FIXED (Iter 9):** Runtime `sg_make_shader` / pipeline-creation callback logs errors and falls back to a magenta error pipeline — never crashes. Acceptance criterion on the shading milestone.
+
+**Cut:** Runtime GLSL loading; shader hot-reload. Hot-reload may be added later as a debug-only GL-backend path if time permits.
 
 ### 3.4 Assets
 
@@ -131,11 +133,12 @@ Rule: after a milestone merge the downstream workstream runs the full build once
 
 ```c
 #define PROJECT_SOURCE_ROOT "@CMAKE_SOURCE_DIR@"
-#define SHADER_ROOT         PROJECT_SOURCE_ROOT "/shaders"
 #define ASSET_ROOT          PROJECT_SOURCE_ROOT "/assets"
 ```
 
-Rule (add to `AGENTS.md`): never hard-code relative asset/shader paths; always compose from `SHADER_ROOT` / `ASSET_ROOT`. Trade-off: binary is not relocatable across machines — acceptable for hackathon demo; add a `--asset-root` CLI override only if relocation becomes necessary.
+Shaders need no runtime path macro — they are compiled into headers at build time (§3.3). Only runtime-loaded content (meshes, textures) uses `ASSET_ROOT`.
+
+Rule (add to `AGENTS.md`): never hard-code relative asset paths; always compose from `ASSET_ROOT`. Trade-off: binary is not relocatable across machines — acceptable for hackathon demo; add a `--asset-root` CLI override only if relocation becomes necessary.
 
 ---
 
@@ -562,7 +565,7 @@ Target: **~1 milestone merge per hour** per workstream (~5 total per workstream)
 - Asset and shader runtime path policy decided.
 - `quickstart.md` / runbook created and tested.
 - Shared API header and mock generation rehearsed.
-- Optional `sokol-shdc` tooling checks.
+- `sokol-shdc` binary installed on all machines; CMake custom command wired for one reference shader end-to-end.
 
 ### 11.2 Hackathon Start Sequence (T+0)
 
@@ -698,8 +701,8 @@ If time runs short, cut in this order:
 15. Skills are lazy-loaded: agents load only skills relevant to current task and workstream.
 16. SpecKit outputs are precursor artifacts; must be synthesized into stable schema before hackathon starts.
 17. **(Iter 9)** Build topology: `renderer` + `engine` static libs with standalone `renderer_app` / `engine_app` driver executables for solo iteration against procedural scenes; `game` executable; per-workstream target-scoped builds; full rebuild only at milestone sync (§3.5).
-18. **(Iter 9)** Shaders validated at build time via `glslangValidator`; runtime compile failures log and fall back to magenta shader, never crash (§3.3).
-19. **(Iter 9)** Asset/shader paths resolved via configure-time `SHADER_ROOT` / `ASSET_ROOT` macros from generated `paths.h`; no relative-path lookups (§3.6).
+18. **(Iter 9, revised)** Shaders **precompiled ahead-of-time via `sokol-shdc`** into per-backend headers; runtime GLSL loading and hot-reload cut. Shader-creation failures log and fall back to a magenta pipeline, never crash (§3.3).
+19. **(Iter 9)** Asset paths resolved via configure-time `ASSET_ROOT` macro from generated `paths.h`; no relative-path lookups at runtime (§3.6). Shaders require no runtime path (headers are linked in).
 
 ---
 
