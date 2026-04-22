@@ -22,7 +22,7 @@
 | Game | G-M1 | Flight + Scene + Camera | TODO | Starts at T+0 on frozen interfaces + mocks |
 | Game | G-M2 | Physics, Containment, Asteroid Dynamics | TODO | Swaps to real engine physics when E-M4 lands |
 | Game | G-M3 | Weapons + Enemies + HP/Shield | TODO | Requires line quads, raycast, projectile physics |
-| Game | G-M4 | HUD + Game Flow + Restart | TODO | Completes game MVP |
+| Game | G-M4 | HUD + Game Flow + Restart | TODO | Completes game MVP; uses renderer-owned `sokol_imgui` path |
 | Game | G-M5 | AI Upgrade & Scaling | TODO | Desirable |
 | Game | G-M6 | Visual Polish | TODO | Desirable |
 | Game | G-M7 | Feel Tuning Pass | TODO | Desirable |
@@ -41,7 +41,7 @@
 | G-M1 | R-M1 | E-M1 |
 | G-M2 | R-M1 | E-M4 or engine physics mocks |
 | G-M3 | R-M1 + R-M3 | E-M3 + E-M4 |
-| G-M4 | R-M1 + ImGui integration | E-M1 |
+| G-M4 | R-M1 + renderer-owned `sokol_imgui` integration | E-M1 |
 | G-M5 | — | E-M5 |
 | G-M6 | R-M5 | E-M4 |
 

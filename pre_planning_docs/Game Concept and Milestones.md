@@ -188,11 +188,12 @@ Freelancer-style flight with strafe overlay.
 **Expected outcome:** Full combat loop with 1 enemy. Laser on 5s cooldown. Player can destroy enemies; enemies can damage and kill the player. Weapons feel distinct. Death is detected but not yet handled.
 
 ### G-M4 — HUD + Game Flow + Restart
-*Needs: ImGui integration.*
+*Needs: renderer-owned Dear ImGui integration via `util/sokol_imgui.h`.*
 *Target: ~45 min.*
 
 - ImGui HUD: bars + weapon cooldown indicators.
 - Crosshair (fixed center for MVP; enemy-highlight on lock is nice-to-have).
+- Renderer owns ImGui setup, event forwarding, `simgui_new_frame`, and final UI render call; game code only builds the HUD widgets/overlays.
 
 - Restart flow: on Enter (always), on death (auto after ~2s), on win (auto after ~3s).
 - Win condition: enemy count reaches 0 → "YOU WIN" overlay.
@@ -235,7 +236,7 @@ Freelancer-style flight with strafe overlay.
 | G-M1 | R-M1 (unlit meshes, camera) | E-M1 (ECS + scene) |
 | G-M2 | R-M1 | E-M4 (physics + collision response) |
 | G-M3 | R-M1 + R-M3 (lines) | E-M3 (raycast) + E-M4 (physics) |
-| G-M4 | R-M1 + ImGui integration | E-M1 |
+| G-M4 | R-M1 + renderer-owned `sokol_imgui` integration | E-M1 |
 | G-M5 (desirable) | — | E-M5 (steering) |
 | G-M6 (desirable) | R-M5 (custom shader + alpha) | E-M4 |
 

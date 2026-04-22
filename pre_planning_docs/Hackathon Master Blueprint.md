@@ -81,6 +81,8 @@ All items **FIXED** unless noted.
 
 **FIXED:** Rendering engine owns `sokol_app` init and main frame callback. Game engine runs its tick from inside the renderer's frame callback. Input flows from `sokol_app` through renderer to engine.
 
+**FIXED (Iter 9):** Dear ImGui integration path is renderer-owned **`util/sokol_imgui.h`** from the pinned sokol repo. Do **not** introduce GLFW/SDL backends or any second windowing/input layer. The renderer initializes/shuts down ImGui, forwards `sokol_app` events into it, begins a new UI frame each render tick, and renders the UI draw data after the 3D scene. Game code only emits widgets/HUD content.
+
 **FIXED (Iter 9, revised):** Shaders are annotated `.glsl` files under `/shaders/renderer/` or `/shaders/game/`, **precompiled ahead of time via `sokol-shdc`** into per-backend headers (`${CMAKE_BINARY_DIR}/generated/shaders/<name>.glsl.h`). Consumed via `#include` + `shd_<name>_shader_desc(sg_query_backend())`. Reverses the earlier "runtime file loading is default" decision.
 
 **Rationale:** `sokol_gfx`'s Vulkan backend requires SPIR-V bytecode plus reflection descriptors (uniform block layout, vertex attributes, sampler bindings) on `sg_shader_desc`. A runtime GLSL path requires glslang/shaderc + SPIRV-Cross integration and dual GL/Vulkan code paths — estimated 2–4h of plumbing with no visible output. `sokol-shdc` is the intended sokol path and gives backend-portable bytecode + reflection for free. Build-time errors replace runtime errors; a separate `validate_shaders` target is no longer needed (the sokol-shdc CMake custom command is the validation).

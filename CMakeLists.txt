@@ -418,6 +418,18 @@ endif()
 
 add_library(imgui_lib STATIC ${imgui_sources})
 target_include_directories(imgui_lib PUBLIC ${imgui_SOURCE_DIR})
+add_library(imgui::core ALIAS imgui_lib)
 
-# Backends are intentionally not hard-wired here. The renderer owns the
-# eventual sokol_app/OpenGL integration and can add the chosen adapter later.
+# Freeze the hackathon UI path now: Dear ImGui is rendered through
+# sokol_gfx/sokol_app via util/sokol_imgui.h, owned by the renderer.
+# The implementation translation unit will live in src/renderer/ when added.
+add_library(imgui_sokol INTERFACE)
+target_include_directories(imgui_sokol INTERFACE
+    ${imgui_SOURCE_DIR}
+    ${sokol_SOURCE_DIR}
+    ${sokol_SOURCE_DIR}/util
+)
+target_link_libraries(imgui_sokol INTERFACE imgui_lib Sokol::sokol)
+add_library(vibeaton::imgui_backend ALIAS imgui_sokol)
+
+target_link_libraries(renderer PRIVATE vibeaton::imgui_backend)
