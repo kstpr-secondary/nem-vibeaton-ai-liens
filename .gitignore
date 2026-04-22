@@ -1,2 +1,3 @@
-build
-build.copilot-check
+build/
+build.copilot-check/
+tools/

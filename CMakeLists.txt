@@ -23,6 +23,7 @@ add_compile_options(
 # --- Hackathon bootstrap toggles ---
 option(USE_RENDERER_MOCKS "Build the renderer target from src/renderer/mocks when present" OFF)
 option(USE_ENGINE_MOCKS "Build the engine target from src/engine/mocks when present" OFF)
+option(VIBEATON_REQUIRE_SOKOL_SHDC "Fail when shader sources exist but sokol-shdc is unavailable" ON)
 
 # --- Asset path resolution ---
 configure_file(
@@ -196,6 +197,12 @@ function(vibeaton_attach_shader_headers owner_target shader_root aggregate_targe
 
     find_program(SOKOL_SHDC_EXECUTABLE sokol-shdc)
     if(NOT SOKOL_SHDC_EXECUTABLE)
+        if(VIBEATON_REQUIRE_SOKOL_SHDC)
+            message(FATAL_ERROR
+                "sokol-shdc is required to compile shader sources under ${shader_root}. "
+                "Install sokol-shdc or configure with -DVIBEATON_REQUIRE_SOKOL_SHDC=OFF to keep bootstrap mode."
+            )
+        endif()
         message(WARNING "sokol-shdc not found; shader headers under ${shader_root} will not be generated yet.")
         return()
     endif()
