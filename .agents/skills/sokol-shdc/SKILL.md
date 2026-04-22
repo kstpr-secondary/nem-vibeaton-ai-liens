@@ -138,6 +138,7 @@ Use `@ctype` at file top to tell sokol-shdc what C type to use in generated stru
 
 ```glsl
 @ctype mat4 glm::mat4   // use GLM mat4 in the generated C struct
+@ctype mat4 mat4s_t     // alternative: map to a custom math-lib type
 @ctype vec3 glm::vec3
 @ctype vec2 glm::vec2
 ```
@@ -202,17 +203,17 @@ typedef struct vs_params_t { glm::mat4 mvp; glm::mat4 model; } vs_params_t;
 typedef struct fs_params_t { glm::vec3 light_dir; float ambient; } fs_params_t;
 
 // 3. Uniform block bind slot constants:
-#define SG_SLOT_vs_params  0
-#define SG_SLOT_fs_params  1
+#define UB_vs_params  0
+#define UB_fs_params  1
 
 // 4. Texture/sampler slot constants:
-#define SG_SLOT_tex        0
-#define SG_SLOT_smp        0
+#define VIEW_tex        0
+#define SMP_smp        0
 
 // 5. Vertex attribute slot constants:
-#define SG_ATTR_vs_position   0
-#define SG_ATTR_vs_texcoord0  1
-#define SG_ATTR_vs_normal     2
+#define ATTR_vs_position   0
+#define ATTR_vs_texcoord0  1
+#define ATTR_vs_normal     2
 ```
 
 ---
@@ -234,9 +235,9 @@ if (sg_query_shader_state(shd) != SG_RESOURCESTATE_VALID) {
 sg_pipeline pip = sg_make_pipeline(&(sg_pipeline_desc){
     .shader = shd,
     .layout.attrs = {
-        [SG_ATTR_vs_position]  = { .format = SG_VERTEXFORMAT_FLOAT3 },
-        [SG_ATTR_vs_texcoord0] = { .format = SG_VERTEXFORMAT_FLOAT2 },
-        [SG_ATTR_vs_normal]    = { .format = SG_VERTEXFORMAT_FLOAT3 },
+        [ATTR_vs_position]  = { .format = SG_VERTEXFORMAT_FLOAT3 },
+        [ATTR_vs_texcoord0] = { .format = SG_VERTEXFORMAT_FLOAT2 },
+        [ATTR_vs_normal]    = { .format = SG_VERTEXFORMAT_FLOAT3 },
     },
     .index_type = SG_INDEXTYPE_UINT16,
     .depth = { .compare = SG_COMPAREFUNC_LESS_EQUAL, .write_enabled = true },
@@ -253,13 +254,13 @@ vs_params_t vs_p = {
     .mvp   = proj * view * model,
     .model = model,
 };
-sg_apply_uniforms(SG_SLOT_vs_params, &SG_RANGE(vs_p));
+sg_apply_uniforms(UB_vs_params, &SG_RANGE(vs_p));
 
 fs_params_t fs_p = {
     .light_dir = glm::vec3(0.577f, 0.577f, 0.577f),
     .ambient   = 0.2f,
 };
-sg_apply_uniforms(SG_SLOT_fs_params, &SG_RANGE(fs_p));
+sg_apply_uniforms(UB_fs_params, &SG_RANGE(fs_p));
 ```
 
 ### 5.3 Bind textures and samplers
@@ -268,8 +269,8 @@ sg_apply_uniforms(SG_SLOT_fs_params, &SG_RANGE(fs_p));
 sg_bindings bind = {
     .vertex_buffers[0] = vbuf,
     .index_buffer = ibuf,
-    .views[SG_SLOT_tex]    = sg_make_view(&(sg_view_desc){ .texture.image = img }),
-    .samplers[SG_SLOT_smp] = smp,
+    .views[VIEW_tex]    = sg_make_view(&(sg_view_desc){ .texture.image = img }),
+    .samplers[SMP_smp] = smp,
 };
 sg_apply_bindings(&bind);
 ```
@@ -326,9 +327,9 @@ target_include_directories(renderer PRIVATE
 | Problem | Cause | Fix |
 |---------|-------|-----|
 | `SG_RESOURCESTATE_FAILED` on shader | Wrong `--slang` flag or GLSL syntax error | Check sokol-shdc stdout; use `glsl430` |
-| `SG_ATTR_vs_*` undefined | Wrong generated header included, or `@program` name mismatch | Verify `#include` path and `@program` name |
+| `ATTR_vs_*` undefined | Wrong generated header included, or `@program` name mismatch | Verify `#include` path and `@program` name |
 | Uniform struct misaligned | `std140` layout requires 16-byte alignment | Add explicit padding or use `SG_UNIFORMLAYOUT_STD140` |
-| Black screen after pipeline creation | Pipeline valid but bindings wrong | Check `SG_SLOT_*` constants match the bindings |
+| Black screen after pipeline creation | Pipeline valid but bindings wrong | Check `UB_*`, `VIEW_*`, or `SMP_*` constants match the bindings |
 | Generated header not found at build | CMake include dir not set | Add `target_include_directories(... ${CMAKE_BINARY_DIR}/generated)` |
 
 ---

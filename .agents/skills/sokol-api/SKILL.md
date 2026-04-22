@@ -1,10 +1,10 @@
 ---
 name: sokol-api
-description: Use when working with sokol_gfx.h, sokol_app.h, sokol_time.h, sokol_glue.h, or sokol_log.h in any workstream. Covers resource creation (buffers, images, samplers, shaders, pipelines), render passes, draw calls, app lifecycle, time measurement, and the sokol_app↔sokol_gfx glue. Activated when authoring or reviewing renderer code that calls sg_* or sapp_* functions. Do NOT use for sokol-shdc shader compilation workflow — use the sokol-shdc skill instead.
+description: Use when working with sokol_gfx.h, sokol_app.h, sokol_time.h, sokol_glue.h, sokol_log.h, or sokol_imgui.h in any workstream. Covers resource creation (buffers, images, samplers, shaders, pipelines), render passes, draw calls, app lifecycle, time measurement, and the sokol_app↔sokol_gfx glue. Activated when authoring or reviewing renderer code that calls sg_* or sapp_* functions. Do NOT use for sokol-shdc shader compilation workflow — use the sokol-shdc skill instead.
 compatibility: Portable across heterogeneous agents (Claude, Copilot, Gemini, GLM, local Qwen).
 metadata:
   author: hackathon-team
-  version: "1.0"
+  version: "1.1"
   project-stage: pre-implementation
   role: library-reference
   activated-by: any sg_* or sapp_* usage
@@ -12,7 +12,7 @@ metadata:
 
 # sokol-api Skill
 
-Reference for `sokol_gfx.h`, `sokol_app.h`, `sokol_time.h`, `sokol_glue.h`, and `sokol_log.h`.
+Reference for `sokol_gfx.h`, `sokol_app.h`, `sokol_time.h`, `sokol_glue.h`, `sokol_log.h`, and `sokol_imgui.h`.
 **Target backend: `SG_BACKEND_GLCORE` (OpenGL 3.3 Core).**
 
 Use per-aspect references under `references/` when you need deeper detail on a specific topic. Read only what the task requires.
@@ -49,13 +49,6 @@ sapp_desc sokol_main(int argc, char* argv[]) {
 }
 ```
 
-| Callback | Purpose |
-|----------|---------|
-| `init_cb` | `sg_setup()`, create all GPU resources |
-| `frame_cb` | Update state, begin pass, draw, end pass, commit |
-| `cleanup_cb` | Destroy resources, `sg_shutdown()` |
-| `event_cb` | Handle `sapp_event` (keyboard, mouse, resize) |
-
 ---
 
 ## 3. Graphics Initialization (`sokol_gfx.h`)
@@ -68,96 +61,99 @@ static void init(void) {
     });
     stm_setup();  // if using sokol_time
 }
-
-static void cleanup(void) {
-    sg_shutdown();  // last call
-}
 ```
 
 ---
 
-## 4. Resource Types (IDs)
+## 4. External Library Integration
 
+### Texture Loading (`stb_image`)
 ```c
-sg_buffer    // vertex or index buffer
-sg_image     // 2D texture, render target, cubemap
-sg_sampler   // filter + wrap settings
-sg_shader    // compiled shader (from sokol-shdc generated desc)
-sg_pipeline  // shader + vertex layout + render state
-sg_view      // image/buffer bound to shader slots
-```
-
-All IDs are `uint32_t` handles. Test validity: `sg_query_buffer_state(buf) == SG_RESOURCESTATE_VALID`.
-
----
-
-## 5. Key Enums (quick lookup)
-
-| Category | Common Values |
-|----------|--------------|
-| Usage | `SG_USAGE_IMMUTABLE` (default), `SG_USAGE_DYNAMIC`, `SG_USAGE_STREAM` |
-| Buffer type | `SG_BUFFERTYPE_VERTEXBUFFER` (default), `SG_BUFFERTYPE_INDEXBUFFER` |
-| Index type | `SG_INDEXTYPE_NONE`, `SG_INDEXTYPE_UINT16`, `SG_INDEXTYPE_UINT32` |
-| Vertex format | `SG_VERTEXFORMAT_FLOAT3` (pos/normal), `SG_VERTEXFORMAT_FLOAT2` (UV), `SG_VERTEXFORMAT_FLOAT4` |
-| Vertex step | `SG_VERTEXSTEP_PER_VERTEX` (default), `SG_VERTEXSTEP_PER_INSTANCE` |
-| Pixel format | `SG_PIXELFORMAT_RGBA8` (color), `SG_PIXELFORMAT_DEPTH` (depth), `SG_PIXELFORMAT_SRGB8A8` |
-| Cull mode | `SG_CULLMODE_NONE` (default), `SG_CULLMODE_BACK` (typical), `SG_CULLMODE_FRONT` |
-| Compare | `SG_COMPAREFUNC_LESS_EQUAL` (depth), `SG_COMPAREFUNC_LESS` |
-| Load action | `SG_LOADACTION_CLEAR` (default), `SG_LOADACTION_LOAD`, `SG_LOADACTION_DONTCARE` |
-| Filter | `SG_FILTER_LINEAR` (default), `SG_FILTER_NEAREST` |
-| Wrap | `SG_WRAP_REPEAT` (default), `SG_WRAP_CLAMP_TO_EDGE` |
-
----
-
-## 6. Resource Creation Cheatsheet
-
-**Immutable vertex buffer:**
-```c
-sg_buffer vbuf = sg_make_buffer(&(sg_buffer_desc){
-    .data = SG_RANGE(vertices),
-    .label = "mesh-vbuf",
-});
-```
-
-**Index buffer:**
-```c
-sg_buffer ibuf = sg_make_buffer(&(sg_buffer_desc){
-    .type = SG_BUFFERTYPE_INDEXBUFFER,
-    .data = SG_RANGE(indices),
-    .label = "mesh-ibuf",
-});
-```
-
-**Dynamic buffer (update once/frame):**
-```c
-sg_buffer dyn = sg_make_buffer(&(sg_buffer_desc){
-    .size = MAX * sizeof(vertex_t),
-    .usage = { .vertex_buffer = true, .dynamic_update = true },
-    .label = "dynamic-vbuf",
-});
-// Each frame:
-sg_update_buffer(dyn, &SG_RANGE(data));
-```
-
-**2D texture:**
-```c
+int width, height, channels;
+unsigned char* pixels = stbi_load(path, &width, &height, &channels, 4);
 sg_image img = sg_make_image(&(sg_image_desc){
-    .width = w, .height = h,
+    .width = width, .height = height,
+    .pixel_format = SG_PIXELFORMAT_RGBA8,
     .data.mip_levels[0] = SG_RANGE(pixels),
-    .label = "texture",
+    .label = "texture"
+});
+stbi_image_free(pixels);
+
+sg_sampler smp = sg_make_sampler(&(sg_sampler_desc){
+    .min_filter = SG_FILTER_LINEAR, .mag_filter = SG_FILTER_LINEAR,
+    .label = "sampler"
 });
 ```
 
-**Sampler:**
+### glTF Integration (`cgltf`)
+Extracting mesh data from `cgltf` and mapping to Sokol:
 ```c
-sg_sampler smp = sg_make_sampler(&(sg_sampler_desc){
-    .min_filter = SG_FILTER_LINEAR,
-    .mag_filter = SG_FILTER_LINEAR,
-    .wrap_u = SG_WRAP_REPEAT,
-    .wrap_v = SG_WRAP_REPEAT,
-    .label = "default-smp",
+// Attributes from cgltf accessors
+const cgltf_accessor* acc = find_accessor(prim, "POSITION");
+void* ptr = (uint8_t*)acc->buffer_view->buffer->data + acc->offset + acc->buffer_view->offset;
+
+sg_buffer vbuf = sg_make_buffer(&(sg_buffer_desc){
+    .data = { .ptr = ptr, .size = acc->count * acc->stride },
+    .label = "gltf-vertices"
 });
 ```
+
+---
+
+## 5. Advanced Rendering Patterns
+
+### Offscreen Rendering
+Demonstrates rendering to a texture via `sg_pass` with custom attachments:
+```c
+// 1. Create color and depth attachments
+sg_image color = sg_make_image(&(sg_image_desc){
+    .render_target = true, .width = 512, .height = 512
+});
+sg_image depth = sg_make_image(&(sg_image_desc){
+    .render_target = true, .width = 512, .height = 512, .pixel_format = SG_PIXELFORMAT_DEPTH
+});
+
+// 2. Setup the pass
+sg_pass offscreen_pass = {
+    .attachments = { .colors[0].image = color, .depth_stencil.image = depth },
+    .action = { .colors[0].load_action = SG_LOADACTION_CLEAR }
+};
+
+// 3. Render
+sg_begin_pass(&offscreen_pass);
+// ... draw calls ...
+sg_end_pass();
+```
+
+### Instancing
+Configuring the pipeline for per-instance data:
+```c
+sg_pipeline pip = sg_make_pipeline(&(sg_pipeline_desc){
+    .layout = {
+        .buffers[0].step_func = SG_VERTEXSTEP_PER_VERTEX,
+        .buffers[1].step_func = SG_VERTEXSTEP_PER_INSTANCE,
+        .attrs = {
+            [ATTR_vs_position] = { .format=SG_VERTEXFORMAT_FLOAT3, .buffer_index=0 },
+            [ATTR_vs_instance_pos] = { .format=SG_VERTEXFORMAT_FLOAT3, .buffer_index=1 }
+        }
+    },
+    .shader = shd,
+    .index_type = SG_INDEXTYPE_UINT16,
+    .label = "instancing-pipeline"
+});
+
+// Bindings include the instance buffer
+sg_apply_bindings(&(sg_bindings){
+    .vertex_buffers[0] = mesh_vbuf,
+    .vertex_buffers[1] = instance_vbuf,
+    .index_buffer = mesh_ibuf
+});
+sg_draw(0, 36, 1000); // 1000 instances
+```
+
+---
+
+## 6. Pipeline Definition (Cheatsheet)
 
 **Shader (always via sokol-shdc):**
 ```c
@@ -170,9 +166,9 @@ sg_shader shd = sg_make_shader(my_shader_shader_desc(sg_query_backend()));
 sg_pipeline pip = sg_make_pipeline(&(sg_pipeline_desc){
     .shader = shd,
     .layout.attrs = {
-        [SG_ATTR_vs_position]  = { .format = SG_VERTEXFORMAT_FLOAT3 },
-        [SG_ATTR_vs_texcoord0] = { .format = SG_VERTEXFORMAT_FLOAT2 },
-        [SG_ATTR_vs_normal]    = { .format = SG_VERTEXFORMAT_FLOAT3 },
+        [ATTR_vs_position]  = { .format = SG_VERTEXFORMAT_FLOAT3 },
+        [ATTR_vs_texcoord0] = { .format = SG_VERTEXFORMAT_FLOAT2 },
+        [ATTR_vs_normal]    = { .format = SG_VERTEXFORMAT_FLOAT3 },
     },
     .index_type = SG_INDEXTYPE_UINT16,
     .depth = { .compare = SG_COMPAREFUNC_LESS_EQUAL, .write_enabled = true },
@@ -199,44 +195,20 @@ static void frame(void) {
     vs_params_t vs_p = { .mvp = compute_mvp() };
     sg_apply_uniforms(SG_SLOT_vs_params, &SG_RANGE(vs_p));
     sg_draw(0, state.num_elements, 1);
+    
+    // Debug UI (optional)
+    simgui_new_frame({ width, height, dt, 1.0f });
+    // ... ImGui calls ...
+    simgui_render();
+
     sg_end_pass();
     sg_commit();
 }
 ```
 
-Draw call sequence within a pass:
-```
-sg_begin_pass → sg_apply_pipeline → sg_apply_bindings → sg_apply_uniforms → sg_draw → sg_end_pass → sg_commit
-```
-
 ---
 
-## 8. Cleanup Pattern
-
-```c
-static void cleanup(void) {
-    sg_destroy_pipeline(state.pip);
-    sg_destroy_shader(state.shd);
-    sg_destroy_buffer(state.vbuf);
-    sg_destroy_image(state.img);
-    sg_destroy_sampler(state.smp);
-    sg_shutdown();  // always last
-}
-```
-
----
-
-## 9. Time (`sokol_time.h`)
-
-```c
-stm_setup();                          // once in init()
-uint64_t lap = stm_laptime(&last_t);  // frame delta ticks
-float dt = (float)stm_sec(lap);       // to seconds
-```
-
----
-
-## 10. Deeper References
+## 8. Deeper References
 
 For deeper API detail, open only the reference you need:
 
