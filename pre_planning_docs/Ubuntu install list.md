@@ -78,3 +78,8 @@ If you want the per-workstream targets instead of a full build:
  cmake --build build --target renderer_app renderer_tests
  cmake --build build --target engine_app engine_tests
  cmake --build build --target game
+
+---
+
+Download Sokol shader compiler:
+https://github.com/floooh/sokol-tools-bin/tree/master/bin/linux
