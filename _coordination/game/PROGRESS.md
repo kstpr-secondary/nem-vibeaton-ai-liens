@@ -6,8 +6,10 @@
 
 | Milestone | Status | Owner | Notes |
 |---|---|---|---|
-| G-M0 Bootstrap | TODO | — | Mock engine bridge, minimal game loop |
-| G-M1 Player Spaceship + Asteroid Field | TODO | — | Procedural asteroids, player movement |
-| G-M2 Weapons (Plasma + Laser) | TODO | — | Projectile entities, raycast lasers |
-| G-M3 Enemy AI + Combat | TODO | — | Enemy ships, shields/HP, containment field |
-| G-M4 HUD + VFX | TODO | — | Dear ImGui HUD, alpha-blended effects |
+| G-M1 Flight + Scene + Camera | TODO | — | Starts against engine/renderer mocks; third-person camera with first-person fallback |
+| G-M2 Physics, Containment, Asteroid Dynamics | TODO | — | Swaps to real engine physics when E-M4 lands |
+| G-M3 Weapons + Enemies + HP/Shield | TODO | — | Laser, plasma, one enemy, minimal explosion VFX |
+| G-M4 HUD + Game Flow + Restart | TODO | — | Game MVP complete |
+| G-M5 AI Upgrade & Scaling | TODO | — | Desirable |
+| G-M6 Visual Polish | TODO | — | Desirable |
+| G-M7 Feel Tuning Pass | TODO | — | Desirable |

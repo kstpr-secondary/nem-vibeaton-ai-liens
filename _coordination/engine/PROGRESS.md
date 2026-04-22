@@ -6,9 +6,10 @@
 
 | Milestone | Status | Owner | Notes |
 |---|---|---|---|
-| E-M0 Bootstrap | TODO | — | ECS setup, mock renderer bridge |
-| E-M1 Game Loop + Input | TODO | — | Ticks from renderer frame callback |
-| E-M2 ECS Scene Management | TODO | — | Entity creation, component views |
-| E-M3 Physics + AABB Collision | TODO | — | Euler physics, collision detection |
-| E-M4 Asset Import Bridge | TODO | — | cgltf/tinyobjloader → renderer meshes |
-| E-M5 Raycasting + Capsule Mesh | TODO | — | Desirable |
+| E-M1 Bootstrap + ECS + Scene API | TODO | — | First game sync point; procedural scene rendered through renderer |
+| E-M2 Asset Import | TODO | — | glTF/OBJ loading through `ASSET_ROOT` into renderer mesh handles |
+| E-M3 Input + AABB Colliders + Raycasting | TODO | — | Renderer input callback bridge, collider queries, navigable `engine_app` |
+| E-M4 Euler Physics + Collision Response | TODO | — | Engine MVP complete |
+| E-M5 Enemy Steering AI | TODO | — | Desirable |
+| E-M6 Multiple Point Lights | TODO | — | Desirable |
+| E-M7 Capsule Mesh Integration | TODO | — | Desirable; depends on renderer R-M5 |

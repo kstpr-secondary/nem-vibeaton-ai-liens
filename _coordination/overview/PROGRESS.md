@@ -8,9 +8,9 @@
 
 | Workstream | Current Milestone | Next Milestone | Blocked By |
 |---|---|---|---|
-| Renderer | R-M0 Bootstrap (setup) | R-M1 Unlit Forward | — |
-| Engine | E-M0 Bootstrap (setup) | E-M1 Game Loop | Renderer R-M1 |
-| Game | G-M0 Bootstrap (setup) | G-M1 Player + Asteroids | Engine mocks |
+| Renderer | Pre-SpecKit bootstrap | R-M0 Bootstrap | Frozen renderer interface draft + bootstrap build scaffold |
+| Engine | Pre-SpecKit bootstrap | E-M1 Bootstrap + ECS + Scene API | Frozen renderer interface + renderer mocks (not real renderer delivery) |
+| Game | Pre-SpecKit bootstrap | G-M1 Flight + Scene + Camera | Frozen renderer/engine interfaces + mocks (not real upstream delivery) |
 
 ## Merge History
 
