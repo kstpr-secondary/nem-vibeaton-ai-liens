@@ -68,7 +68,7 @@ A renderer consumer sets a cubemap skybox, renders world-space quad lines betwee
 **Acceptance Scenarios**:
 
 1. **Given** a cubemap texture loaded from disk, **When** `set_skybox()` is called, **Then** the skybox renders as the background with no depth artifacts against opaque geometry.
-2. **Given** two 3D world-space points and a width/color, **When** `enqueue_line_quad()` is called, **Then** a flat quad renders between the points at the correct world position and orientation.
+2. **Given** two 3D world-space points and a width/color, **When** `enqueue_line_quad()` is called, **Then** a camera-facing billboard quad renders between the points at full visible width regardless of the camera viewing angle.
 3. **Given** alpha-blended transparent quads and opaque geometry in the same frame, **When** `end_frame()` executes, **Then** the transparent quads composite correctly over the background and remain occluded by nearer opaque objects.
 4. **Given** the scene includes a Dear ImGui HUD overlay, **When** `end_frame()` executes, **Then** the UI renders after the 3D scene without interfering with 3D depth or blending state.
 
@@ -93,7 +93,7 @@ A renderer consumer uploads 2D textures and creates materials that reference the
 
 The renderer automatically discards draw submissions for objects outside the camera frustum and sorts the opaque queue front-to-back to reduce GPU overdraw.
 
-**Why this priority**: Desirable performance optimization (R-M6). Undertaken only if stress testing reveals a measurable FPS problem. No visible change to correctly rendered scenes.
+**Why this priority**: Desirable performance optimization (R-M6). Undertaken only if the human reviewer notices visible lag or judder during the behavioral check — no numeric FPS target is required. No visible change to correctly rendered scenes.
 
 **Independent Test**: A stress scene with 50+ objects positioned both inside and outside the frustum; the GPU draw call count drops significantly compared to the uncullled baseline; FPS improves measurably.
 
@@ -106,6 +106,7 @@ The renderer automatically discards draw submissions for objects outside the cam
 
 ### Edge Cases
 
+- What happens when more than 1024 draw calls are enqueued in a single frame? → Submissions beyond the 1024-slot fixed queue are silently dropped; a debug log entry is emitted; no crash or corruption occurs.
 - What happens when `enqueue_draw()` is called before `begin_frame()`? → Silently ignored (or debug-asserted); no state corruption.
 - What happens when mesh upload fails (e.g., GPU memory exhausted)? → Returns an invalid handle; draw calls with an invalid handle are skipped without crashing.
 - What happens when a shader program fails at pipeline creation? → Falls back to the magenta error pipeline; the failure is logged; no crash.
@@ -122,18 +123,18 @@ The renderer automatically discards draw submissions for objects outside the cam
 - **FR-001**: The renderer MUST initialize a window with configurable resolution and clear color via a single `init(config)` call.
 - **FR-002**: The renderer MUST expose a blocking event-loop entry point (`run()`) that owns the window and drives all frame callbacks.
 - **FR-003**: The renderer MUST forward raw input events to a consumer-registered callback each frame.
-- **FR-004**: The renderer MUST accept per-frame draw submissions of (mesh handle, world transform, material) tuples via `enqueue_draw()`.
+- **FR-004**: The renderer MUST accept per-frame draw submissions of (mesh handle, world transform, material) tuples via `enqueue_draw()`, up to a maximum of **1024 draw calls per frame**; submissions beyond this limit are silently dropped and logged.
 - **FR-005**: The renderer MUST provide procedural mesh builders for sphere geometry (`make_sphere_mesh`) and cube geometry (`make_cube_mesh`).
-- **FR-006**: The renderer MUST provide an upload path for externally generated meshes (vertices, indices, vertex layout) returning a stable mesh handle.
+- **FR-006**: The renderer MUST provide an upload path for externally generated meshes using the canonical vertex layout (Position + Normal + UV + Tangent: `float3 position`, `float3 normal`, `float2 uv`, `float3 tangent`) plus an index buffer, returning a stable mesh handle.
 - **FR-007**: The renderer MUST accept a camera specified by a view matrix and a projection matrix via `set_camera()`, applied once per frame.
 - **FR-008**: The renderer MUST support an Unlit shading model (flat solid color; no lighting computation).
 - **FR-009**: The renderer MUST support a Lambertian diffuse shading model driven by the active directional light.
 - **FR-010**: The renderer MUST accept exactly one directional light per frame via `set_directional_light(direction, color, intensity)`.
-- **FR-011**: The renderer MUST support world-space line-quad rendering between two 3D endpoints with configurable width and color, via `enqueue_line_quad()`.
+- **FR-011**: The renderer MUST support world-space laser line-quad rendering between two 3D endpoints with configurable width and color via `enqueue_line_quad()`; quads are **camera-facing billboards** — they rotate each frame so their face always points toward the camera eye, ensuring full visible width from any viewing angle.
 - **FR-012**: The renderer MUST support basic alpha blending for transparent geometry submitted via `enqueue_draw()`.
 - **FR-013**: The renderer MUST render a cubemap skybox behind all opaque geometry when `set_skybox()` is called; depth writes are disabled for the skybox pass.
 - **FR-014**: The renderer MUST own Dear ImGui initialization, per-frame UI setup, input forwarding, and final UI render; consuming workstreams only emit widget calls.
-- **FR-015**: The renderer MUST expose a 2D texture upload path (`upload_texture_2d(pixels, w, h, format)`) returning a stable texture handle.
+- **FR-015**: The renderer MUST expose two texture upload paths: (a) `upload_texture_2d(pixels, w, h, format)` — accepts a raw decoded pixel buffer (used by the engine for cgltf-embedded textures); and (b) `upload_texture_from_file(path)` — a convenience wrapper using `stb_image` that decodes a PNG/JPG/BMP file from disk and calls (a) internally. Both return a stable texture handle. `stb_image` is a FetchContent dependency available to all targets via the renderer's PUBLIC include path.
 - **FR-016**: The renderer MUST support a Blinn-Phong shading model with specular term and shininess material parameter (Desirable—R-M4).
 - **FR-017**: The renderer MUST fall back to a visually distinct magenta error pipeline on any shader or pipeline creation failure; it MUST NOT crash.
 - **FR-018**: The renderer MUST release all GPU and window resources cleanly via `shutdown()`.
@@ -142,14 +143,14 @@ The renderer automatically discards draw submissions for objects outside the cam
 
 ### Key Entities
 
-- **Mesh**: A GPU-resident buffer pair (vertices + indices) with a declared vertex layout. Created by procedural builders or uploaded from external geometry data. Referenced by an opaque handle.
+- **Mesh**: A GPU-resident buffer pair (vertices + indices) using the canonical vertex layout: **Position + Normal + UV + Tangent** (`xyz float3`, `normal float3`, `uv float2`, `tangent float3`). Created by procedural builders or uploaded from external geometry data. Referenced by an opaque handle.
 - **Material**: A shading configuration specifying shading model (Unlit / Lambertian / BlinnPhong), base color, optional texture handle, and optional custom shader handle.
 - **Draw Command**: An immutable per-frame submission tuple of (mesh handle, world-transform matrix, material). Consumed during `end_frame()` and discarded; not retained across frames.
 - **Directional Light**: A global illumination descriptor with world-space direction vector, linear RGB color, and scalar intensity. One active light maximum per frame.
 - **Camera**: A view-projection pair (two 4×4 float matrices) set once per frame. Controls perspective projection and view transform for all 3D draw commands.
 - **Skybox**: A cubemap texture rendered as a full-scene background with depth writes disabled, before all opaque draws.
-- **Line Quad**: A procedural world-space billboard quad defined by two 3D endpoints and a width scalar. Rendered with the Unlit shader and optional alpha.
-- **Texture**: A 2D RGBA image resident on the GPU, referenced by an opaque handle returned from `upload_texture_2d()`.
+- **Line Quad**: A camera-facing billboard quad defined by two 3D world-space endpoints and a width scalar. The quad rotates each frame to face the camera eye, ensuring full visible width from any angle. Rendered with the Unlit shader and optional alpha.
+- **Texture**: A 2D RGBA image resident on the GPU, referenced by an opaque handle. Created via `upload_texture_2d()` (raw pixels, used by the engine for cgltf data) or `upload_texture_from_file()` (PNG/JPG/BMP from disk, used by `renderer_app` demos and engine for loose assets).
 
 ---
 
@@ -165,7 +166,19 @@ The renderer automatically discards draw submissions for objects outside the cam
 - **SC-006**: Any shader or pipeline creation failure produces a magenta fallback render; no renderer crash occurs under any submitted draw configuration during the hackathon.
 - **SC-007**: The game engine workstream can link against the frozen renderer interface and compile against mock stubs without access to renderer internals.
 - **SC-008** *(Desirable)*: Blinn-Phong shading with a diffuse texture renders correctly on at least one textured mesh under the directional light (R-M4).
-- **SC-009** *(Desirable)*: Frustum culling reduces GPU draw submissions by at least 30% in a stress scene where approximately half the objects are off-screen (R-M6).
+- **SC-009** *(Desirable)*: Frustum culling is implemented and activated only if visible performance degradation is observed during a human behavioral check; no numeric FPS threshold is required.
+
+---
+
+## Clarifications
+
+### Session 2026-04-23
+
+- Q: What is the canonical vertex attribute set for the renderer's mesh format? → A: Position + Normal + UV + Tangent (`float3 xyz`, `float3 normal`, `float2 uv`, `float3 tangent`) — one universal layout covering all tiers from Unlit through Stretch (normal maps).
+- Q: What is the minimum acceptable frame rate before R-M6 becomes required? → A: Uncapped / best effort — no numeric FPS floor; R-M6 is triggered only if visible lag or judder is noticed during the human behavioral check ("if it feels good, it is good").
+- Q: Can mesh and texture handles be freed individually at runtime, or held until shutdown? → A: Hold until shutdown (Option A) — the full asset set is a small fixed library (~10 unique meshes: 5–7 asteroid variants, 2–4 ship types, plus procedural primitives); all uploads live for the process lifetime and `shutdown()` is the sole release point. No per-handle destroy API is needed.
+- Q: What is the maximum number of draw calls the renderer must support per frame? → A: 1024 draw calls — fixed pre-allocated queue; generous headroom for the full game scene plus VFX; overflow submissions beyond 1024 are silently dropped and logged.
+- Q: How should laser line-quads orient themselves relative to the camera? → A: Camera-facing billboard — the quad always rotates so its face points toward the camera eye, ensuring full visible width from any viewing angle.
 
 ---
 
@@ -176,8 +189,10 @@ The renderer automatically discards draw submissions for objects outside the cam
 - The renderer owns the application main loop and window; all other workstreams hook into it via callbacks — they do not create their own windows.
 - Exactly one directional light is supported in the MVP; multi-light support is not planned for any tier.
 - Shadow mapping, PBR, deferred rendering, post-processing, MSAA, and GPU instancing are explicitly cut from all tiers (MVP, Desirable, Stretch) unless a spare agent finds GPU instancing trivial to slot into an earlier milestone.
-- Mesh data is static after upload; dynamic vertex updates, skinned meshes, and morphing are out of scope.
-- Runtime-loaded asset paths (textures, meshes) are resolved via a build-time root path macro; hard-coded relative paths are never used.
+- Mesh data is static after upload; dynamic vertex updates, skinned meshes, and morphing are out of scope. The full runtime asset library is a fixed small set (~10 unique meshes, ~5 textures); no per-handle destroy API (`destroy_mesh` / `destroy_texture`) is provided — all resources are released at `shutdown()`.
+- The game shares mesh handles across all instances of the same shape (e.g. all plasma bolts share one plasma mesh handle); per-entity mesh creation is not supported.
+- `stb_image` (single public-domain C header, FetchContent pinned pre-hackathon) is the image file decoder. It is added as a FetchContent dependency and exposed via the renderer's PUBLIC include path so all workstreams can use it. Its include path is populated in `CMakeLists.txt` before the hackathon starts.
+- The renderer owns `STB_IMAGE_IMPLEMENTATION` in exactly one of its `.cpp` files; no other translation unit defines it.
 - The renderer's public API (function signatures, types, handle types) is frozen before the game engine workstream begins. Frozen API changes require explicit human approval.
 - All three workstreams share one repository; changes that affect the renderer's public header require a cross-workstream notification before commit.
 - The hackathon window is 5–6 hours; MVP milestones R-M0 through R-M3 must land within the first 3 hours to leave adequate time for game engine and game integration.

@@ -89,6 +89,13 @@ FetchContent_Declare(
     GIT_SHALLOW ON
 )
 
+FetchContent_Declare(
+    stb
+    GIT_REPOSITORY https://github.com/nothings/stb.git
+    GIT_TAG 31c1ad37456438565541f4919958214b6e762fb4
+    GIT_SHALLOW ON
+)
+
 FetchContent_MakeAvailable(glm entt catch2)
 
 FetchContent_GetProperties(sokol)
@@ -109,6 +116,11 @@ endif()
 FetchContent_GetProperties(imgui)
 if(NOT imgui_POPULATED)
     FetchContent_Populate(imgui)
+endif()
+
+FetchContent_GetProperties(stb)
+if(NOT stb_POPULATED)
+    FetchContent_Populate(stb)
 endif()
 
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
@@ -326,6 +338,7 @@ target_include_directories(renderer
     PUBLIC
         ${CMAKE_SOURCE_DIR}/src/renderer
         ${CMAKE_BINARY_DIR}/generated
+        ${stb_SOURCE_DIR}
 )
 
 target_link_libraries(renderer
