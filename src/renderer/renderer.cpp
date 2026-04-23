@@ -17,6 +17,7 @@
 #include "renderer.h"
 #include "shaders/magenta.glsl.h"
 #include "pipeline_unlit.h"
+#include "mesh_builders.h"
 
 #include <cassert>
 #include <cstdio>
@@ -68,11 +69,7 @@ struct RendererState {
     sg_pipeline pipeline_line_quad;
     sg_pipeline pipeline_skybox;
 
-    // Mesh GPU resources — index 0 reserved (invalid handle id == 0)
-    sg_buffer mesh_vbufs[512]       = {};
-    sg_buffer mesh_ibufs[512]       = {};
-    uint32_t  mesh_index_counts[512] = {};
-    uint32_t  next_mesh_id           = 1;
+    // Mesh GPU resources are managed by mesh_builders.cpp (see mesh_vbuf_get / mesh_ibuf_get)
 
     // Texture GPU resources — index 0 reserved
     sg_image texture_table[256] = {};
@@ -212,6 +209,7 @@ void renderer_run() {
 
 void renderer_shutdown() {
     simgui_shutdown();
+    mesh_store_shutdown(); // destroy GPU mesh buffers before sg_shutdown
     sg_shutdown();
     sapp_quit();
 
@@ -293,19 +291,6 @@ void renderer_enqueue_line_quad(const float p0[3], const float p1[3],
     cmd.verts[2].position[0] = width;
     cmd.verts[2].position[1] = 0.0f;
     cmd.verts[2].position[2] = 0.0f;
-}
-
-RendererMeshHandle renderer_make_sphere_mesh(float radius, int subdivisions) {
-    (void)radius; (void)subdivisions; return {};
-}
-
-RendererMeshHandle renderer_make_cube_mesh(float half_extent) {
-    (void)half_extent; return {};
-}
-
-RendererMeshHandle renderer_upload_mesh(const Vertex* vertices, uint32_t vertex_count,
-                                        const uint32_t* indices, uint32_t index_count) {
-    (void)vertices; (void)vertex_count; (void)indices; (void)index_count; return {};
 }
 
 RendererTextureHandle renderer_upload_texture_2d(const void* pixels,
