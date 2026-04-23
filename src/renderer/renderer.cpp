@@ -15,6 +15,7 @@
 
 #include "renderer.h"
 
+#include <cassert>
 #include <cstdio>
 
 // ---------------------------------------------------------------------------
@@ -117,7 +118,16 @@ void renderer_run() {}
 
 void renderer_shutdown() {}
 
-void renderer_begin_frame() {}
+void renderer_begin_frame() {
+    assert(!state.frame_active && "renderer_begin_frame called while frame already active");
+    state.frame_active    = true;
+    state.draw_count      = 0;
+    state.line_quad_count = 0;
+    sg_pass pass = {};
+    pass.action    = state.pass_action;
+    pass.swapchain = sglue_swapchain();
+    sg_begin_pass(&pass);
+}
 
 void renderer_end_frame() {}
 
