@@ -19,6 +19,8 @@
 #include "texture.h"
 #include "skybox.h"
 #include "shaders/magenta.glsl.h"
+#include "shaders/unlit.glsl.h"
+#include "shaders/line_quad.glsl.h"
 #include "pipeline_unlit.h"
 #include "pipeline_lambertian.h"
 #include "mesh_builders.h"
@@ -120,6 +122,85 @@ void make_magenta_pipeline() {
     }
 }
 
+// Transparent pipeline: same unlit shader, alpha blend enabled, depth write OFF.
+void make_transparent_pipeline() {
+    sg_shader shd = sg_make_shader(unlit_shader_desc(sg_query_backend()));
+    if (sg_query_shader_state(shd) != SG_RESOURCESTATE_VALID) {
+        printf("[renderer] ERROR: transparent shader creation failed — using magenta fallback\n");
+        state.pipeline_transparent = state.pipeline_magenta;
+        return;
+    }
+
+    sg_pipeline_desc desc = {};
+    desc.shader     = shd;
+    desc.index_type = SG_INDEXTYPE_UINT32;
+
+    desc.layout.buffers[0].stride              = sizeof(Vertex);
+    desc.layout.attrs[ATTR_unlit_position].format = SG_VERTEXFORMAT_FLOAT3;
+    desc.layout.attrs[ATTR_unlit_position].offset  = offsetof(Vertex, position);
+
+    desc.depth.compare       = SG_COMPAREFUNC_LESS_EQUAL;
+    desc.depth.write_enabled = false;  // depth write OFF for correct transparency
+    desc.cull_mode           = SG_CULLMODE_BACK;
+
+    desc.colors[0].blend.enabled          = true;
+    desc.colors[0].blend.src_factor_rgb   = SG_BLENDFACTOR_SRC_ALPHA;
+    desc.colors[0].blend.dst_factor_rgb   = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    desc.colors[0].blend.src_factor_alpha = SG_BLENDFACTOR_ONE;
+    desc.colors[0].blend.dst_factor_alpha = SG_BLENDFACTOR_ZERO;
+
+    desc.label = "transparent-pipeline";
+
+    sg_pipeline pip = sg_make_pipeline(&desc);
+    if (sg_query_pipeline_state(pip) != SG_RESOURCESTATE_VALID) {
+        printf("[renderer] ERROR: transparent pipeline creation failed — using magenta fallback\n");
+        state.pipeline_transparent = state.pipeline_magenta;
+        return;
+    }
+    state.pipeline_transparent = pip;
+}
+
+// Line-quad pipeline: position+color layout, alpha blend, depth write OFF.
+// Draws pre-billboarded quads from line_quad_queue.
+void make_line_quad_pipeline() {
+    sg_shader shd = sg_make_shader(line_quad_shader_desc(sg_query_backend()));
+    if (sg_query_shader_state(shd) != SG_RESOURCESTATE_VALID) {
+        printf("[renderer] ERROR: line_quad shader creation failed — using magenta fallback\n");
+        state.pipeline_line_quad = state.pipeline_magenta;
+        return;
+    }
+
+    sg_pipeline_desc desc = {};
+    desc.shader     = shd;
+    desc.index_type = SG_INDEXTYPE_UINT32;
+
+    desc.layout.buffers[0].stride = sizeof(LineQuadVertex);
+    desc.layout.attrs[ATTR_line_quad_position].format = SG_VERTEXFORMAT_FLOAT3;
+    desc.layout.attrs[ATTR_line_quad_position].offset  = offsetof(LineQuadVertex, position);
+    desc.layout.attrs[ATTR_line_quad_color].format    = SG_VERTEXFORMAT_FLOAT4;
+    desc.layout.attrs[ATTR_line_quad_color].offset     = offsetof(LineQuadVertex, color);
+
+    desc.depth.compare       = SG_COMPAREFUNC_LESS_EQUAL;
+    desc.depth.write_enabled = false;  // depth write OFF (blended on top)
+    desc.cull_mode           = SG_CULLMODE_NONE;  // billboards: both faces visible
+
+    desc.colors[0].blend.enabled          = true;
+    desc.colors[0].blend.src_factor_rgb   = SG_BLENDFACTOR_SRC_ALPHA;
+    desc.colors[0].blend.dst_factor_rgb   = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    desc.colors[0].blend.src_factor_alpha = SG_BLENDFACTOR_ONE;
+    desc.colors[0].blend.dst_factor_alpha = SG_BLENDFACTOR_ZERO;
+
+    desc.label = "line-quad-pipeline";
+
+    sg_pipeline pip = sg_make_pipeline(&desc);
+    if (sg_query_pipeline_state(pip) != SG_RESOURCESTATE_VALID) {
+        printf("[renderer] ERROR: line_quad pipeline creation failed — using magenta fallback\n");
+        state.pipeline_line_quad = state.pipeline_magenta;
+        return;
+    }
+    state.pipeline_line_quad = pip;
+}
+
 // Called by sokol_app after the GL context is ready.
 // renderer_init() must have been called first to populate state.config.
 void renderer_internal_init() {
@@ -141,6 +222,8 @@ void renderer_internal_init() {
     state.pipeline_lambertian  = create_pipeline_lambertian(state.pipeline_magenta);
     state.pipeline_skybox      = skybox_create_pipeline(state.pipeline_magenta);
     skybox_init_resources();
+    make_transparent_pipeline();
+    make_line_quad_pipeline();
 
     simgui_desc_t simgui_desc = {};
     simgui_desc.sample_count = sapp_sample_count();
