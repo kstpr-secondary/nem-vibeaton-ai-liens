@@ -88,3 +88,10 @@ struct EnemyAI {
 struct AsteroidData {
     SizeTier size_tier = SizeTier::Medium;
 };
+
+// Attached to short-lived VFX entities (explosions, etc.).
+// When engine_now() - spawn_time >= lifetime, the entity is marked DestroyPending.
+struct Lifetime {
+    double spawn_time = 0.0;
+    float  lifetime   = 1.0f;  // seconds
+};

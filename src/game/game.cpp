@@ -3,20 +3,35 @@
 #include "camera_rig.h"
 #include "constants.h"
 #include "damage.h"
+#include "enemy_ai.h"
 #include "player.h"
+#include "projectile.h"
 #include "spawn.h"
+#include "weapons.h"
 #include <engine.h>
 #include <renderer.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+// ---------------------------------------------------------------------------
+// MatchState singleton
+// ---------------------------------------------------------------------------
+
+static MatchState s_match_state;
+
+MatchState& get_match_state() {
+    return s_match_state;
+}
+
 // Directional light — configured at init, submitted every frame in render_submit.
-// T010 may overwrite direction/color before renderer_run starts.
 static DirectionalLight s_light = {
-    {-0.4f, -0.8f, -0.4f},  // direction (normalised in world space)
-    {1.0f,  0.95f, 0.9f },  // warm white
-    1.0f                     // intensity
+    {-0.4f, -0.8f, -0.4f},
+    {1.0f,  0.95f, 0.9f },
+    1.0f
 };
+
+// Explosion VFX lifetime — how long the death sphere stays visible.
+static constexpr float k_explosion_lifetime = 0.6f;
 
 // ---------------------------------------------------------------------------
 // render_submit — called each frame from game_tick
@@ -45,21 +60,80 @@ static void render_submit() {
 }
 
 // ---------------------------------------------------------------------------
+// Enemy death handling — detect dead enemies, spawn explosion VFX, despawn
+// ---------------------------------------------------------------------------
+
+static void enemy_death_update() {
+    auto& reg = engine_registry();
+    auto view = reg.view<EnemyTag, Health, Transform>();
+
+    for (auto it = view.begin(); it != view.end(); ) {
+        auto e = *it;
+        ++it;  // advance iterator before potential structural change
+
+        const auto& hp = view.get<Health>(e);
+        if (hp.current > 0.f)
+            continue;
+
+        // Spawn explosion VFX — short-lived orange sphere.
+        const auto& t = view.get<Transform>(e);
+        const float rgba[4] = {1.0f, 0.5f, 0.1f, 1.0f};
+        const Material mat  = renderer_make_unlit_material(rgba);
+        entt::entity explosion = engine_spawn_sphere(t.position, 3.0f, mat);
+
+        // Attach Lifetime component — cleaned up by vfx_cleanup() pass.
+        auto& lt = engine_add_component<Lifetime>(explosion);
+        lt.spawn_time = engine_now();
+        lt.lifetime   = k_explosion_lifetime;
+
+        // Decrement enemy count and mark enemy for destruction.
+        s_match_state.enemies_remaining--;
+        reg.emplace<DestroyPending>(e);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// VFX cleanup — expire short-lived entities (explosions, etc.)
+// ---------------------------------------------------------------------------
+
+static void vfx_cleanup() {
+    auto& reg = engine_registry();
+    auto view = reg.view<Lifetime>();
+
+    for (auto e : view) {
+        if (reg.all_of<DestroyPending>(e))
+            continue;
+
+        const auto& lt = view.get<Lifetime>(e);
+        if (engine_now() - lt.spawn_time >= static_cast<double>(lt.lifetime))
+            reg.emplace<DestroyPending>(e);
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
 
 void game_init() {
+    // Reset match state.
+    s_match_state                = {};
+    s_match_state.phase          = MatchPhase::Playing;
+    s_match_state.phase_enter_time = engine_now();
+
     // Directional light — warm sun from upper-left.
     s_light = {{-0.4f, -0.8f, -0.4f}, {1.0f, 0.95f, 0.9f}, 1.0f};
 
     // Player ship at field centre.
     spawn_player(glm::vec3(0.f));
 
+    // Enemy ship — spawn at offset from player.
+    spawn_enemy(glm::vec3(50.f, 10.f, -50.f));
+    s_match_state.enemies_remaining = 1;
+
     // 200 asteroids placed randomly throughout the field.
     asteroid_field_init();
 
-    // Camera entity — positioned directly behind/above the player so the
-    // camera_rig lerp starts from a sensible state rather than the origin.
+    // Camera entity — positioned directly behind/above the player.
     entt::entity cam_e = engine_create_entity();
     auto& cam_t        = engine_add_component<Transform>(cam_e);
     cam_t.position     = glm::vec3(0.f,
@@ -68,22 +142,21 @@ void game_init() {
     engine_add_component<Camera>(cam_e);
 
     camera_rig_init(cam_e);
-
-    // T021: spawn_enemy() added here when Phase 4 begins.
 }
 
 void game_tick(float dt) {
-    engine_tick(dt);          // physics, collision resolution, entity cleanup
-
-    containment_update();     // reflect out-of-bounds entities, cap asteroid speed
-    player_update(dt);        // flight controls, boost activation, shield/boost regen
-    // T022: enemy_ai_update(dt)
-    // T022: weapon_update(dt)
-    // T022: projectile_update(dt)
-    damage_resolve();         // kinetic-energy collision damage → shield/HP cascade
+    engine_tick(dt);            // 1. physics, collision, entity cleanup
+    containment_update();       // 2. boundary reflection + speed cap
+    player_update(dt);          // 3. flight controls, boost, regen
+    enemy_ai_update(dt);        // 4. seek player, fire plasma on cooldown
+    weapon_update(dt);          // 5. fire processing, cooldown advancement
+    projectile_update(dt);      // 6. lifetime check, despawn expired
+    damage_resolve();           // 7. collision + weapon damage → shield/HP
+    enemy_death_update();       // T021: detect dead enemies, spawn explosion
+    vfx_cleanup();              // expire short-lived VFX entities
     // T027: match_state_update(dt)
-    camera_rig_update(dt);    // smooth-follow camera behind player
-    render_submit();          // enqueue draw calls for all visible entities
+    camera_rig_update(dt);      // 9. follow player with offset + lag
+    render_submit();            // 10. enqueue_draw for all visible entities
     // T027: hud_render()
 }
 

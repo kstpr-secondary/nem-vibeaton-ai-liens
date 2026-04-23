@@ -98,5 +98,49 @@ void damage_resolve() {
         }
     }
 
-    // T020: projectile ↔ entity hits and laser raycast damage added in Phase 4.
+    // --- Projectile ↔ collidable-entity hits ---------------------------------
+    //
+    // Iterate active projectiles and check them against every entity that has a
+    // Collider (asteroids, player, enemies).  On first overlap:
+    //   • apply ProjectileData.damage if the target has Health
+    //   • mark the projectile DestroyPending (despawns after engine_tick sweep)
+    // The owner is excluded so the projectile never hits the entity that fired it.
+    // Other projectiles are skipped to avoid projectile-vs-projectile collisions.
+    //
+    // Laser raycast damage is applied directly inside laser_fire (T018) via
+    // apply_damage — no additional work needed here for that path.
+
+    auto proj_view = reg.view<ProjectileTag, ProjectileData, Transform, Collider>();
+    auto target_view = reg.view<Transform, Collider>();
+
+    for (auto pe : proj_view) {
+        if (reg.all_of<DestroyPending>(pe))
+            continue;  // already handled this tick
+
+        const auto& pd = proj_view.get<ProjectileData>(pe);
+        const auto& pt = proj_view.get<Transform>(pe);
+        const auto& pc = proj_view.get<Collider>(pe);
+
+        for (auto te : target_view) {
+            if (te == pe)                          continue;  // self
+            if (te == pd.owner)                    continue;  // firing entity
+            if (reg.all_of<ProjectileTag>(te))     continue;  // other projectile
+
+            const auto& tt = target_view.get<Transform>(te);
+            const auto& tc = target_view.get<Collider>(te);
+
+            if (!aabb_overlap(pt.position, pc.half_extents,
+                              tt.position, tc.half_extents))
+                continue;
+
+            // Apply damage only to entities that have health.
+            auto* hp = engine_try_get_component<Health>(te);
+            if (hp)
+                apply_damage(te, pd.damage);
+
+            // Projectile is consumed on first hit regardless of target type.
+            reg.emplace<DestroyPending>(pe);
+            break;
+        }
+    }
 }
