@@ -1,6 +1,5 @@
 #include <ctime>  // ensures struct timespec / CLOCK_MONOTONIC visible before sokol
 
-#define SOKOL_TIME_IMPL
 #include <sokol_time.h>
 
 #include "engine_time.h"
