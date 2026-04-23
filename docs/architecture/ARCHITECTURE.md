@@ -73,7 +73,7 @@ sokol_app main loop (owned by renderer)
 
 ## Game Engine — Architecture Summary
 
-> Full detail: `docs/architecture/engine-architecture.md` (populated after Engine SpecKit)
+> Full detail: `docs/architecture/engine-architecture.md` (populated from Engine SpecKit)
 
 - **Owns**: ECS registry (`entt`), asset import bridge, game loop tick, input callbacks, Euler physics, AABB collision, raycasting.
 - **Does not own**: window/context, shaders, GPU resource creation (all delegated to renderer public API).
@@ -149,5 +149,5 @@ sokol_app main loop (owned by renderer)
 | Workstream | File | Status |
 |---|---|---|
 | Renderer | `docs/architecture/renderer-architecture.md` | **FROZEN** |
-| Engine | `docs/architecture/engine-architecture.md` | Pending Engine SpecKit |
-| Game | `docs/architecture/game-architecture.md` | Pending Game SpecKit |
+| Engine | `docs/architecture/engine-architecture.md` | **Populated** (from Engine SpecKit) |
+| Game | `docs/architecture/game-architecture.md` | Placeholder — pending Game SpecKit |

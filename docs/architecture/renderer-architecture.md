@@ -19,15 +19,17 @@
 sokol_app frame event
   └─► renderer internal frame_callback()
          ├─ simgui_new_frame()          (ImGui frame start)
-         ├─ [engine tick() if registered]
+         ├─ call registered FrameCallback(dt, user_data)
          │    └─ consumer calls:
+         │         renderer_begin_frame()
          │         renderer_set_camera(...)
          │         renderer_set_directional_light(...)
          │         renderer_set_skybox(...)
          │         renderer_enqueue_draw(...) × N
          │         renderer_enqueue_line_quad(...) × M
          │         ImGui::* widget calls
-         └─ renderer_end_frame()
+         │         renderer_end_frame()
+         └─ renderer post-frame:
                ├─ pass 0: skybox (depth write OFF, drawn first)
                ├─ pass 1: opaque draws, sorted front-to-back (R-M6, Desirable)
                ├─ pass 2: transparent draws (alpha < 1, line quads — basic, unsorted in MVP)

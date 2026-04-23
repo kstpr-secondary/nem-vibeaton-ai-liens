@@ -1,27 +1,15 @@
-# Engine Interface Spec
+# Engine Public API Contract
 
-> **Status:** `FROZEN — v1.1` (promoted from Engine SpecKit `contracts/engine-api.md`)  
-> **Source**: Promoted from `specs/002-ecs-physics-engine/contracts/engine-api.md`  
+> **Status**: FROZEN  
+> **Promotion path**: This file becomes authoritative at `docs/interfaces/engine-interface-spec.md` after human approval and freeze marker addition.  
+> **Freeze condition**: Must be frozen (version marker added, status changed to FROZEN) before the game workstream begins its SpecKit planning cycle.  
 > **Upstream dependency**: Renderer interface spec (`renderer-interface-spec.md`, FROZEN v1.1).
 
 ---
 
 ## Version
 
-`v1.0-frozen`
-
-### Changelog
-
-- **v0.1-draft**: Initial promotion from Engine SpecKit contracts. Full API surface defined.
-
----
-
-## Freeze rules
-
-- This document becomes authoritative only after a human supervisor adds `**Status**: FROZEN — v1.0` at the top.
-- Game planning MUST NOT rely on any signature here until that freeze happens.
-- Any post-freeze contract change requires explicit human approval and a version bump.
-- Downstream workstreams that compile against this interface MUST NOT modify it to make their code compile; they must file a blocker in `_coordination/overview/BLOCKERS.md`.
+`v0.1-draft` — pre-freeze. Breaking changes allowed until freeze.
 
 ---
 
@@ -29,7 +17,7 @@
 
 The engine exposes a single C++ header `engine.h` (under `src/engine/`) with all public types, component definitions, and free-function declarations. The game executable and `engine_app` driver include only this header. Internal implementation files (`scene_api.h`, `physics.h`, `input.h`, etc.) are never included by consumers.
 
-The engine consumes the renderer public API (`renderer.h`, FROZEN v1.1) and is consumed by the game executable.
+The engine consumes the renderer public API (`renderer.h`, FROZEN v1.0) and is consumed by the game executable.
 
 ---
 
@@ -278,15 +266,6 @@ void engine_set_active_camera(entt::entity e);
 ## Mock Surface
 
 `src/engine/mocks/engine_mock.cpp` — activated by `USE_ENGINE_MOCKS=ON`. All void functions are no-ops. Entity-returning functions return a valid sentinel entity. Handle-returning functions return `{1}`. Query functions return empty results. Template functions compile against a static mock registry.
-
----
-
-## Freeze Procedure
-
-1. Engine SpecKit completes → populates this document with final C++ header and contracts.
-2. E-M1 (Bootstrap + ECS + Scene API) implemented and human-reviewed.
-3. Human supervisor changes status to `FROZEN — v1.0`, commits, announces to game workstream.
-4. Post-freeze changes require explicit human approval + version bump.
 
 ---
 
