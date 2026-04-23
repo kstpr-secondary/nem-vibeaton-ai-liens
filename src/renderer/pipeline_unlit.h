@@ -1,0 +1,6 @@
+#ifndef VIBEATON_PIPELINE_UNLIT_H
+#define VIBEATON_PIPELINE_UNLIT_H
+
+// Unlit pipeline module
+
+#endif // VIBEATON_PIPELINE_UNLIT_H

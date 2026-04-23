@@ -132,6 +132,21 @@ if(NOT TARGET Sokol::sokol)
     target_include_directories(sokol INTERFACE ${sokol_SOURCE_DIR})
 endif()
 
+# Platform libraries required by sokol_app (X11/OpenGL on Linux)
+find_package(OpenGL REQUIRED)
+if(UNIX AND NOT APPLE)
+    find_package(X11 REQUIRED)
+    set(VIBEATON_PLATFORM_LIBS
+        OpenGL::GL
+        X11::X11
+        ${X11_Xi_LIB}
+        ${X11_Xcursor_LIB}
+        dl
+        pthread
+        m
+    )
+endif()
+
 if(NOT TARGET cgltf::cgltf)
     add_library(cgltf INTERFACE)
     add_library(cgltf::cgltf ALIAS cgltf)
@@ -171,8 +186,10 @@ function(vibeaton_collect_sources out_var)
     set(multi_value_args INCLUDE_GLOBS EXCLUDE_REGEXES)
     cmake_parse_arguments(ARG "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
 
+    set(using_mocks FALSE)
     if(ARG_USE_MOCKS AND ARG_MOCK_ROOT AND EXISTS "${ARG_MOCK_ROOT}")
         set(search_root "${ARG_MOCK_ROOT}")
+        set(using_mocks TRUE)
     else()
         set(search_root "${ARG_ROOT}")
     endif()
@@ -187,11 +204,16 @@ function(vibeaton_collect_sources out_var)
         list(REMOVE_DUPLICATES collected)
     endif()
 
-    foreach(exclude_regex IN LISTS ARG_EXCLUDE_REGEXES)
-        if(collected)
-            list(FILTER collected EXCLUDE REGEX "${exclude_regex}")
-        endif()
-    endforeach()
+    # Skip exclude regexes when mock root is the search root — the regexes are
+    # designed to strip mocks/app/tests from the real source tree, not from the
+    # mock directory itself.
+    if(NOT using_mocks)
+        foreach(exclude_regex IN LISTS ARG_EXCLUDE_REGEXES)
+            if(collected)
+                list(FILTER collected EXCLUDE REGEX "${exclude_regex}")
+            endif()
+        endforeach()
+    endif()
 
     set(${out_var} "${collected}" PARENT_SCOPE)
 endfunction()
@@ -230,7 +252,7 @@ function(vibeaton_attach_shader_headers owner_target shader_root aggregate_targe
         add_custom_command(
             OUTPUT "${output_header}"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${output_dir}"
-            COMMAND ${SOKOL_SHDC_EXECUTABLE} -i "${shader_file}" -o "${output_header}" -s glsl330
+            COMMAND ${SOKOL_SHDC_EXECUTABLE} -i "${shader_file}" -o "${output_header}" -l glsl430
             DEPENDS "${shader_file}"
             COMMENT "sokol-shdc: compiling ${shader_file}"
             VERBATIM
@@ -345,11 +367,20 @@ target_link_libraries(renderer
     PUBLIC
         Sokol::sokol
         glm::glm
+        ${VIBEATON_PLATFORM_LIBS}
 )
 
 target_compile_options(renderer PRIVATE
     $<$<COMPILE_LANGUAGE:C>:-Wno-unused-parameter>
     $<$<COMPILE_LANGUAGE:CXX>:-Wno-unused-parameter>
+)
+
+# SOKOL_NO_ENTRY: renderer owns sapp_run(); no sokol-provided main().
+# SOKOL_GLCORE: desktop OpenGL backend (replaces legacy SOKOL_GLCORE33).
+target_compile_definitions(renderer
+    PUBLIC
+        SOKOL_NO_ENTRY
+        SOKOL_GLCORE
 )
 
 add_custom_target(renderer_shaders)
