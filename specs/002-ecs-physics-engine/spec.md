@@ -55,7 +55,7 @@ A game developer assigns rigid-body and collider components to entities, applies
 2. **Given** two dynamic entities with AABB colliders are on a collision course, **When** they overlap during a tick, **Then** the engine resolves the collision with impulse-based elastic response (kinetic energy conserved, restitution = 1).
 3. **Given** a dynamic entity collides with a static entity (infinite mass), **When** the collision is resolved, **Then** the dynamic entity bounces off and the static entity does not move.
 4. **Given** an entity has a RigidBody component, **When** the game calls `apply_force` or `apply_impulse_at_point`, **Then** the entity's linear and angular velocities change accordingly on the next tick.
-5. **Given** the simulation timestep is large (frame-rate spike), **When** the engine ticks, **Then** a fixed-timestep substep or dt-cap mechanism bounds the integration error and prevents tunneling.
+5. **Given** the simulation timestep is large (frame-rate spike), **When** the engine ticks, **Then** dt is clamped to a configurable maximum (e.g., 33ms) to bound integration error and prevent tunneling.
 
 ---
 
@@ -102,6 +102,16 @@ A game developer uses the engine's public API to construct a complete interactiv
 - What happens when a raycast hits no entity? The query returns an empty/null result without error.
 - What happens when dt is zero or negative? The engine clamps dt to a small positive minimum and logs a warning.
 
+## Clarifications
+
+### Session 2026-04-23
+
+- Q: Should FR-018 use dt-cap or fixed-substep accumulator? → A: dt-cap only (clamp to max, e.g. 33ms).
+- Q: Does the game layer get direct entt::registry access or an engine abstraction? → A: Direct entt::registry& exposed to the game layer.
+- Q: Is the collision layer mask MVP-required or a stretch goal? → A: Stretch goal; game filters query results manually for MVP.
+- Q: What logging mechanism should the engine use? → A: fprintf(stderr, ...) with a [ENGINE] prefix tag.
+- Q: How should inertia tensors be computed for RigidBody components? → A: Uniform-density box approximation from AABB half-extents.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -131,7 +141,7 @@ A game developer uses the engine's public API to construct a complete interactiv
 - **FR-015**: Engine MUST detect AABB-vs-AABB overlaps between all pairs of entities with Collider components each tick.
 - **FR-016**: Engine MUST resolve detected collisions using impulse-based elastic response (restitution = 1, kinetic energy conserved).
 - **FR-017**: Engine MUST treat zero-mass (static) entities as immovable during collision response.
-- **FR-018**: Engine MUST cap or substep the integration timestep to bound simulation error when frame time is large.
+- **FR-018**: Engine MUST clamp the integration timestep to a configurable maximum (e.g., 33ms) to bound simulation error when frame time is large (dt-cap strategy; no fixed-substep accumulator).
 
 #### Input & Queries
 
@@ -147,8 +157,8 @@ A game developer uses the engine's public API to construct a complete interactiv
 
 #### API Contract
 
-- **FR-025**: Engine MUST allow the game layer to define and attach its own custom components to entities via the ECS without modifying engine code.
-- **FR-026**: Engine MUST expose enough ECS iteration surface for the game layer to query and iterate over game-specific components.
+- **FR-025**: Engine MUST expose a direct reference to the `entt::registry`, allowing the game layer to define, attach, and query its own custom components without modifying engine code.
+- **FR-026**: Game layer uses `entt::registry` directly for iteration over game-specific components (e.g., `registry.view<PlayerController, Transform>()`).
 
 ### Key Entities
 
@@ -156,8 +166,8 @@ A game developer uses the engine's public API to construct a complete interactiv
 - **Transform**: Spatial placement of an entity — position (3D vector), rotation (quaternion), and scale (3D vector).
 - **Mesh**: A handle referencing renderer-owned geometry data (vertices, indices, attributes). Created via procedural builders or asset import.
 - **Material**: A handle referencing renderer-owned shading parameters (base color, shading model). Determines visual appearance.
-- **RigidBody**: Physical properties of a dynamic entity — mass, inverse mass, linear velocity, angular velocity, inverse inertia tensor, restitution coefficient.
-- **Collider**: Axis-aligned bounding box (AABB) in local space defined by half-extents. Used for collision detection and spatial queries. Optional layer mask for filtering.
+- **RigidBody**: Physical properties of a dynamic entity — mass, inverse mass, linear velocity, angular velocity, inverse inertia tensor (auto-computed as uniform-density box from AABB half-extents), restitution coefficient.
+- **Collider**: Axis-aligned bounding box (AABB) in local space defined by half-extents. Used for collision detection and spatial queries. Layer mask filtering is a stretch goal — MVP checks all pairs; game code filters results as needed.
 - **Camera**: Viewing parameters — field of view, near plane, far plane. Combined with Transform to produce view and projection matrices.
 - **Light**: Illumination source — initially directional only (direction, color, intensity). Point lights are a stretch goal.
 - **Tag Markers**: Lightweight flags — Static (no physics), Dynamic (physics-driven), Interactable (raycast-visible) — used to filter behavior in systems.
@@ -187,3 +197,5 @@ A game developer uses the engine's public API to construct a complete interactiv
 - The engine does not own the main loop or window — it ticks from inside the renderer's frame callback. Input events flow from the renderer to the engine.
 - Asset file paths are resolved via a compile-time `ASSET_ROOT` macro. No runtime path configuration is required for MVP.
 - The game layer is responsible for all gameplay logic (player controllers, weapons, AI behavior, HUD). The engine provides only the simulation and query primitives.
+- All engine warnings and errors are logged via `fprintf(stderr, "[ENGINE] ...")`. No callback-based or leveled logging system is required for MVP.
+- Inertia tensors are auto-computed as uniform-density box approximations using AABB half-extents (`I = m/12 * diag(h²+d², w²+d², w²+h²)`). No mesh-derived or user-supplied tensors for MVP.
