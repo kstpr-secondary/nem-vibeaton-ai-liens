@@ -4,12 +4,14 @@
 #include "constants.h"
 #include "damage.h"
 #include "enemy_ai.h"
+#include "hud.h"
 #include "player.h"
 #include "projectile.h"
 #include "spawn.h"
 #include "weapons.h"
 #include <engine.h>
 #include <renderer.h>
+#include <sokol_app.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
@@ -111,6 +113,93 @@ static void vfx_cleanup() {
 }
 
 // ---------------------------------------------------------------------------
+// Scene reset — destroy all entities, clear game-layer statics
+// ---------------------------------------------------------------------------
+
+static void scene_reset() {
+    auto& reg = engine_registry();
+
+    // Mark every entity for destruction.  engine_tick will sweep them.
+    for (auto e : reg.view<entt::entity>())
+        reg.emplace<DestroyPending>(e);
+
+    // Reset camera-rig static so it doesn't hold a dangling handle.
+    camera_rig_init(entt::null);
+}
+
+// ---------------------------------------------------------------------------
+// Restart / quit input handling
+// ---------------------------------------------------------------------------
+
+static void handle_restart_quit_input() {
+    static bool s_prev_enter = false;
+    static bool s_prev_esc   = false;
+
+    const bool cur_enter = engine_key_down(SAPP_KEYCODE_ENTER);
+    const bool cur_esc   = engine_key_down(SAPP_KEYCODE_ESCAPE);
+
+    // Manual restart — Enter from any terminal phase, skips countdown.
+    if (cur_enter && !s_prev_enter) {
+        if (s_match_state.phase == MatchPhase::PlayerDead ||
+            s_match_state.phase == MatchPhase::Victory ||
+            s_match_state.phase == MatchPhase::Restarting) {
+            s_match_state.phase           = MatchPhase::Restarting;
+            s_match_state.phase_enter_time = engine_now();
+        }
+    }
+
+    // Quit — Esc edge-triggered.
+    if (cur_esc && !s_prev_esc)
+        sapp_request_quit();
+
+    s_prev_enter = cur_enter;
+    s_prev_esc   = cur_esc;
+}
+
+// ---------------------------------------------------------------------------
+// Match state machine — phase transitions, win/loss, auto-restart countdown
+// ---------------------------------------------------------------------------
+
+static void match_state_update(float /*dt*/) {
+    // Restarting → Playing: destroy all entities, rebuild scene.
+    if (s_match_state.phase == MatchPhase::Restarting) {
+        scene_reset();
+        game_init();
+        return;
+    }
+
+    if (s_match_state.phase == MatchPhase::Playing) {
+        // Victory check first — spec: simultaneous player+enemy death → player wins.
+        if (s_match_state.enemies_remaining <= 0) {
+            s_match_state.phase           = MatchPhase::Victory;
+            s_match_state.phase_enter_time = engine_now();
+            s_match_state.auto_restart_delay = constants::restart_delay_win;
+            return;
+        }
+
+        // Player death check.
+        auto player_view = engine_registry().view<PlayerTag, Health>();
+        for (auto e : player_view) {
+            const auto& hp = player_view.get<Health>(e);
+            if (hp.current <= 0.f) {
+                s_match_state.phase           = MatchPhase::PlayerDead;
+                s_match_state.phase_enter_time = engine_now();
+                s_match_state.auto_restart_delay = constants::restart_delay_death;
+                return;
+            }
+        }
+    } else if (s_match_state.phase == MatchPhase::PlayerDead ||
+               s_match_state.phase == MatchPhase::Victory) {
+        // Auto-restart countdown.
+        const double elapsed = engine_now() - s_match_state.phase_enter_time;
+        if (elapsed >= static_cast<double>(s_match_state.auto_restart_delay)) {
+            s_match_state.phase           = MatchPhase::Restarting;
+            s_match_state.phase_enter_time = engine_now();
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
 
@@ -154,10 +243,11 @@ void game_tick(float dt) {
     damage_resolve();           // 7. collision + weapon damage → shield/HP
     enemy_death_update();       // T021: detect dead enemies, spawn explosion
     vfx_cleanup();              // expire short-lived VFX entities
-    // T027: match_state_update(dt)
+    match_state_update(dt);     // T024: phase transitions, win/loss, auto-restart
+    handle_restart_quit_input(); // T026: manual restart (Enter) and quit (Esc)
     camera_rig_update(dt);      // 9. follow player with offset + lag
     render_submit();            // 10. enqueue_draw for all visible entities
-    // T027: hud_render()
+    hud_render();               // 11. ImGui widgets + overlays
 }
 
 void game_shutdown() {

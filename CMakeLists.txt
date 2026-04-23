@@ -43,7 +43,7 @@ set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
 FetchContent_Declare(
     sokol
     GIT_REPOSITORY https://github.com/floooh/sokol.git
-    GIT_TAG d48d3c09b7d5bc8da3e2d303e109f659a45108eb
+    GIT_TAG master
     GIT_SHALLOW ON
 )
 
@@ -447,7 +447,7 @@ endif()
 # ====================================================================
 
 add_executable(game ${game_sources})
-target_link_libraries(game PRIVATE engine)
+target_link_libraries(game PRIVATE engine vibeaton::imgui_backend)
 
 add_custom_target(game_shaders)
 vibeaton_attach_shader_headers(game "${CMAKE_SOURCE_DIR}/shaders/game" game_shaders)
