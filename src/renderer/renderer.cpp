@@ -19,6 +19,9 @@
 #include "pipeline_unlit.h"
 #include "mesh_builders.h"
 
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include <cassert>
 #include <cstdio>
 
@@ -57,6 +60,8 @@ struct RendererState {
 
     // Scene state (set per-frame via public API)
     RendererCamera        camera        = {};
+    glm::mat4             vp            = glm::mat4(1.0f); // projection × view; identity until set_camera is called
+    bool                  camera_set    = false;            // reset each begin_frame
     DirectionalLight      light         = {};
     RendererTextureHandle skybox_handle = {};
 
@@ -230,16 +235,26 @@ void renderer_begin_frame() {
     state.frame_active    = true;
     state.draw_count      = 0;
     state.line_quad_count = 0;
+    state.camera_set      = false;
     sg_pass pass = {};
     pass.action    = state.pass_action;
     pass.swapchain = sglue_swapchain();
     sg_begin_pass(&pass);
 }
 
-void renderer_end_frame() {}
+void renderer_end_frame() {
+    if (!state.camera_set) {
+        printf("[renderer] WARNING: renderer_set_camera not called before end_frame — using identity VP\n");
+        state.vp = glm::mat4(1.0f);
+    }
+}
 
 void renderer_set_camera(const RendererCamera& camera) {
-    state.camera = camera;
+    state.camera     = camera;
+    glm::mat4 view   = glm::make_mat4(camera.view);
+    glm::mat4 proj   = glm::make_mat4(camera.projection);
+    state.vp         = proj * view;
+    state.camera_set = true;
 }
 
 void renderer_set_directional_light(const DirectionalLight& light) {
