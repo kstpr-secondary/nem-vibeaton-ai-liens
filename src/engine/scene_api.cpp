@@ -1,6 +1,12 @@
 #include "engine.h"
 #include "scene_api.h"
+#include "asset_import.h"
+#include "obj_import.h"
+#include "asset_bridge.h"
 
+#include <cstdio>
+#include <cstring>
+#include <string>
 #include <vector>
 
 // ---------------------------------------------------------------------------
@@ -50,6 +56,68 @@ entt::entity engine_spawn_cube(const glm::vec3& position, float half_extent, con
     t.position = position;
     reg.emplace<Transform>(e, t);
     reg.emplace<Mesh>(e, Mesh{renderer_make_cube_mesh(half_extent)});
+    reg.emplace<EntityMaterial>(e, EntityMaterial{material});
+
+    return e;
+}
+
+// ---------------------------------------------------------------------------
+// Asset loading (T016)
+// ---------------------------------------------------------------------------
+
+RendererMeshHandle engine_load_gltf(const char* relative_path) {
+    ImportedMesh mesh = asset_import_gltf(relative_path);
+    if (mesh.empty()) {
+        fprintf(stderr, "[ENGINE] engine_load_gltf: failed to load %s\n", relative_path);
+        return {};
+    }
+    return asset_bridge_upload(mesh);
+}
+
+RendererMeshHandle engine_load_obj(const char* relative_path) {
+    ImportedMesh mesh = asset_import_obj(relative_path);
+    if (mesh.empty()) {
+        fprintf(stderr, "[ENGINE] engine_load_obj: failed to load %s\n", relative_path);
+        return {};
+    }
+    return asset_bridge_upload(mesh);
+}
+
+entt::entity engine_spawn_from_asset(const char*      relative_path,
+                                     const glm::vec3& position,
+                                     const glm::quat& rotation,
+                                     const Material&  material) {
+    // Detect format by extension
+    std::string path(relative_path);
+    RendererMeshHandle handle{};
+
+    auto ends_with = [&](const char* suffix) {
+        size_t sl = path.size(), el = strlen(suffix);
+        return sl >= el && path.compare(sl - el, el, suffix) == 0;
+    };
+
+    if (ends_with(".glb") || ends_with(".gltf")) {
+        handle = engine_load_gltf(relative_path);
+    } else if (ends_with(".obj")) {
+        handle = engine_load_obj(relative_path);
+    } else {
+        fprintf(stderr, "[ENGINE] spawn_from_asset: unknown format for %s\n", relative_path);
+        return entt::null;
+    }
+
+    if (!renderer_handle_valid(handle)) {
+        fprintf(stderr, "[ENGINE] spawn_from_asset: mesh load failed for %s\n", relative_path);
+        return entt::null;
+    }
+
+    auto& reg = engine_registry();
+    auto e = reg.create();
+
+    Transform t{};
+    t.position = position;
+    t.rotation = rotation;
+    reg.emplace<Transform>(e, t);
+    reg.emplace<Mesh>(e, Mesh{handle});
     reg.emplace<EntityMaterial>(e, EntityMaterial{material});
 
     return e;

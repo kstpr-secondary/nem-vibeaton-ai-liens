@@ -79,11 +79,11 @@ All paths relative to repository root. Engine sources in `src/engine/`, tests in
 
 ### Implementation for User Story 2
 
-- [ ] T013 [P] [US2] Implement glTF/GLB mesh loader: cgltf_parse → cgltf_load_buffers → walk mesh primitives extracting positions/normals/UVs/indices, handle GLB vs glTF paths, resolve via ASSET_ROOT macro, log [ENGINE] warning for unsupported features (skeletal animation, morph targets) in src/engine/asset_import.h and src/engine/asset_import.cpp
-- [ ] T014 [P] [US2] Implement OBJ mesh fallback loader: tinyobjloader parse, extract positions/normals/UVs/indices per shape, resolve via ASSET_ROOT macro in src/engine/obj_import.h and src/engine/obj_import.cpp
-- [ ] T015 [US2] Implement asset bridge: convert extracted vertex arrays to renderer Vertex layout (zero-fill tangent if absent, Y-up default normal if absent), call renderer_upload_mesh(), return RendererMeshHandle in src/engine/asset_bridge.h and src/engine/asset_bridge.cpp
-- [ ] T016 [US2] Implement engine_spawn_from_asset(): load mesh via asset_import/obj_import, bridge to renderer handle, create entity with Transform + Mesh + EntityMaterial in src/engine/scene_api.cpp
-- [ ] T017 [US2] Update engine_app for E-M2: load a glTF model from assets/ directory, spawn it alongside existing procedural primitives, verify mixed rendering in src/engine/app/main.cpp
+- [x] T013 [P] [US2] Implement glTF/GLB mesh loader: cgltf_parse → cgltf_load_buffers → walk mesh primitives extracting positions/normals/UVs/indices, handle GLB vs glTF paths, resolve via ASSET_ROOT macro, log [ENGINE] warning for unsupported features (skeletal animation, morph targets) in src/engine/asset_import.h and src/engine/asset_import.cpp
+- [x] T014 [P] [US2] Implement OBJ mesh fallback loader: tinyobjloader parse, extract positions/normals/UVs/indices per shape, resolve via ASSET_ROOT macro in src/engine/obj_import.h and src/engine/obj_import.cpp
+- [x] T015 [US2] Implement asset bridge: convert extracted vertex arrays to renderer Vertex layout (zero-fill tangent if absent, Y-up default normal if absent), call renderer_upload_mesh(), return RendererMeshHandle in src/engine/asset_bridge.h and src/engine/asset_bridge.cpp
+- [x] T016 [US2] Implement engine_spawn_from_asset(): load mesh via asset_import/obj_import, bridge to renderer handle, create entity with Transform + Mesh + EntityMaterial in src/engine/scene_api.cpp
+- [x] T017 [US2] Update engine_app for E-M2: load a glTF model from assets/ directory, spawn it alongside existing procedural primitives, verify mixed rendering in src/engine/app/main.cpp
 
 **Checkpoint**: engine_app renders glTF models alongside procedurals. Asset loading errors return {0} handle without crashing. E-M2 acceptance criteria met.
 
