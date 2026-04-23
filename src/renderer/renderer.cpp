@@ -377,24 +377,27 @@ Material renderer_make_unlit_material(const float rgba[4]) {
 }
 
 Material renderer_make_lambertian_material(const float rgb[3]) {
+    // Stub: full Lambertian pipeline added in R-031 (R-M2).
+    // Returns Unlit material so draw dispatch uses the existing unlit pipeline.
     Material m;
-    m.shading_model = ShadingModel::Lambertian;
+    m.shading_model = ShadingModel::Unlit;
     if (rgb) {
         m.base_color[0] = rgb[0]; m.base_color[1] = rgb[1];
-        m.base_color[2] = rgb[2];
+        m.base_color[2] = rgb[2]; m.base_color[3] = 1.0f;
     }
     return m;
 }
 
 Material renderer_make_blinnphong_material(const float rgb[3], float shininess,
                                            RendererTextureHandle texture) {
+    // Stub: full BlinnPhong pipeline added in R-046 (R-M4).
+    // Returns Unlit material so draw dispatch uses the existing unlit pipeline.
+    (void)shininess; (void)texture;
     Material m;
-    m.shading_model = ShadingModel::BlinnPhong;
+    m.shading_model = ShadingModel::Unlit;
     if (rgb) {
         m.base_color[0] = rgb[0]; m.base_color[1] = rgb[1];
-        m.base_color[2] = rgb[2];
+        m.base_color[2] = rgb[2]; m.base_color[3] = 1.0f;
     }
-    m.shininess = shininess;
-    m.texture   = texture;
     return m;
 }
