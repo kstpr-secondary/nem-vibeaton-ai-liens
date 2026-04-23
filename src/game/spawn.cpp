@@ -1,6 +1,7 @@
 #include "spawn.h"
 #include "constants.h"
 #include <engine.h>
+#include <physics.h>
 #include <renderer.h>
 #include <glm/gtc/quaternion.hpp>
 
@@ -46,6 +47,8 @@ entt::entity spawn_player(const glm::vec3& position) {
     auto& col            = engine_add_component<Collider>(e);
     col.half_extents     = glm::vec3(k_ship_half_extent);
 
+    engine_registry().emplace<Dynamic>(e);
+    engine_registry().emplace<ForceAccum>(e);
     engine_registry().emplace<PlayerTag>(e);
     auto& hp             = engine_add_component<Health>(e);
     hp.current           = constants::player_health_max;
@@ -87,6 +90,8 @@ entt::entity spawn_enemy(const glm::vec3& position) {
     auto& col            = engine_add_component<Collider>(e);
     col.half_extents     = glm::vec3(k_ship_half_extent);
 
+    engine_registry().emplace<Dynamic>(e);
+    engine_registry().emplace<ForceAccum>(e);
     engine_registry().emplace<EnemyTag>(e);
 
     auto& hp             = engine_add_component<Health>(e);
@@ -157,6 +162,8 @@ entt::entity spawn_asteroid(const glm::vec3& position,
     auto& col            = engine_add_component<Collider>(e);
     col.half_extents     = glm::vec3(radius);
 
+    engine_registry().emplace<Dynamic>(e);
+    engine_registry().emplace<ForceAccum>(e);
     engine_registry().emplace<AsteroidTag>(e);
     auto& ad             = engine_add_component<AsteroidData>(e);
     ad.size_tier         = tier;
@@ -188,6 +195,8 @@ entt::entity spawn_projectile(entt::entity owner,
     auto& col            = engine_add_component<Collider>(e);
     col.half_extents     = glm::vec3(constants::plasma_sphere_radius);
 
+    engine_registry().emplace<Dynamic>(e);
+    engine_registry().emplace<ForceAccum>(e);
     engine_registry().emplace<ProjectileTag>(e);
     auto& pd             = engine_add_component<ProjectileData>(e);
     pd.owner             = owner;

@@ -25,10 +25,15 @@ void camera_rig_update(float dt) {
     const auto& pt       = player_view.get<Transform>(*player_view.begin());
     const glm::vec3 player_pos = pt.position;
 
-    // Desired position: offset behind (+Z local) and above (+Y local) the ship.
-    const glm::vec3 local_offset = pt.rotation
-        * glm::vec3(0.f, constants::cam_offset_up, constants::cam_offset_back);
-    const glm::vec3 desired_pos = player_pos + local_offset;
+    // Desired position: offset behind and above the ship.
+    // Use only the yaw (Y-axis) of the player's facing so pitch/roll from
+    // collisions don't make the camera orbit or flip.
+    const glm::vec3 forward = glm::normalize(glm::vec3(
+        pt.rotation * glm::vec3(0.f, 0.f, -1.f)));
+
+    const glm::vec3 desired_pos = player_pos
+        - forward * constants::cam_offset_back
+        + glm::vec3(0.f, constants::cam_offset_up, 0.f);
 
     // Smooth-follow via lerp — clamped so large dt never overshoots.
     auto& cam_t = engine_get_component<Transform>(s_camera);

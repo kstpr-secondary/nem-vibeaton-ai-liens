@@ -41,9 +41,14 @@ void enemy_ai_update(float /*dt*/) {
         const glm::vec3 dir = to_player / dist;
 
         // -------------------------------------------------------------------
-        // Seek: set velocity directly toward player at pursuit speed.
+        // Seek: set velocity toward player, but stop when close enough to
+        // avoid fighting the physics collision response (twitching).
         // -------------------------------------------------------------------
-        rb.linear_velocity = dir * ai.pursuit_speed;
+        static constexpr float k_stop_distance = 5.0f;
+        if (dist > k_stop_distance)
+            rb.linear_velocity = dir * ai.pursuit_speed;
+        else
+            rb.linear_velocity *= 0.9f;  // damp when stopped
 
         // Face the player so the visual cube and firing origin make sense.
         t.rotation = glm::quatLookAtRH(dir, glm::vec3(0.f, 1.f, 0.f));

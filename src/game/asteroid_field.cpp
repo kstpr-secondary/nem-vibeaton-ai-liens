@@ -108,12 +108,15 @@ static glm::vec3 reflect_off_boundary(const glm::vec3& v,
 void containment_update() {
     auto& reg = engine_registry();
 
-    // --- Asteroids: reflect + clamp speed -----------------------------------
+    // --- Asteroids: reflect + clamp speed + angular damping -----------------
     {
         auto view = reg.view<AsteroidTag, Transform, RigidBody>();
         for (auto e : view) {
             auto& t  = view.get<Transform>(e);
             auto& rb = view.get<RigidBody>(e);
+
+            // Gentle angular damping so asteroids don't spin forever.
+            rb.angular_velocity *= 0.995f;
 
             const float dist = glm::length(t.position);
             if (dist <= constants::field_radius)

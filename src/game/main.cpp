@@ -18,10 +18,6 @@ static void frame_callback(float dt, void* /*user_data*/) {
     renderer_end_frame();
 }
 
-static void input_callback(const void* /*sapp_event*/, void* /*user_data*/) {
-    // Input is polled via engine_key_down / engine_mouse_delta in game_tick.
-}
-
 int main() {
     RendererConfig renderer_cfg;
     renderer_cfg.title = "Space Shooter";
@@ -31,7 +27,9 @@ int main() {
     engine_init(engine_cfg);
 
     renderer_set_frame_callback(frame_callback, nullptr);
-    renderer_set_input_callback(input_callback, nullptr);
+    // engine_init() already registered the engine's input callback via input_init().
+    // Do NOT overwrite it here — the engine owns input event handling.
+
     renderer_run();
 
     game_shutdown();
