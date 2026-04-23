@@ -208,7 +208,22 @@ void renderer_run() {
     sapp_run(&desc);
 }
 
-void renderer_shutdown() {}
+void renderer_shutdown() {
+    simgui_shutdown();
+    sg_shutdown();
+    sapp_quit();
+
+    state.frame_active = false;
+
+    // Invalidate cached pipeline handles (GPU resources already freed by sg_shutdown)
+    state.pipeline_magenta     = {};
+    state.pipeline_unlit       = {};
+    state.pipeline_lambertian  = {};
+    state.pipeline_blinnphong  = {};
+    state.pipeline_transparent = {};
+    state.pipeline_line_quad   = {};
+    state.pipeline_skybox      = {};
+}
 
 void renderer_begin_frame() {
     assert(!state.frame_active && "renderer_begin_frame called while frame already active");
