@@ -1,0 +1,6 @@
+#ifndef VIBEATON_PIPELINE_LAMBERTIAN_H
+#define VIBEATON_PIPELINE_LAMBERTIAN_H
+
+// Lambertian pipeline module
+
+#endif // VIBEATON_PIPELINE_LAMBERTIAN_H

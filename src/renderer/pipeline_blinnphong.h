@@ -1,0 +1,6 @@
+#ifndef VIBEATON_PIPELINE_BLINNPHONG_H
+#define VIBEATON_PIPELINE_BLINNPHONG_H
+
+// Blinn-Phong pipeline module
+
+#endif // VIBEATON_PIPELINE_BLINNPHONG_H

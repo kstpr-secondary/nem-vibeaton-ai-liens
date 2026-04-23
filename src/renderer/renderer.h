@@ -20,13 +20,13 @@ inline bool renderer_handle_valid(RendererTextureHandle h) { return h.id != 0; }
 // ---------------------------------------------------------------------------
 
 struct RendererConfig {
-    int         width   = 1280;
-    int         height  = 720;
-    float       clear_r = 0.05f;
-    float       clear_g = 0.05f;
-    float       clear_b = 0.10f;
-    float       clear_a = 1.0f;
-    const char* title   = "renderer_app";
+    int         width     = 1280;
+    int         height    = 720;
+    float       clear_r   = 0.05f;
+    float       clear_g   = 0.05f;
+    float       clear_b   = 0.10f;
+    float       clear_a   = 1.0f;
+    const char* title     = "renderer_app";
 };
 
 // ---------------------------------------------------------------------------
@@ -77,16 +77,21 @@ struct DirectionalLight {
 // ---------------------------------------------------------------------------
 
 struct RendererCamera {
-    float view[16];        // column-major 4x4 world→camera
-    float projection[16];  // column-major 4x4 camera→clip
+    float view[16];
+    float projection[16];
 };
 
 // ---------------------------------------------------------------------------
-// Callbacks
+// Input callback
 // ---------------------------------------------------------------------------
 
 using InputCallback = void(*)(const void* sapp_event, void* user_data);
-using FrameCallback = void(*)(float dt, void* user_data);  // v1.1
+
+// ---------------------------------------------------------------------------
+// Frame callback (v1.1) — consumer injects per-frame logic
+// ---------------------------------------------------------------------------
+
+using FrameCallback = void(*)(float dt, void* user_data);
 
 // ---------------------------------------------------------------------------
 // Lifecycle
@@ -118,9 +123,9 @@ void renderer_set_skybox(RendererTextureHandle cubemap);
 // ---------------------------------------------------------------------------
 
 void renderer_enqueue_draw(
-    RendererMeshHandle mesh,
-    const float        world_transform[16],
-    const Material&    material
+    RendererMeshHandle  mesh,
+    const float         world_transform[16],
+    const Material&     material
 );
 
 void renderer_enqueue_line_quad(
