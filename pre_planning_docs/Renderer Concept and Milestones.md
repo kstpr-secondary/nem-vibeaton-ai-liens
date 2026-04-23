@@ -20,6 +20,7 @@ Callable by engine (and `renderer_app`) — names illustrative, SpecKit confirms
 
 - **Lifecycle:** `init(config)`, `shutdown()`, `run()` (owns `sokol_app` main loop). `config` carries resolution, clear color.
 - **Per-frame:** `begin_frame()`, `enqueue_draw(mesh, transform, material)`, `enqueue_line_quad(p0, p1, width, color)`, `end_frame()`.
+- **UI bridge:** renderer owns Dear ImGui integration via pinned Sokol `util/sokol_imgui.h`: setup/shutdown, `sokol_app` event forwarding, per-frame UI begin, and final UI render pass. Game code only emits HUD/debug widgets.
 - **Meshes:**
   - Procedural builders: `make_sphere_mesh(radius, subdiv)`, `make_cube_mesh(extents)`. **Live in renderer** — engine and `renderer_app` consume; no duplication elsewhere.
   - Upload path: `upload_mesh(vertices, indices, layout)` for engine-imported assets (glTF/OBJ).
@@ -40,6 +41,7 @@ Callable by engine (and `renderer_app`) — names illustrative, SpecKit confirms
 - Sokol init with OpenGL 3.3 Core backend.
 - `sokol_app` window (fixed resolution, fullscreen), clear-color frame.
 - Input event pump exposed to engine via callback.
+- Dear ImGui backend decision frozen now: renderer-side `util/sokol_imgui.h`; no GLFW/SDL backend path.
 - `renderer_app` driver renders a solid clear color.
 - **Hard gate:** Confirm OpenGL 3.3 initialization is stable on all laptops.
 
@@ -84,6 +86,7 @@ Callable by engine (and `renderer_app`) — names illustrative, SpecKit confirms
 - Alpha-blended transparency support (basic `SG_BLENDSTATE_ALPHA`).
 - Skybox: cubemap texture; separate pass behind all opaque geometry; depth write off, depth test off, draw first or use depth-trick.
 - World-space quad lines for lasers: procedural quad generation between two points; unlit shader.
+- Keep render loop compatible with later HUD overlay: ImGui draw data renders after the 3D scene through the renderer-owned `sokol_imgui` path.
 
 **Expected outcome:** Starfield / space background renders behind the scene; laser quads render with alpha blending and correct depth occlusion. **Renderer MVP complete.**
 
