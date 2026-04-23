@@ -1,44 +1,132 @@
-# Engine SpecKit — Quick Start
+# Engine Quickstart
 
-> Planning scaffold for the game engine workstream SpecKit cycle.
+> **Phase 1 output** for `002-ecs-physics-engine`. Build, run, and iterate guide for the engine workstream.
 
 ---
 
-## Seed Document
+## Prerequisites
 
-`pre_planning_docs/Game Engine Concept and Milestones.md`
+- Ubuntu 24.04 LTS
+- Clang, CMake ≥ 3.19, Ninja
+- `sokol-shdc` binary on `PATH` (for renderer shader compilation)
+- FetchContent cache warmed (dependencies pre-downloaded)
 
-## Upstream Dependencies (frozen)
+---
 
-- Renderer interface: `docs/interfaces/renderer-interface-spec.md` — **FROZEN v1.0**
-- Renderer architecture: `docs/architecture/renderer-architecture.md` — **FROZEN**
+## One-Time Configure
 
-## SpecKit Outputs (will be created here)
+From the repository root:
 
-- `specs/002-game-engine/spec.md` — feature specification
-- `specs/002-game-engine/plan.md` — implementation plan
-- `specs/002-game-engine/research.md` — technology research
-- `specs/002-game-engine/tasks.md` — task decomposition
-- `specs/002-game-engine/contracts/` — API contracts
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+```
 
-## Post-SpecKit Promotion
+---
 
-- `docs/interfaces/engine-interface-spec.md` ← promoted from contracts
-- `docs/architecture/engine-architecture.md` ← promoted from plan
-- `_coordination/engine/TASKS.md` ← translated from SpecKit tasks to blueprint schema
+## Build Commands
 
-## Relevant Skills
+### Engine workstream iteration (do NOT rebuild unrelated targets):
 
-- `.agents/skills/engine-specialist/SKILL.md`
-- `.agents/skills/entt-ecs/SKILL.md`
-- `.agents/skills/cgltf-loading/SKILL.md` + `references/`
-- `.agents/skills/physics-euler/SKILL.md` + `references/`
-- `.agents/skills/sokol-api/SKILL.md` + `references/`
+```bash
+cmake --build build --target engine_app engine_tests
+```
 
-## Key Constraints (from blueprint)
+### Run the engine driver:
 
-- Engine ticks from inside renderer frame callback — no independent main loop
-- All asset paths via `ASSET_ROOT` macro — never hard-code
-- Renderer handles are opaque uint32_t — engine must not inspect internals
-- `USE_RENDERER_MOCKS=ON` allows engine to compile without renderer implementation
-- C++17, no exceptions, no RTTI
+```bash
+./build/engine_app
+```
+
+### Run engine unit tests:
+
+```bash
+./build/engine_tests
+```
+
+### Full milestone-sync rebuild (only after a milestone merge):
+
+```bash
+cmake --build build
+```
+
+---
+
+## Mock Modes
+
+### Build game against engine mocks (when real engine not yet ready):
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+  -DUSE_ENGINE_MOCKS=ON
+cmake --build build --target game
+```
+
+### Build engine against renderer mocks (when real renderer not yet ready):
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+  -DUSE_RENDERER_MOCKS=ON
+cmake --build build --target engine_app engine_tests
+```
+
+### Swap to real implementations:
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+  -DUSE_ENGINE_MOCKS=OFF -DUSE_RENDERER_MOCKS=OFF
+cmake --build build
+```
+
+---
+
+## Key File Locations
+
+| File | Purpose |
+|------|---------|
+| `src/engine/engine.h` | Public API header — game and engine_app include only this |
+| `src/engine/components.h` | ECS component definitions (Transform, RigidBody, etc.) |
+| `src/engine/app/main.cpp` | `engine_app` driver — procedural demo, updated each milestone |
+| `src/engine/mocks/engine_mock.cpp` | Mock stubs for game workstream |
+| `src/engine/tests/` | Catch2 test files |
+| `docs/interfaces/engine-interface-spec.md` | Frozen interface contract (post-freeze) |
+| `_coordination/engine/TASKS.md` | Live task board |
+
+---
+
+## Milestone Acceptance Flow
+
+1. Implement the milestone's tasks per `_coordination/engine/TASKS.md`.
+2. Build: `cmake --build build --target engine_app engine_tests` — must return 0.
+3. Run tests: `./build/engine_tests` — all must pass.
+4. Run driver: `./build/engine_app` — visually confirm the Expected Outcome.
+5. Mark tasks `READY_FOR_VALIDATION` / `READY_FOR_REVIEW` in `TASKS.md`.
+6. Queue validation/review via `_coordination/queues/`.
+7. Human behavioral check on `engine_app`.
+8. Human merges feature branch.
+
+---
+
+## Engine Milestones (MVP)
+
+| ID | Name | Expected Outcome |
+|----|------|-----------------|
+| E-M1 | Bootstrap + ECS + Scene API | `engine_app` displays procedural spheres/cubes via ECS-driven renderer enqueue |
+| E-M2 | Asset Import | `engine_app` loads a glTF from `/assets/` and renders alongside procedurals |
+| E-M3 | Input + Colliders + Raycasting | `engine_app` navigable with WASD+mouse; raycast returns hits |
+| E-M4 | Euler Physics + Collision | `engine_app` shows rigid bodies colliding and bouncing elastically |
+
+---
+
+## Troubleshooting
+
+| Issue | Fix |
+|-------|-----|
+| `engine_app` shows nothing | Check `engine_tick` is called between `begin_frame` / `end_frame`; verify entities have Transform + Mesh + EntityMaterial |
+| Physics bodies tunnel through walls | Verify fixed-timestep substep loop is active (120 Hz); check DT_CAP |
+| `[ENGINE] Failed to load` asset | Verify `ASSET_ROOT` macro resolves correctly; check asset exists at path |
+| Crash on `get_component` | Use `try_get_component` — UB if component absent without check |
+| Camera not working | Ensure exactly one entity has `CameraActive` tag; verify `set_active_camera()` was called |

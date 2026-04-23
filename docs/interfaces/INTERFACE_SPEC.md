@@ -7,11 +7,11 @@
 
 ## Freeze Status
 
-| Interface | File | Status | Frozen By | Engine SpecKit May Start |
+| Interface | File | Status | Frozen By | Downstream May Start |
 |---|---|---|---|---|
-| Renderer public API | `docs/interfaces/renderer-interface-spec.md` | **FROZEN — v1.0** | Human supervisor (2026-04-23) | ✅ Yes |
-| Engine public API | `docs/interfaces/engine-interface-spec.md` | Draft — pending Engine SpecKit | — | N/A |
-| Game public API | `docs/interfaces/game-interface-spec.md` | Draft — pending Game SpecKit | — | ❌ No — wait for engine freeze |
+| Renderer public API | `docs/interfaces/renderer-interface-spec.md` | **FROZEN — v1.1** | Human supervisor (2026-04-23) | ✅ Engine SpecKit complete |
+| Engine public API | `docs/interfaces/engine-interface-spec.md` | **DRAFT — v0.1** (promoted from Engine SpecKit) | — | ❌ Game SpecKit waits for engine freeze |
+| Game public API | `docs/interfaces/game-interface-spec.md` | Placeholder — pending Game SpecKit | — | N/A |
 
 ---
 
@@ -50,24 +50,32 @@ See `docs/interfaces/renderer-interface-spec.md` for the full C++ header.
 ## Engine Interface — Summary
 
 **File**: `docs/interfaces/engine-interface-spec.md`  
-**Status**: Draft — to be populated during Engine SpecKit  
-**Will be frozen after**: E-M1 (Bootstrap + ECS + Scene API milestone)
+**Status**: **DRAFT — v0.1** (promoted from Engine SpecKit `contracts/engine-api.md`)  
+**Will be frozen after**: E-M1 (Bootstrap + ECS + Scene API) implemented and human-reviewed
 
-Expected contracts (pre-SpecKit sketch — not binding):
+Key contracts:
 
-- ECS scene API: entity create/destroy, component add/remove/get, transform management.
-- Asset bridge: `engine_load_mesh(path)` → `RendererMeshHandle` (delegates to renderer upload).
-- Game loop: `engine_tick(dt)` called from inside renderer frame callback.
-- Input: engine registers callback via `renderer_set_input_callback`; engine routes to game layer.
-- Physics queries: AABB overlap, raycast returning hit entity + distance.
-- Collision: Euler rigid-body integration, AABB-vs-AABB response.
+- **Component types**: `Transform`, `Mesh`, `EntityMaterial`, `RigidBody`, `Collider`, `Camera`, `Light` + tag markers (`Static`, `Dynamic`, `Interactable`, `CameraActive`, `DestroyPending`).
+- **Lifecycle**: `engine_init(config)` → `engine_tick(dt)` (inside renderer FrameCallback) → `engine_shutdown()`.
+- **Scene API**: `engine_create_entity()`, `engine_destroy_entity(e)` (deferred), template `engine_add/get/remove/has_component<T>()`, `engine_registry()` for direct view access.
+- **Procedural spawners**: `engine_spawn_sphere()`, `engine_spawn_cube()` — create entities with Transform + Mesh + EntityMaterial.
+- **Asset loading**: `engine_load_gltf(path)` / `engine_load_obj(path)` → `RendererMeshHandle`; `engine_spawn_from_asset()` convenience.
+- **Input**: `engine_key_down()`, `engine_mouse_delta()`, `engine_mouse_button()`, `engine_mouse_position()`.
+- **Physics**: `engine_apply_force()`, `engine_apply_impulse()`, `engine_apply_impulse_at_point()`.
+- **Queries**: `engine_raycast()` → `std::optional<RaycastHit>`, `engine_overlap_aabb()` → `std::vector<entt::entity>`.
+- **Camera**: `engine_set_active_camera(e)` — computes view/projection from entity's Transform + Camera.
+- **Time**: `engine_now()`, `engine_delta_time()`.
+- **Error behavior**: invalid handles/entities silently ignored or logged; never crashes.
+- **Mock surface**: `src/engine/mocks/engine_mock.cpp` toggled by `USE_ENGINE_MOCKS=ON`.
+
+See `docs/interfaces/engine-interface-spec.md` for the full C++ header.
 
 ---
 
 ## Game Interface — Summary
 
 **File**: `docs/interfaces/game-interface-spec.md`  
-**Status**: Draft — to be populated during Game SpecKit  
+**Status**: Placeholder — to be populated during Game SpecKit  
 **Will be frozen after**: G-M1 (Flight Controller + Scene + Camera milestone)
 
 Expected contracts (pre-SpecKit sketch — not binding):
