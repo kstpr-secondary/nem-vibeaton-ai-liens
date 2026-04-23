@@ -2,8 +2,18 @@
 #include <engine.h>
 #include <renderer.h>
 
+static bool s_game_inited = false;
+
 static void frame_callback(float dt, void* /*user_data*/) {
     renderer_begin_frame();
+
+    // game_init must run after sg_setup() (called by sapp_run's init_cb),
+    // so defer it to the first frame.
+    if (!s_game_inited) {
+        game_init();
+        s_game_inited = true;
+    }
+
     game_tick(dt);
     renderer_end_frame();
 }
@@ -19,8 +29,6 @@ int main() {
 
     EngineConfig engine_cfg;
     engine_init(engine_cfg);
-
-    game_init();
 
     renderer_set_frame_callback(frame_callback, nullptr);
     renderer_set_input_callback(input_callback, nullptr);
