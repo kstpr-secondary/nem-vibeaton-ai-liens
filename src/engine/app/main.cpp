@@ -48,7 +48,15 @@ static void update_camera(float dt) {
 // Frame callback
 // ---------------------------------------------------------------------------
 
+static void setup_scene();  // forward declaration — defined below
+
+static bool g_scene_setup_done = false;
+
 static void frame_cb(float dt, void* /*user_data*/) {
+    if (!g_scene_setup_done) {
+        setup_scene();
+        g_scene_setup_done = true;
+    }
     renderer_begin_frame();
     update_camera(dt);
     engine_tick(dt);
@@ -171,8 +179,6 @@ int main() {
 
     EngineConfig ecfg{};
     engine_init(ecfg);
-
-    setup_scene();
 
     renderer_set_frame_callback(frame_cb, nullptr);
     renderer_run();
