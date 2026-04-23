@@ -1,4 +1,4 @@
-#include "renderer/renderer.h"
+#include "renderer.h"
 
 // No-op renderer mock. Swapped in when USE_RENDERER_MOCKS=ON.
 // All void functions are no-ops; handle-returning functions return {1} (valid sentinel).
