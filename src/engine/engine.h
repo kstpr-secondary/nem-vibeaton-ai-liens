@@ -1,6 +1,7 @@
 #pragma once
 
 #include "components.h"
+#include "physics.h"
 
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
@@ -57,8 +58,10 @@ void         engine_destroy_entity(entt::entity e);  // deferred to end-of-tick
 // Scene API — Component Operations (header-only templates)
 // =========================================================================
 
+// decltype(auto) preserves the return type: T& for non-empty components,
+// void for empty tag types (Static, Dynamic, Interactable, etc.).
 template<typename T, typename... Args>
-T& engine_add_component(entt::entity e, Args&&... args) {
+decltype(auto) engine_add_component(entt::entity e, Args&&... args) {
     return engine_registry().emplace<T>(e, std::forward<Args>(args)...);
 }
 

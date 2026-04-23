@@ -1,8 +1,10 @@
 #include "engine.h"
 #include "engine_time.h"
+#include "input.h"
 #include "scene_api.h"
 #include "camera.h"
 #include "math_utils.h"
+#include "physics.h"
 
 #include <glm/gtc/type_ptr.hpp>
 #include <cstdio>
@@ -22,6 +24,7 @@ void engine_init(const EngineConfig& config) {
     g_config   = config;
     g_registry = entt::registry{};
     time_init();
+    input_init();  // registers the input callback with the renderer (T022)
 }
 
 void engine_tick(float dt) {
@@ -34,8 +37,10 @@ void engine_tick(float dt) {
     }
     time_set_delta(dt);
 
-    // --- Phase 5: input delta update goes here ---
-    // --- Phase 6: physics substep loop goes here ---
+    input_begin_frame();  // reset per-frame mouse delta (T022)
+
+    // Phase 6: physics substep loop (fixed-timestep, before rendering)
+    physics_system_tick(g_registry, dt, g_config.physics_hz, g_config.dt_cap);
 
     // Camera: view + projection → renderer
     camera_update();
@@ -98,24 +103,55 @@ void engine_set_active_camera(entt::entity e) {
 }
 
 // ---------------------------------------------------------------------------
-// Stubs for subsystems implemented in later phases
+// Physics — Force / Impulse API
 // ---------------------------------------------------------------------------
 
-// Phase 5 — input
-bool      engine_key_down(int)     { return false; }
-glm::vec2 engine_mouse_delta()     { return {0.f, 0.f}; }
-bool      engine_mouse_button(int) { return false; }
-glm::vec2 engine_mouse_position()  { return {0.f, 0.f}; }
-
-// Phase 6 — physics force API
-void engine_apply_force(entt::entity, const glm::vec3&) {}
-void engine_apply_impulse(entt::entity, const glm::vec3&) {}
-void engine_apply_impulse_at_point(entt::entity, const glm::vec3&, const glm::vec3&) {}
-
-// Phase 5 — spatial queries
-std::optional<RaycastHit> engine_raycast(const glm::vec3&, const glm::vec3&, float) {
-    return std::nullopt;
+void engine_apply_force(entt::entity e, const glm::vec3& force) {
+    if (!g_registry.valid(e)) {
+        fprintf(stderr, "[ENGINE] apply_force: invalid entity\n");
+        return;
+    }
+    if (!g_registry.all_of<ForceAccum>(e)) {
+        fprintf(stderr, "[ENGINE] apply_force: entity has no ForceAccum component\n");
+        return;
+    }
+    auto& fa = g_registry.get<ForceAccum>(e);
+    fa.force += force;
 }
-std::vector<entt::entity> engine_overlap_aabb(const glm::vec3&, const glm::vec3&) {
-    return {};
+
+void engine_apply_impulse(entt::entity e, const glm::vec3& impulse) {
+    if (!g_registry.valid(e)) {
+        fprintf(stderr, "[ENGINE] apply_impulse: invalid entity\n");
+        return;
+    }
+    if (!g_registry.all_of<RigidBody>(e)) {
+        fprintf(stderr, "[ENGINE] apply_impulse: entity has no RigidBody component\n");
+        return;
+    }
+    auto& rb = g_registry.get<RigidBody>(e);
+    rb.linear_velocity += impulse * rb.inv_mass;
+}
+
+void engine_apply_impulse_at_point(
+    entt::entity     e,
+    const glm::vec3& impulse,
+    const glm::vec3& world_point
+) {
+    if (!g_registry.valid(e)) {
+        fprintf(stderr, "[ENGINE] apply_impulse_at_point: invalid entity\n");
+        return;
+    }
+    if (!g_registry.all_of<Transform, RigidBody>(e)) {
+        fprintf(stderr, "[ENGINE] apply_impulse_at_point: entity missing Transform or RigidBody\n");
+        return;
+    }
+    auto& tr = g_registry.get<Transform>(e);
+    auto& rb = g_registry.get<RigidBody>(e);
+
+    // Apply linear impulse
+    rb.linear_velocity += impulse * rb.inv_mass;
+
+    // Apply angular impulse: torque = r × impulse, where r = world_point - COM
+    glm::vec3 r = world_point - tr.position;
+    rb.angular_velocity += rb.inv_inertia * glm::cross(r, impulse);
 }
