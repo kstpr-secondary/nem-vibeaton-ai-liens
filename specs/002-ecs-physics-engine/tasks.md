@@ -23,9 +23,9 @@ All paths relative to repository root. Engine sources in `src/engine/`, tests in
 
 **Purpose**: Create the engine's type foundation — component definitions, public API header, and time system. These files are imported by every subsequent phase.
 
-- [ ] T001 Define all ECS component structs (Transform, Mesh, EntityMaterial, RigidBody, Collider, Camera, Light) and tag types (Static, Dynamic, Interactable, CameraActive, DestroyPending) in src/engine/components.h
-- [ ] T002 [P] Create engine public API header with EngineConfig, RaycastHit, all lifecycle/scene/physics/input/camera function declarations, and template component-operation implementations forwarding to entt::registry in src/engine/engine.h
-- [ ] T003 [P] Implement time system: sokol_time init wrapper, engine_now() returning seconds since init, engine_delta_time() returning last frame dt in src/engine/time.h and src/engine/time.cpp
+- [x] T001 Define all ECS component structs (Transform, Mesh, EntityMaterial, RigidBody, Collider, Camera, Light) and tag types (Static, Dynamic, Interactable, CameraActive, DestroyPending) in src/engine/components.h
+- [x] T002 [P] Create engine public API header with EngineConfig, RaycastHit, all lifecycle/scene/physics/input/camera function declarations, and template component-operation implementations forwarding to entt::registry in src/engine/engine.h
+- [x] T003 [P] Implement time system: sokol_time init wrapper, engine_now() returning seconds since init, engine_delta_time() returning last frame dt in src/engine/engine_time.h and src/engine/time.cpp
 
 ---
 
@@ -35,8 +35,8 @@ All paths relative to repository root. Engine sources in `src/engine/`, tests in
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T004 Implement engine core lifecycle: engine_init(config) creating entt::registry + initializing time, engine_tick(dt) skeleton with dt-cap clamp, engine_shutdown() clearing registry in src/engine/engine.cpp
-- [ ] T005 [P] Create engine mock stubs covering all public API functions (no-ops for void, valid sentinels for handles, empty results for queries, static mock registry for templates) in src/engine/mocks/engine_mock.cpp
+- [x] T004 Implement engine core lifecycle: engine_init(config) creating entt::registry + initializing time, engine_tick(dt) skeleton with dt-cap clamp, engine_shutdown() clearing registry in src/engine/engine.cpp
+- [x] T005 [P] Create engine mock stubs covering all public API functions (no-ops for void, valid sentinels for handles, empty results for queries, static mock registry for templates) in src/engine/mocks/engine_mock.cpp
 
 **Checkpoint**: Foundation ready — engine compiles as static lib, game workstream can build against mocks, user story implementation can begin.
 
@@ -54,16 +54,16 @@ All paths relative to repository root. Engine sources in `src/engine/`, tests in
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T006 [P] [US1] Write ECS entity lifecycle tests: create, destroy (deferred), valid/invalid checks, component emplace/get/remove/has in src/engine/tests/test_ecs.cpp
-- [ ] T007 [P] [US1] Write transform and matrix composition tests: TRS model matrix, identity quaternion, translate-rotate-scale correctness, view matrix from camera transform in src/engine/tests/test_math.cpp
+- [x] T006 [P] [US1] Write ECS entity lifecycle tests: create, destroy (deferred), valid/invalid checks, component emplace/get/remove/has in src/engine/tests/test_ecs.cpp
+- [x] T007 [P] [US1] Write transform and matrix composition tests: TRS model matrix, identity quaternion, translate-rotate-scale correctness, view matrix from camera transform in src/engine/tests/test_math.cpp
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Implement scene API: engine_create_entity(), engine_destroy_entity() with DestroyPending deferral, engine_registry() accessor, entity validity via registry.valid(e), end-of-tick destruction sweep in src/engine/scene_api.h and src/engine/scene_api.cpp
-- [ ] T009 [US1] Implement procedural shape spawners: engine_spawn_sphere() and engine_spawn_cube() creating entities with Transform + Mesh + EntityMaterial using renderer_make_sphere_mesh/renderer_make_cube_mesh in src/engine/scene_api.cpp
-- [ ] T010 [US1] Implement camera system: compute view matrix from inverse TRS of CameraActive entity, projection matrix via glm::perspective with aspect from sapp_widthf/sapp_heightf, push to renderer_set_camera() in src/engine/camera.h and src/engine/camera.cpp
-- [ ] T011 [US1] Wire render enqueue loop into engine_tick(): iterate view<Transform, Mesh, EntityMaterial> calling renderer_enqueue_draw() per entity, call camera update, upload directional light via renderer_set_directional_light() in src/engine/engine.cpp
-- [ ] T012 [US1] Create engine_app E-M1 driver: renderer_init → engine_init → register frame callback → spawn camera entity + light entity + 10 procedural spheres/cubes at varied positions → renderer_run() in src/engine/app/main.cpp
+- [x] T008 [US1] Implement scene API: engine_create_entity(), engine_destroy_entity() with DestroyPending deferral, engine_registry() accessor, entity validity via registry.valid(e), end-of-tick destruction sweep in src/engine/scene_api.h and src/engine/scene_api.cpp
+- [x] T009 [US1] Implement procedural shape spawners: engine_spawn_sphere() and engine_spawn_cube() creating entities with Transform + Mesh + EntityMaterial using renderer_make_sphere_mesh/renderer_make_cube_mesh in src/engine/scene_api.cpp
+- [x] T010 [US1] Implement camera system: compute view matrix from inverse TRS of CameraActive entity, projection matrix via glm::perspective with aspect from sapp_widthf/sapp_heightf, push to renderer_set_camera() in src/engine/camera.h and src/engine/camera.cpp
+- [x] T011 [US1] Wire render enqueue loop into engine_tick(): iterate view<Transform, Mesh, EntityMaterial> calling renderer_enqueue_draw() per entity, call camera update, upload directional light via renderer_set_directional_light() in src/engine/engine.cpp
+- [x] T012 [US1] Create engine_app E-M1 driver: renderer_init → engine_init → register frame callback → spawn camera entity + light entity + 10 procedural spheres/cubes at varied positions → renderer_run() in src/engine/app/main.cpp
 
 **Checkpoint**: engine_app displays a procedural ECS scene. Tests in test_ecs.cpp and test_math.cpp pass. E-M1 acceptance criteria met.
 
