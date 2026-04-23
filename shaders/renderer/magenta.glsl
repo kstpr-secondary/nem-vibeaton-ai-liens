@@ -1,5 +1,3 @@
-@ctype mat4 float[16]
-
 @vs vs
 layout(binding=0) uniform vs_params {
     mat4 mvp;

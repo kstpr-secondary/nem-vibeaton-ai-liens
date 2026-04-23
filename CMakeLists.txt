@@ -132,6 +132,21 @@ if(NOT TARGET Sokol::sokol)
     target_include_directories(sokol INTERFACE ${sokol_SOURCE_DIR})
 endif()
 
+# Platform libraries required by sokol_app (X11/OpenGL on Linux)
+find_package(OpenGL REQUIRED)
+if(UNIX AND NOT APPLE)
+    find_package(X11 REQUIRED)
+    set(VIBEATON_PLATFORM_LIBS
+        OpenGL::GL
+        X11::X11
+        ${X11_Xi_LIB}
+        ${X11_Xcursor_LIB}
+        dl
+        pthread
+        m
+    )
+endif()
+
 if(NOT TARGET cgltf::cgltf)
     add_library(cgltf INTERFACE)
     add_library(cgltf::cgltf ALIAS cgltf)
@@ -352,6 +367,7 @@ target_link_libraries(renderer
     PUBLIC
         Sokol::sokol
         glm::glm
+        ${VIBEATON_PLATFORM_LIBS}
 )
 
 target_compile_options(renderer PRIVATE

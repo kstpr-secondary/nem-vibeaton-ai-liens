@@ -14,6 +14,7 @@
 #include "util/sokol_imgui.h"
 
 #include "renderer.h"
+#include "shaders/magenta.glsl.h"
 
 #include <cassert>
 #include <cstdio>
@@ -93,6 +94,31 @@ struct RendererState {
 };
 
 RendererState state;
+
+// Called from the internal sokol init callback (GL context exists at that point).
+// Stores the result in state.pipeline_magenta — all other pipeline helpers fall back to it.
+void make_magenta_pipeline() {
+    sg_shader shd = sg_make_shader(magenta_shader_desc(sg_query_backend()));
+    if (sg_query_shader_state(shd) != SG_RESOURCESTATE_VALID) {
+        printf("[renderer] FATAL: magenta fallback shader creation failed\n");
+        return;
+    }
+    sg_pipeline_desc desc = {};
+    // Stride matches the full Vertex layout so this pipeline is compatible with every mesh buffer.
+    desc.layout.buffers[0].stride              = sizeof(Vertex);
+    desc.layout.attrs[ATTR_magenta_position].format = SG_VERTEXFORMAT_FLOAT3;
+    desc.layout.attrs[ATTR_magenta_position].offset = 0;
+    desc.shader                                = shd;
+    desc.index_type                            = SG_INDEXTYPE_UINT32;
+    desc.depth.compare                         = SG_COMPAREFUNC_LESS_EQUAL;
+    desc.depth.write_enabled                   = true;
+    desc.cull_mode                             = SG_CULLMODE_BACK;
+    desc.label                                 = "magenta-error-pipeline";
+    state.pipeline_magenta = sg_make_pipeline(&desc);
+    if (sg_query_pipeline_state(state.pipeline_magenta) != SG_RESOURCESTATE_VALID) {
+        printf("[renderer] FATAL: magenta fallback pipeline creation failed\n");
+    }
+}
 
 } // namespace
 
