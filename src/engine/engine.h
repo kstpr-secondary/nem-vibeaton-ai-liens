@@ -1,6 +1,7 @@
 #pragma once
 
 #include "components.h"
+#include "physics.h"
 
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
