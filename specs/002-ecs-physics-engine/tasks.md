@@ -150,9 +150,9 @@ All paths relative to repository root. Engine sources in `src/engine/`, tests in
 
 ### Implementation for User Story 5
 
-- [ ] T029 [US5] Finalize engine.h public header: verify all template component operations compile from an external translation unit, ensure engine_registry() exposes direct entt::registry& for game-layer view<> iteration, add any missing declarations in src/engine/engine.h
-- [ ] T030 [US5] Update engine mock stubs to cover full finalized API surface (all new functions from Phases 3–6) in src/engine/mocks/engine_mock.cpp
-- [ ] T031 [US5] Promote engine-api.md contract to frozen interface spec: copy to docs/interfaces/engine-interface-spec.md, add FROZEN version marker, update status from DRAFT
+- [x] T029 [US5] Finalize engine.h public header: verify all template component operations compile from an external translation unit, ensure engine_registry() exposes direct entt::registry& for game-layer view<> iteration, add any missing declarations in src/engine/engine.h
+- [x] T030 [US5] Update engine mock stubs to cover full finalized API surface (all new functions from Phases 3–6) in src/engine/mocks/engine_mock.cpp
+- [x] T031 [US5] Promote engine-api.md contract to frozen interface spec: copy to docs/interfaces/engine-interface-spec.md, add FROZEN version marker, update status from DRAFT
 
 **Checkpoint**: Game workstream can include engine.h, link against engine static lib (or mocks), and use all public API functions. Interface spec frozen.
 
@@ -162,10 +162,10 @@ All paths relative to repository root. Engine sources in `src/engine/`, tests in
 
 **Purpose**: Final validation, performance verification, and coordination updates.
 
-- [ ] T032 [P] Run all Catch2 engine tests and verify 100% pass: cmake --build build --target engine_tests && ./build/engine_tests
-- [ ] T033 [P] Verify engine_app runs at ≥30 FPS with 100 active rigid bodies on target hardware via ./build/engine_app
-- [ ] T034 Run full build verification (all workstreams): cmake --build build returns 0 with no engine-originated warnings
-- [ ] T035 [P] Update _coordination/engine/PROGRESS.md with milestone completion status
+- [x] T032 [P] Run all Catch2 engine tests and verify 100% pass: cmake --build build --target engine_tests && ./build/engine_tests
+- [x] T033 [P] Verify engine_app runs at ≥30 FPS with 100 active rigid bodies on target hardware via ./build/engine_app
+- [x] T034 Run full build verification (all workstreams): cmake --build build returns 0 with no engine-originated warnings
+- [x] T035 [P] Update _coordination/engine/PROGRESS.md with milestone completion status
 
 ---
 
