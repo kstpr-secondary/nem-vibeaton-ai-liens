@@ -64,7 +64,7 @@ At runtime: `shd_<name>_shader_desc(sg_query_backend())` feeds the generated des
 | `pipeline_line_quad` | R-M3 | alpha | off | Billboard laser quads |
 | `pipeline_magenta` | R-M0 | off | on | Fallback on creation failure |
 
-All pipelines share the same `Vertex` layout (Position + Normal + UV + Tangent). Shaders that don't use all attributes simply ignore them.
+All **mesh** pipelines (`unlit`, `lambertian`, `blinnphong`, `transparent`, `magenta`) share the same `Vertex` layout (Position + Normal + UV + Tangent). Shaders that don't use all attributes simply ignore them. **Specialized internal pipelines** use lighter layouts: `pipeline_skybox` uses position-only (3 floats); `pipeline_line_quad` uses position + color (3 + 4 floats). These internal layouts are not part of the frozen public API.
 
 ---
 
