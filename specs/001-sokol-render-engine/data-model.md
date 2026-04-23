@@ -132,7 +132,7 @@ struct LineQuadCommand {
 - Zero-length quads (`p0 == p1`) are silently skipped.
 - `width <= 0` → silently skipped.
 - Routed through the transparent pass (same as alpha < 1 draw commands).
-- Subject to the 1024 draw-call budget (each line quad counts as one slot).
+- Uses a **separate** fixed queue of **256 slots** (`line_quad_queue[256]`); does **not** share the 1024-slot `draw_queue`. Submissions beyond 256 are silently dropped and logged. The 1024-slot `draw_queue` budget (FR-004) applies only to `enqueue_draw()` calls.
 
 ---
 

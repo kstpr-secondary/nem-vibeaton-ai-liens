@@ -19,12 +19,12 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T001 Wire `sokol-shdc` CMake custom command in `CMakeLists.txt`: add `add_custom_command` per shader file routing `shaders/renderer/<name>.glsl` → `${CMAKE_BINARY_DIR}/generated/shaders/<name>.glsl.h`; add `VIBEATON_REQUIRE_SOKOL_SHDC` ON-default guard that treats missing `sokol-shdc` on PATH as configure error; add generated dir to `renderer` target include path
+- [ ] T001 Wire `sokol-shdc` CMake custom command in `CMakeLists.txt`: add `add_custom_command` per shader file routing `shaders/renderer/<name>.glsl` → `${CMAKE_BINARY_DIR}/generated/shaders/<name>.glsl.h`; shader list MUST include `magenta.glsl` (error fallback), `unlit.glsl`, `lambertian.glsl`, `skybox.glsl`, `line_quad.glsl`, `blinnphong.glsl`; add `VIBEATON_REQUIRE_SOKOL_SHDC` ON-default guard that treats missing `sokol-shdc` on PATH as configure error; add generated dir to `renderer` target include path
 - [ ] T002 [P] Create `src/renderer/renderer.h` public API scaffold with all types and function declarations from `specs/001-sokol-render-engine/contracts/renderer-api.md` (handles, RendererConfig, Vertex, ShadingModel, Material, DirectionalLight, RendererCamera, InputCallback, all free-function declarations) — bodies are empty stubs at this stage
 - [ ] T003 [P] Verify `cmake/paths.h.in` exists and `CMakeLists.txt` generates `${CMAKE_BINARY_DIR}/generated/paths.h` with `PROJECT_SOURCE_ROOT` and `ASSET_ROOT` macros; confirm `renderer` target has PUBLIC include path to generated dir so downstream workstreams inherit it
 - [ ] T004 [P] Confirm `stb_image` FetchContent entry exists in `CMakeLists.txt` with pinned version; verify `STB_IMAGE_IMPLEMENTATION` is NOT defined in any header — it will be owned by one `.cpp` only (T046); confirm PUBLIC include path propagation to `engine` and `game` targets
 - [ ] T005 [P] Create `src/renderer/mocks/renderer_mock.cpp`: no-op implementations of every free function in `renderer.h`; handle-returning functions return `{1}` (valid sentinel); void functions are empty bodies; confirm `USE_RENDERER_MOCKS=ON` CMake flag swaps this in place of the real `renderer` static lib
-- [ ] T006 Create empty `.cpp`/`.h` file pairs per the module split in `plan.md` to establish file ownership for parallel work: `src/renderer/renderer.cpp`, `src/renderer/pipeline_unlit.cpp`, `src/renderer/pipeline_unlit.h`, `src/renderer/pipeline_lambertian.cpp`, `src/renderer/pipeline_lambertian.h`, `src/renderer/pipeline_blinnphong.cpp`, `src/renderer/pipeline_blinnphong.h`, `src/renderer/mesh_builders.cpp`, `src/renderer/mesh_builders.h`, `src/renderer/skybox.cpp`, `src/renderer/skybox.h`, `src/renderer/debug_draw.cpp`, `src/renderer/debug_draw.h`, `src/renderer/texture.cpp`, `src/renderer/texture.h`, `src/renderer/app/main.cpp`
+- [ ] T006 Create empty `.cpp`/`.h` file pairs per the module split in `plan.md` to establish file ownership for parallel work: `src/renderer/renderer.cpp`, `src/renderer/pipeline_unlit.cpp`, `src/renderer/pipeline_unlit.h`, `src/renderer/pipeline_lambertian.cpp`, `src/renderer/pipeline_lambertian.h`, `src/renderer/pipeline_blinnphong.cpp`, `src/renderer/pipeline_blinnphong.h`, `src/renderer/mesh_builders.cpp`, `src/renderer/mesh_builders.h`, `src/renderer/skybox.cpp`, `src/renderer/skybox.h`, `src/renderer/debug_draw.cpp`, `src/renderer/debug_draw.h`, `src/renderer/texture.cpp`, `src/renderer/texture.h`; also create `shaders/renderer/magenta.glsl` (see T010 — must exist for sokol-shdc compilation in T001); **do not create `src/renderer/app/main.cpp` here — that file is owned by T011**
 
 **Checkpoint**: `cmake --build build --target renderer_app` compiles (stub bodies, no rendering yet).
 
@@ -39,8 +39,8 @@
 - [ ] T007 Define renderer internal state struct in `src/renderer/renderer.cpp` (file-private, not in header): `DrawCommand draw_queue[1024]`, `int draw_count`, `LineQuadCommand line_quad_queue[256]`, `int line_quad_count`, `RendererCamera camera`, `DirectionalLight light`, `RendererTextureHandle skybox_handle`, `sg_pipeline pipeline_unlit/lambertian/blinnphong/transparent/line_quad/skybox/magenta`, `sg_buffer mesh_vbufs[512]`, `sg_buffer mesh_ibufs[512]`, `sg_image texture_table[256]`, `uint32_t next_mesh_id`, `uint32_t next_texture_id`, `bool frame_active`, `InputCallback input_cb`, `void* input_cb_userdata`
 - [ ] T008 [P] Implement `renderer_begin_frame()` skeleton in `src/renderer/renderer.cpp`: assert `!frame_active`; set `frame_active = true`; reset `draw_count = 0` and `line_quad_count = 0`; begin sokol render pass with configured clear color
 - [ ] T009 [P] Implement `renderer_enqueue_draw()` guard logic in `src/renderer/renderer.cpp`: if `!frame_active` silently return; if `draw_count >= 1024` emit debug log and return; if `!renderer_handle_valid(mesh)` silently return; else store DrawCommand at `draw_queue[draw_count++]`; similarly implement `renderer_enqueue_line_quad()` guard (skip zero-length, skip width ≤ 0, store in `line_quad_queue`)
-- [ ] T010 Implement magenta error pipeline creation helper (file-private) in `src/renderer/renderer.cpp`: hardcoded inline GLSL (solid `vec4(1,0,1,1)` fragment output) via `sg_make_shader` with embedded source strings for GL 3.3; if even this fails, log fatal and store invalid handle; called from `renderer_init()` before any other pipeline
-- [ ] T011 Create `src/renderer/app/main.cpp` `renderer_app` driver stub: `sapp_desc sokol_main()` returning a descriptor with empty `init_cb`, `frame_cb`, `cleanup_cb`, `event_cb`; title from RendererConfig; this is the acceptance vehicle updated at each milestone
+- [ ] T010 Implement magenta error pipeline creation helper (file-private) in `src/renderer/renderer.cpp`: include the sokol-shdc generated header `<generated/shaders/magenta.glsl.h>`; call `shd_magenta_shader_desc(sg_query_backend())` to obtain the shader descriptor; `magenta.glsl` must define a `@vs magenta_vs` (pass-through MVP transform) and `@fs magenta_fs` (`out vec4 frag_color = vec4(1,0,1,1);`); if `sg_make_pipeline` fails, log fatal and store invalid handle; called from `renderer_init()` before any other pipeline. **No inline GLSL source strings are permitted — all GLSL must go through sokol-shdc (constitution Principle V).**
+- [ ] T011 Create `src/renderer/app/main.cpp` `renderer_app` driver stub: `sapp_desc sokol_main()` returning a descriptor with empty `init_cb`, `frame_cb`, `cleanup_cb`, `event_cb`; title from RendererConfig; **this file is the sole owner of `src/renderer/app/main.cpp` and supersedes the placeholder note in T006; it is updated at each milestone**
 
 **Checkpoint**: `cmake --build build --target renderer_app` links; binary launches and immediately exits cleanly.
 
@@ -54,9 +54,9 @@
 
 **FR coverage**: FR-001, FR-002, FR-003, FR-017 (magenta), FR-018
 
-- [ ] T012 [US1] Implement `renderer_init()` in `src/renderer/renderer.cpp`: call `sg_setup({.context = sapp_sgcontext()})` with `SOKOL_GLCORE33` backend; store `RendererConfig` clear color; call magenta pipeline helper (T010); call `simgui_setup({.sample_count = sapp_sample_count()})` for Dear ImGui backend
-- [ ] T013 [P] [US1] Implement `renderer_set_input_callback()` in `src/renderer/renderer.cpp`: store `cb` and `user_data`; implement sokol_app `event_cb` that calls `simgui_handle_event(e)` then, if `input_cb != nullptr`, calls `input_cb(e, input_cb_userdata)`
-- [ ] T014 [P] [US1] Implement `renderer_run()` in `src/renderer/renderer.cpp`: call `sapp_run(desc)` where desc wires `init_cb = renderer_internal_init`, `frame_cb = renderer_internal_frame`, `cleanup_cb = renderer_internal_cleanup`, `event_cb = renderer_internal_event`, `width/height/title` from stored config
+- [ ] T012 [US1] Implement `renderer_init()` in `src/renderer/renderer.cpp`: `SOKOL_GLCORE33` is a compile-time define set in `CMakeLists.txt` (not a runtime parameter); call `sg_setup({.context = sapp_sgcontext()})` — no backend field needed; store `RendererConfig` clear color; call magenta pipeline helper (T010); call `simgui_setup({.sample_count = sapp_sample_count()})` for Dear ImGui backend. *Note: T013 and T014 implement different functions in the same file and may be authored concurrently; all three tasks touch `renderer.cpp` but at disjoint function boundaries — [P] means concurrent function authoring, not separate files.*
+- [ ] T013 [P] [US1] Implement `renderer_set_input_callback()` in `src/renderer/renderer.cpp`: store `cb` and `user_data`; implement sokol_app `event_cb` that calls `simgui_handle_event(e)` then, if `input_cb != nullptr`, calls `input_cb(e, input_cb_userdata)`. *[P]: implements a disjoint function from T012/T014 in the same `renderer.cpp` — concurrent authoring safe.*
+- [ ] T014 [P] [US1] Implement `renderer_run()` in `src/renderer/renderer.cpp`: call `sapp_run(desc)` where desc wires `init_cb = renderer_internal_init`, `frame_cb = renderer_internal_frame`, `cleanup_cb = renderer_internal_cleanup`, `event_cb = renderer_internal_event`, `width/height/title` from stored config. *[P]: implements a disjoint function from T012/T013 in the same `renderer.cpp` — concurrent authoring safe.*
 - [ ] T015 [US1] Implement `renderer_shutdown()` in `src/renderer/renderer.cpp`: call `simgui_shutdown()`, `sg_shutdown()`, `sapp_quit()`; set `frame_active = false`; zero all pipeline handles
 - [ ] T016 [US1] Update `src/renderer/app/main.cpp`: create `RendererConfig` with title "R-M0 Bootstrap", clear color `(0.05, 0.05, 0.10, 1.0)`; register an input callback that prints event type to `printf`; call `renderer_init(cfg)`, `renderer_set_input_callback(cb, nullptr)`, `renderer_run()`
 - [ ] T017 [US1] `cmake --build build --target renderer_app`; launch; verify: window opens, framebuffer clears to configured color, keyboard/mouse events print to console, process exits cleanly — human sign-off required for SC-001
@@ -78,9 +78,9 @@
 - [ ] T022 [P] [US2] Implement `renderer_make_cube_mesh()` in `src/renderer/mesh_builders.cpp`: 24 vertices (4 per face × 6 faces) with correct per-face normals, UVs, and tangents (tangent = face's local X axis); 36 indices (2 triangles per face); call `renderer_upload_mesh()`
 - [ ] T023 [US2] Implement `renderer_set_camera()` in `src/renderer/renderer.cpp`: store `RendererCamera` in internal state; compute `vp = projection × view` as `glm::mat4` (using `glm::make_mat4`) each frame; if not called before `end_frame()`, use identity + log debug warning
 - [ ] T024 [US2] Implement opaque draw dispatch in `renderer_end_frame()` in `src/renderer/renderer.cpp`: after skybox placeholder (none yet), iterate `draw_queue[0..draw_count-1]`; for each: select `pipeline_unlit` (only model at this stage); compute `mvp = vp × glm::make_mat4(cmd.transform)`; upload `vs_params` uniform; upload `fs_params` with `base_color`; bind vertex + index buffers from `mesh_vbufs/ibufs[cmd.mesh.id]`; call `sg_draw`
-- [ ] T025 [P] [US2] Implement `renderer_make_unlit_material()` and `renderer_make_lambertian_material()` helper bodies in `src/renderer/renderer.cpp` (Lambertian body is stub returning Unlit at this stage)
+- [ ] T025 [P] [US2] Implement `renderer_make_unlit_material()`, `renderer_make_lambertian_material()`, and `renderer_make_blinnphong_material()` helper bodies in `src/renderer/renderer.cpp`; Lambertian and BlinnPhong bodies are stubs returning a default `Material{ShadingModel::Unlit}` at this stage — **all three must be present before R-M1 interface freeze (T055)**
 - [ ] T026 [US2] Update `src/renderer/app/main.cpp` for R-M1 demo: call `renderer_make_sphere_mesh` + `renderer_make_cube_mesh`; in frame callback set a fixed perspective camera (45° FOV, aspect from config, near=0.1, far=100); enqueue 10+ colored draw calls at varied positions, rotations, scales using `renderer_enqueue_draw`; run
-- [ ] T027 [US2] `cmake --build build --target renderer_app renderer_tests`; verify 10+ colored primitives render correctly; after human sign-off: update `docs/interfaces/renderer-interface-spec.md` status to `FROZEN — v1.0`; announce freeze to engine workstream
+- [ ] T027 [US2] `cmake --build build --target renderer_app renderer_tests`; verify 10+ colored primitives render correctly; after human sign-off: update `docs/interfaces/renderer-interface-spec.md` status to `FROZEN — v1.0`; announce freeze to engine workstream; **SC-007 gate**: run `cmake --build build --target engine_app -DUSE_RENDERER_MOCKS=ON` and confirm exit 0 — this proves the mock swap compiles before the engine workstream depends on it
 
 **Checkpoint (Milestone Sync)**: Interface frozen. Engine workstream may now begin against `renderer.h` + mocks.
 
@@ -111,14 +111,14 @@
 
 **FR coverage**: FR-011, FR-012, FR-013, FR-014
 
-- [ ] T034 [US4] Author `shaders/renderer/skybox.glsl`: `@vs skybox_vs` — input `in vec3 position` only; uniform block `vs_params { mat4 view_proj; }`; compute `vec4 pos = view_proj * vec4(position, 1.0)`; set `gl_Position = pos.xyww` (w=w trick ensures depth=1.0 after perspective divide); output `v_texcoord = position` as cube direction; `@fs skybox_fs` — `uniform samplerCube skybox_tex`; output `frag_color = texture(skybox_tex, v_texcoord)`; `@program skybox skybox_vs skybox_fs`
+- [ ] T034 [US4] Author `shaders/renderer/skybox.glsl`: `@vs skybox_vs` — input `in vec3 position` only; uniform block `vs_params { mat4 view_proj; }`; compute `vec4 pos = view_proj * vec4(position, 1.0)`; set `gl_Position = pos.xyww` (w=w trick ensures depth=1.0 after perspective divide — requires `SG_COMPAREFUNC_LESS_EQUAL` on the skybox pipeline, see T036); output `v_texcoord = position` as cube direction; `@fs skybox_fs` — `uniform samplerCube skybox_tex`; output `frag_color = texture(skybox_tex, v_texcoord)`; `@program skybox skybox_vs skybox_fs`
 - [ ] T035 [P] [US4] Author `shaders/renderer/line_quad.glsl`: `@vs line_quad_vs` — input `in vec3 position; in vec4 color`; uniform `vs_params { mat4 vp; }`; `@fs line_quad_fs` — input `in vec4 v_color`; output `frag_color = v_color`; `@program line_quad line_quad_vs line_quad_fs` (corner positions pre-computed on CPU, no geometry shader needed)
-- [ ] T036 [US4] Create `src/renderer/skybox.cpp/h`: implement `renderer_upload_cubemap(faces, w, h, ch)` — create `sg_image` with `image_type = SG_IMAGETYPE_CUBE`, 6 face subimage data; return `RendererTextureHandle`; implement `renderer_set_skybox(handle)` storing handle in internal state; implement `draw_skybox_pass()` called first in `end_frame()`: create 1-unit cube mesh internally (14-vertex strip or 36-index); bind skybox pipeline (depth write OFF, depth test ON, cull front), set view_proj with rotation-only view matrix (strip translation from camera view matrix)
+- [ ] T036 [US4] Create `src/renderer/skybox.cpp/h`: implement `renderer_upload_cubemap(faces, w, h, ch)` — create `sg_image` with `image_type = SG_IMAGETYPE_CUBE`, 6 face subimage data; return `RendererTextureHandle`; implement `renderer_set_skybox(handle)` storing handle in internal state; implement `draw_skybox_pass()` called first in `end_frame()`: create a 1-unit cube mesh internally using **36 indices and `SG_PRIMITIVETYPE_TRIANGLES`** (same topology as T022 cube — 24 vertices, 6 faces × 2 triangles × 3 indices); bind skybox pipeline with depth write OFF, depth test ON, **depth compare `SG_COMPAREFUNC_LESS_EQUAL`** (required because the `pos.xyww` trick produces NDC depth=1.0 which must pass alongside far-plane geometry), cull front; set view_proj using the camera's rotation-only view matrix (extract the 3×3 upper-left block of the camera view matrix and embed in a fresh 4×4, zeroing the translation column — do not simply zero row 3, as that changes the column interpretation)
 - [ ] T037 [P] [US4] Create `src/renderer/debug_draw.cpp/h`: implement `renderer_enqueue_line_quad()` CPU billboard computation — `vec3 dir = normalize(p1-p0)`; `vec3 cam_pos` from camera view matrix inverse (extract last column); `vec3 to_cam = normalize(cam_pos - midpoint)`; `vec3 right = normalize(cross(dir, to_cam)) * width * 0.5`; generate 4 corners; 6 indices (2 triangles); append to `line_quad_queue`
 - [ ] T038 [P] [US4] Create transparent pipeline and line-quad pipeline in `src/renderer/renderer.cpp`: `pipeline_transparent` — same Vertex layout; `sg_blend_state` with `SG_BLENDFACTOR_SRC_ALPHA / SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA`; depth write OFF, depth test ON; `pipeline_line_quad` — position+color vertex layout (simpler than full Vertex); same blend state; `pipeline_skybox` — position-only; depth write OFF; front-face cull reversed; on creation failure each falls back to magenta
 - [ ] T039 [US4] Extend `renderer_end_frame()` pass order in `src/renderer/renderer.cpp`: (1) skybox pass via `draw_skybox_pass()` if `skybox_handle.id != 0`; (2) opaque draws (Unlit + Lambertian); (3) transparent draws — iterate `draw_queue` where `material.alpha < 1.0`, bind `pipeline_transparent`, draw; (4) line quad draws from `line_quad_queue` with `pipeline_line_quad`; (5) `simgui_render()`
 - [ ] T040 [P] [US4] Integrate `simgui_new_frame()` call into `renderer_begin_frame()` in `src/renderer/renderer.cpp`: call `simgui_new_frame({.width=sapp_width(), .height=sapp_height(), .delta_time=sapp_frame_duration(), .dpi_scale=sapp_dpi_scale()})`
-- [ ] T041 [US4] Update `src/renderer/app/main.cpp` for R-M3 MVP demo: load cubemap from `ASSET_ROOT "/skybox/"` faces (or generate a simple solid-color cubemap from code if asset files not ready); add 3 laser line-quads with alpha 0.6; add ImGui HUD showing FPS and draw count; render opaque + transparent geometry mix
+- [ ] T041 [US4] Update `src/renderer/app/main.cpp` for R-M3 MVP demo: load cubemap from `ASSET_ROOT "/skybox/"` faces (6 PNG files, pre-loaded in the assets directory before hackathon start — see assets inventory); add 3 laser line-quads with alpha 0.6; add ImGui HUD showing FPS and draw count; render opaque + transparent geometry mix
 - [ ] T042 [US4] `cmake --build build --target renderer_app`; human behavioral check: skybox visible as background, laser quads alpha-composite correctly, ImGui HUD renders on top — SC-004 sign-off; **Renderer MVP complete**
 
 ---
@@ -139,6 +139,19 @@
 
 ---
 
+## Phase 7.5: User Story — Sorted Transparency + Capsule Mesh (Priority: P3, R-M5) ✨ Desirable
+
+**Goal**: Back-to-front sort of the transparent draw queue (eliminates blending artifacts with overlapping transparent objects); capsule procedural mesh builder for ship/enemy shapes.
+
+**Activation condition**: Implement only after R-M3 MVP is merged and hackathon time permits. R-M5 is strictly lower priority than R-M6 (frustum culling) — skip if time is tight.
+
+**FR coverage**: FR-005 (extend), FR-012 (improve)
+
+- [ ] T058 [P] [US5.5] Implement `renderer_make_capsule_mesh(radius, height, subdivisions)` in `src/renderer/mesh_builders.cpp`: generate a cylinder body between two hemisphere caps; compute Position, Normal (=normalize(position)), UV (longitudinal), Tangent; call `renderer_upload_mesh()`; target subdivisions=8 for hackathon use
+- [ ] T059 [P] [US5.5] Implement back-to-front sort of the **transparent** draw queue in `renderer_end_frame()` in `src/renderer/renderer.cpp`: after splitting `draw_queue` into opaque/transparent subsets (same logic as T039), sort the transparent subset by **descending** view-space Z (farthest first) using the same extraction method as T050; draw farthest-first to produce correct alpha compositing without depth-peeling
+
+---
+
 ## Phase 8: User Story 6 — Frustum Culling + Front-to-Back Sort (Priority: P3, R-M6) ✨ Desirable
 
 **Goal**: Reduce GPU submissions for off-screen objects; sort opaque queue front-to-back.
@@ -151,7 +164,7 @@
 
 - [ ] T048 [US6] Implement frustum plane extraction in `src/renderer/renderer.cpp`: from combined VP matrix extract 6 planes (Gribb-Hartmann method: `plane[i] = row3 ± row_i` for left/right/bottom/top/near/far); store as 6 `glm::vec4` (xyz=normal, w=d); call once per `end_frame()` after camera is set
 - [ ] T049 [P] [US6] Implement AABB-vs-frustum culling in `end_frame()` opaque loop in `src/renderer/renderer.cpp`: for each draw command, compute world-space AABB from mesh bounds (store axis-aligned bounds at upload time in T020) transformed by world matrix; test AABB center ± extents against all 6 frustum planes; skip `sg_draw` if fully outside; emit debug `printf` with cull count once per 60 frames
-- [ ] T050 [P] [US6] Implement front-to-back sort of opaque `draw_queue` in `src/renderer/renderer.cpp` after frustum cull: compute camera-space Z for each draw command's world position (extract from world matrix column 3, dot with camera forward); `std::sort` by ascending Z (nearest first); only sort opaque queue — transparent queue is NOT sorted (back-to-front sort is R-M5 which is Desirable)
+- [ ] T050 [P] [US6] Implement front-to-back sort of opaque `draw_queue` in `src/renderer/renderer.cpp` after frustum cull: for each draw command extract the world-space position from column 3 of the world matrix (`glm::vec3(world_matrix[3])`); transform to camera/view space with `glm::vec3(view_matrix * glm::vec4(world_pos, 1.0f))`; sort by ascending view-space Z (most negative = closest in OpenGL convention = rendered first to minimize overdraw); `std::sort` on opaque entries only — transparent queue is NOT sorted (back-to-front sort is R-M5)
 - [ ] T051 [US6] Update `src/renderer/app/main.cpp` stress mode: add 50 objects positioned both inside and outside frustum at random positions on a sphere; add ImGui window showing `draws submitted / draws culled / total enqueued`; confirm culling is working by toggling with `C` key
 
 ---
@@ -165,7 +178,7 @@
 - [ ] T054 [P] Write Catch2 tests in `tests/renderer/test_handles.cpp`: `renderer_handle_valid({0})` returns false; `renderer_handle_valid({1})` returns true; `renderer_enqueue_draw` with invalid handle does not increment `draw_count`; `renderer_enqueue_line_quad` with zero-length segment does not increment `line_quad_count` (test via exposed test-only getter or internal white-box header)
 - [ ] T055 Update `docs/interfaces/renderer-interface-spec.md` with `**Status**: FROZEN — v1.0` marker after R-M1 human approval; add freeze date; commit and push to `feature/renderer`; announce to engine workstream (Person B / Laptop B) so engine SpecKit can begin
 - [ ] T056 [P] Finalize `docs/architecture/renderer-architecture.md` after R-M3: fill actual pipeline inventory table with measured creation results, confirmed frame sequence diagram, confirmed module-to-file mapping from as-built code
-- [ ] T057 [P] Update `docs/planning/speckit/renderer/tasks.md` (the guide file): add note pointing to `_coordination/renderer/TASKS.md` as the live operational task board; mark SpecKit planning outputs as complete
+- [ ] T057 [P] Update `docs/planning/speckit/renderer/tasks.md` (the human-readable guide file under `docs/`): add a note at the top pointing to `_coordination/renderer/TASKS.md` as the **live operational task board** and to `specs/001-sokol-render-engine/tasks.md` as the **SpecKit source of truth**; mark SpecKit planning outputs as complete. *Note: `docs/planning/speckit/renderer/tasks.md` and `specs/001-sokol-render-engine/tasks.md` are distinct files — the former is a guide copy under `docs/`, the latter is the authoritative SpecKit artifact.*
 
 ---
 
@@ -192,6 +205,9 @@ Phase 1 (Setup) ──► Phase 2 (Foundation)
        Phase 7 (US5 / R-M4)  ◄── Desirable: only if MVP complete within ~3h
               │
               ▼
+       Phase 7.5 (R-M5)      ◄── Desirable: sorted transparency + capsule mesh
+              │
+              ▼
        Phase 8 (US6 / R-M6)  ◄── Desirable: only if visible perf issue observed
 
 Final Phase runs as tasks complete throughout
@@ -208,6 +224,7 @@ Final Phase runs as tasks complete throughout
 | Phase 5 (R-M2) | T028 (shader) \|\| T029+T030 (C++) | lambertian.glsl / pipeline_lambertian.cpp / renderer.cpp |
 | Phase 6 (R-M3) | T034+T035 (shaders) \|\| T036+T037 (skybox/debug_draw) \|\| T038 (pipelines) | skybox.glsl+line_quad.glsl / skybox.cpp / debug_draw.cpp / renderer.cpp |
 | Phase 7 (R-M4) | T043 (shader) \|\| T044 (pipeline) \|\| T045 (texture) | blinnphong.glsl / pipeline_blinnphong.cpp / texture.cpp |
+| Phase 7.5 (R-M5) | T058 (capsule mesh) \|\| T059 (transparent sort) | mesh_builders.cpp / renderer.cpp |
 | Final | T052 \|\| T053 \|\| T054 \|\| T056 \|\| T057 | _coordination/ / tests/renderer/ / docs/ |
 
 ---
