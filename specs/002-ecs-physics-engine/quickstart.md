@@ -125,7 +125,7 @@ cmake --build build
 
 | Issue | Fix |
 |-------|-----|
-| `engine_app` shows nothing | Check `engine_tick` is called between `begin_frame` / `end_frame`; verify entities have Transform + Mesh + MaterialComp |
+| `engine_app` shows nothing | Check `engine_tick` is called between `begin_frame` / `end_frame`; verify entities have Transform + Mesh + EntityMaterial |
 | Physics bodies tunnel through walls | Verify fixed-timestep substep loop is active (120 Hz); check DT_CAP |
 | `[ENGINE] Failed to load` asset | Verify `ASSET_ROOT` macro resolves correctly; check asset exists at path |
 | Crash on `get_component` | Use `try_get_component` — UB if component absent without check |

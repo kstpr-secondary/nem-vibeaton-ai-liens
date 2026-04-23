@@ -48,7 +48,7 @@ struct Mesh {
     RendererMeshHandle handle = {};
 };
 
-struct MaterialComp {
+struct EntityMaterial {
     Material mat = {};
 };
 
@@ -103,7 +103,7 @@ struct RaycastHit {
 struct EngineConfig {
     float physics_hz   = 120.0f;
     float dt_cap       = 0.1f;
-    float max_entities = 1024.0f;
+    uint32_t max_entities = 1024;
 };
 
 // =========================================================================

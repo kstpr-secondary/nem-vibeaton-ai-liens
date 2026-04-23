@@ -50,17 +50,17 @@ struct Mesh {
 
 ---
 
-## MaterialComp
+## EntityMaterial
 
 Engine-side material wrapper storing the renderer's `Material` value type.
 
 ```cpp
-struct MaterialComp {
+struct EntityMaterial {
     Material mat = {};  // renderer Material struct — ShadingModel, base_color, texture, shininess, alpha
 };
 ```
 
-**Naming note**: Named `MaterialComp` to avoid collision with the renderer's `Material` type which is stored directly inside this component.
+**Naming note**: Named `EntityMaterial` to avoid collision with the renderer's `Material` type which is stored directly inside this component.
 
 **Validation rules**:
 - `mat.alpha < 1.0` routes draw to transparent pass automatically (renderer behavior).
@@ -231,7 +231,7 @@ Passed to `engine_init()`.
 struct EngineConfig {
     float physics_hz         = 120.0f;  // substep frequency
     float dt_cap             = 0.1f;    // max accumulated dt per frame
-    float max_entities       = 1024;    // advisory; no hard enforcement
+    uint32_t max_entities    = 1024;    // advisory; no hard enforcement
 };
 ```
 
@@ -241,12 +241,12 @@ struct EngineConfig {
 
 | Pattern | Components | Tag(s) | Description |
 |---------|-----------|--------|-------------|
-| Static obstacle | Transform, Collider, Mesh, MaterialComp | Static | Visible, collidable, unmovable |
-| Dynamic rigid body | Transform, Collider, RigidBody, Mesh, MaterialComp | Dynamic, Interactable | Physics-driven, collidable, queryable |
+| Static obstacle | Transform, Collider, Mesh, EntityMaterial | Static | Visible, collidable, unmovable |
+| Dynamic rigid body | Transform, Collider, RigidBody, Mesh, EntityMaterial | Dynamic, Interactable | Physics-driven, collidable, queryable |
 | Camera entity | Transform, Camera | CameraActive | View/projection source |
 | Light entity | Transform, Light | — | Directional illumination source |
-| Procedural primitive | Transform, Mesh, MaterialComp | varies | Spawned via `spawn_sphere`/`spawn_cube` |
-| Loaded asset | Transform, Mesh, MaterialComp | varies | Spawned via `spawn_from_asset` |
+| Procedural primitive | Transform, Mesh, EntityMaterial | varies | Spawned via `spawn_sphere`/`spawn_cube` |
+| Loaded asset | Transform, Mesh, EntityMaterial | varies | Spawned via `spawn_from_asset` |
 
 ---
 
@@ -295,7 +295,7 @@ EngineConfig ──(1)──► engine_init()
       → force accumulators cleared
   → camera view/projection computed → renderer_set_camera()
   → light entity → renderer_set_directional_light()
-  → iterate view<Transform, Mesh, MaterialComp> → renderer_enqueue_draw() per entity
+  → iterate view<Transform, Mesh, EntityMaterial> → renderer_enqueue_draw() per entity
   → DestroyPending sweep → registry.destroy()
 
 [engine_shutdown()]

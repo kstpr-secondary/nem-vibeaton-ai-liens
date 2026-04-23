@@ -106,7 +106,7 @@ A game developer uses the engine's public API to construct a complete interactiv
 
 ### Session 2026-04-23
 
-- Q: Should FR-018 use dt-cap or fixed-substep accumulator? → A: dt-cap only (clamp to max, e.g. 33ms).
+- Q: Should FR-018 use dt-cap or fixed-substep accumulator? → A: Fixed-timestep substep accumulator at 120 Hz with dt-cap (clamp accumulated dt to max 100ms). This provides deterministic physics necessary for stable elastic collisions.
 - Q: Does the game layer get direct entt::registry access or an engine abstraction? → A: Direct entt::registry& exposed to the game layer.
 - Q: Is the collision layer mask MVP-required or a stretch goal? → A: Stretch goal; game filters query results manually for MVP.
 - Q: What logging mechanism should the engine use? → A: fprintf(stderr, ...) with a [ENGINE] prefix tag.
@@ -139,9 +139,9 @@ A game developer uses the engine's public API to construct a complete interactiv
 - **FR-013**: Engine MUST integrate rigid-body angular velocity into rotation each tick using Euler integration with inverse inertia tensors.
 - **FR-014**: Engine MUST provide force and impulse accumulation functions (`apply_force`, `apply_impulse_at_point`) affecting linear and angular velocity.
 - **FR-015**: Engine MUST detect AABB-vs-AABB overlaps between all pairs of entities with Collider components each tick.
-- **FR-016**: Engine MUST resolve detected collisions using impulse-based elastic response (restitution = 1, kinetic energy conserved).
+- **FR-016**: Engine MUST resolve detected collisions using impulse-based elastic response with hardcoded restitution = 1.0 (kinetic energy conserved). Configurable per-body restitution is post-MVP.
 - **FR-017**: Engine MUST treat zero-mass (static) entities as immovable during collision response.
-- **FR-018**: Engine MUST clamp the integration timestep to a configurable maximum (e.g., 33ms) to bound simulation error when frame time is large (dt-cap strategy; no fixed-substep accumulator).
+- **FR-018**: Engine MUST run physics integration in a fixed-timestep substep loop (default 120 Hz) with a dt-cap on accumulated frame time (default 100ms) to bound simulation error. Engine MUST also clamp dt to a positive minimum (e.g., 0.0001s) when dt is zero or negative, logging a warning.
 
 #### Input & Queries
 
@@ -157,15 +157,14 @@ A game developer uses the engine's public API to construct a complete interactiv
 
 #### API Contract
 
-- **FR-025**: Engine MUST expose a direct reference to the `entt::registry`, allowing the game layer to define, attach, and query its own custom components without modifying engine code.
-- **FR-026**: Game layer uses `entt::registry` directly for iteration over game-specific components (e.g., `registry.view<PlayerController, Transform>()`).
+- **FR-025**: Engine MUST expose a direct reference to the `entt::registry`, allowing the game layer to define, attach, and iterate over its own custom components without modifying engine code (e.g., `registry.view<PlayerController, Transform>()`).
 
 ### Key Entities
 
 - **Entity**: A lightweight identifier representing any object in the scene. Has no behavior on its own; behavior is determined by attached components.
 - **Transform**: Spatial placement of an entity — position (3D vector), rotation (quaternion), and scale (3D vector).
 - **Mesh**: A handle referencing renderer-owned geometry data (vertices, indices, attributes). Created via procedural builders or asset import.
-- **Material**: A handle referencing renderer-owned shading parameters (base color, shading model). Determines visual appearance.
+- **EntityMaterial**: Engine-side material wrapper storing the renderer's `Material` value type. Named `EntityMaterial` to avoid collision with the renderer's `Material` struct. Determines visual appearance (base color, shading model).
 - **RigidBody**: Physical properties of a dynamic entity — mass, inverse mass, linear velocity, angular velocity, inverse inertia tensor (auto-computed as uniform-density box from AABB half-extents), restitution coefficient.
 - **Collider**: Axis-aligned bounding box (AABB) in local space defined by half-extents. Used for collision detection and spatial queries. Layer mask filtering is a stretch goal — MVP checks all pairs; game code filters results as needed.
 - **Camera**: Viewing parameters — field of view, near plane, far plane. Combined with Transform to produce view and projection matrices.
@@ -179,7 +178,7 @@ A game developer uses the engine's public API to construct a complete interactiv
 - **SC-001**: A standalone engine driver application displays an ECS-driven procedural scene of at least 10 primitives rendered through the renderer.
 - **SC-002**: At least one glTF model loads from disk and renders correctly alongside procedural primitives in the driver application.
 - **SC-003**: A cluster of 20+ rigid-body entities with initial velocities simulate in zero gravity, collide elastically, and conserve kinetic energy within 5% tolerance over 10 seconds of simulation time.
-- **SC-004**: The camera is navigable via keyboard and mouse input in the driver application with responsive, smooth movement.
+- **SC-004**: The camera is navigable via keyboard and mouse input in the driver application with no perceivable input lag at ≥30 FPS.
 - **SC-005**: Raycast queries against a scene of 50+ collidable entities return correct nearest-hit results within one frame.
 - **SC-006**: The game layer can create, query, and iterate over custom components through the public API without any engine source modifications.
 - **SC-007**: The engine driver application runs at ≥30 FPS with 100 active rigid-body entities on the target hardware.
@@ -195,6 +194,7 @@ A game developer uses the engine's public API to construct a complete interactiv
 - Skeletal animation, morph targets, and material import from glTF are explicitly out of scope. Only mesh geometry (positions, normals, UVs, indices) is extracted.
 - Audio, networking, particle systems, and editor tooling are explicitly cut.
 - The engine does not own the main loop or window — it ticks from inside the renderer's frame callback. Input events flow from the renderer to the engine.
+- Implementation order may differ from user story priority order due to technical dependencies (e.g., collider system from US4 is needed before physics in US3).
 - Asset file paths are resolved via a compile-time `ASSET_ROOT` macro. No runtime path configuration is required for MVP.
 - The game layer is responsible for all gameplay logic (player controllers, weapons, AI behavior, HUD). The engine provides only the simulation and query primitives.
 - All engine warnings and errors are logged via `fprintf(stderr, "[ENGINE] ...")`. No callback-based or leveled logging system is required for MVP.

@@ -23,7 +23,7 @@ All paths relative to repository root. Engine sources in `src/engine/`, tests in
 
 **Purpose**: Create the engine's type foundation — component definitions, public API header, and time system. These files are imported by every subsequent phase.
 
-- [ ] T001 Define all ECS component structs (Transform, Mesh, MaterialComp, RigidBody, Collider, Camera, Light) and tag types (Static, Dynamic, Interactable, CameraActive, DestroyPending) in src/engine/components.h
+- [ ] T001 Define all ECS component structs (Transform, Mesh, EntityMaterial, RigidBody, Collider, Camera, Light) and tag types (Static, Dynamic, Interactable, CameraActive, DestroyPending) in src/engine/components.h
 - [ ] T002 [P] Create engine public API header with EngineConfig, RaycastHit, all lifecycle/scene/physics/input/camera function declarations, and template component-operation implementations forwarding to entt::registry in src/engine/engine.h
 - [ ] T003 [P] Implement time system: sokol_time init wrapper, engine_now() returning seconds since init, engine_delta_time() returning last frame dt in src/engine/time.h and src/engine/time.cpp
 
@@ -59,10 +59,10 @@ All paths relative to repository root. Engine sources in `src/engine/`, tests in
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Implement scene API: engine_create_entity(), engine_destroy_entity() with DestroyPending deferral, engine_registry() accessor, end-of-tick destruction sweep in src/engine/scene_api.h and src/engine/scene_api.cpp
-- [ ] T009 [US1] Implement procedural shape spawners: engine_spawn_sphere() and engine_spawn_cube() creating entities with Transform + Mesh + MaterialComp using renderer_make_sphere_mesh/renderer_make_cube_mesh in src/engine/scene_api.cpp
+- [ ] T008 [US1] Implement scene API: engine_create_entity(), engine_destroy_entity() with DestroyPending deferral, engine_registry() accessor, entity validity via registry.valid(e), end-of-tick destruction sweep in src/engine/scene_api.h and src/engine/scene_api.cpp
+- [ ] T009 [US1] Implement procedural shape spawners: engine_spawn_sphere() and engine_spawn_cube() creating entities with Transform + Mesh + EntityMaterial using renderer_make_sphere_mesh/renderer_make_cube_mesh in src/engine/scene_api.cpp
 - [ ] T010 [US1] Implement camera system: compute view matrix from inverse TRS of CameraActive entity, projection matrix via glm::perspective with aspect from sapp_widthf/sapp_heightf, push to renderer_set_camera() in src/engine/camera.h and src/engine/camera.cpp
-- [ ] T011 [US1] Wire render enqueue loop into engine_tick(): iterate view<Transform, Mesh, MaterialComp> calling renderer_enqueue_draw() per entity, call camera update, upload directional light via renderer_set_directional_light() in src/engine/engine.cpp
+- [ ] T011 [US1] Wire render enqueue loop into engine_tick(): iterate view<Transform, Mesh, EntityMaterial> calling renderer_enqueue_draw() per entity, call camera update, upload directional light via renderer_set_directional_light() in src/engine/engine.cpp
 - [ ] T012 [US1] Create engine_app E-M1 driver: renderer_init → engine_init → register frame callback → spawn camera entity + light entity + 10 procedural spheres/cubes at varied positions → renderer_run() in src/engine/app/main.cpp
 
 **Checkpoint**: engine_app displays a procedural ECS scene. Tests in test_ecs.cpp and test_math.cpp pass. E-M1 acceptance criteria met.
@@ -79,10 +79,10 @@ All paths relative to repository root. Engine sources in `src/engine/`, tests in
 
 ### Implementation for User Story 2
 
-- [ ] T013 [P] [US2] Implement glTF/GLB mesh loader: cgltf_parse → cgltf_load_buffers → walk mesh primitives extracting positions/normals/UVs/indices, handle GLB vs glTF paths, resolve via ASSET_ROOT macro in src/engine/asset_import.h and src/engine/asset_import.cpp
+- [ ] T013 [P] [US2] Implement glTF/GLB mesh loader: cgltf_parse → cgltf_load_buffers → walk mesh primitives extracting positions/normals/UVs/indices, handle GLB vs glTF paths, resolve via ASSET_ROOT macro, log [ENGINE] warning for unsupported features (skeletal animation, morph targets) in src/engine/asset_import.h and src/engine/asset_import.cpp
 - [ ] T014 [P] [US2] Implement OBJ mesh fallback loader: tinyobjloader parse, extract positions/normals/UVs/indices per shape, resolve via ASSET_ROOT macro in src/engine/obj_import.h and src/engine/obj_import.cpp
 - [ ] T015 [US2] Implement asset bridge: convert extracted vertex arrays to renderer Vertex layout (zero-fill tangent if absent, Y-up default normal if absent), call renderer_upload_mesh(), return RendererMeshHandle in src/engine/asset_bridge.h and src/engine/asset_bridge.cpp
-- [ ] T016 [US2] Implement engine_spawn_from_asset(): load mesh via asset_import/obj_import, bridge to renderer handle, create entity with Transform + Mesh + MaterialComp in src/engine/scene_api.cpp
+- [ ] T016 [US2] Implement engine_spawn_from_asset(): load mesh via asset_import/obj_import, bridge to renderer handle, create entity with Transform + Mesh + EntityMaterial in src/engine/scene_api.cpp
 - [ ] T017 [US2] Update engine_app for E-M2: load a glTF model from assets/ directory, spawn it alongside existing procedural primitives, verify mixed rendering in src/engine/app/main.cpp
 
 **Checkpoint**: engine_app renders glTF models alongside procedurals. Asset loading errors return {0} handle without crashing. E-M2 acceptance criteria met.
@@ -111,7 +111,7 @@ All paths relative to repository root. Engine sources in `src/engine/`, tests in
 - [ ] T020 [US4] Implement collider system: compute world AABB from Transform.position ± Collider.half_extents, brute-force all-pairs AABB-vs-AABB overlap detection returning collision pairs with penetration depth and contact normal (minimum-penetration SAT axis) in src/engine/collider.h and src/engine/collider.cpp
 - [ ] T021 [US4] Implement raycast and overlap queries: engine_raycast() via ray-vs-AABB slab method returning nearest RaycastHit (entity, point, normal, distance), engine_overlap_aabb() returning all intersecting entities in src/engine/raycast.h and src/engine/raycast.cpp
 - [ ] T022 [US4] Wire input callback registration into engine_init(), add mouse delta computation to engine_tick() start, expose engine_key_down/engine_mouse_delta/engine_mouse_button/engine_mouse_position in src/engine/engine.cpp
-- [ ] T023 [US4] Update engine_app for E-M3: WASD+mouse FPS-style camera controller, highlight entity under crosshair via raycast, display hit info via fprintf in src/engine/app/main.cpp
+- [ ] T023 [US4] Update engine_app for E-M3: WASD+mouse FPS-style camera controller, spawn 50+ collidable entities to validate SC-005 raycast scale, highlight entity under crosshair via raycast, display hit info via fprintf in src/engine/app/main.cpp
 
 **Checkpoint**: engine_app navigable with WASD+mouse. Raycasts return correct hits. Collision tests in test_collision.cpp pass. E-M3 acceptance criteria met.
 
@@ -134,7 +134,7 @@ All paths relative to repository root. Engine sources in `src/engine/`, tests in
 ### Implementation for User Story 3
 
 - [ ] T025 [US3] Implement Euler integration and force API: linear integration (p += v*dt, v += F/m*dt), angular integration (ω += I⁻¹*τ*dt, q += 0.5*ω*q*dt then renormalize), world-space inertia recomputation (R*I_body_inv*Rᵀ), apply_force/apply_impulse/apply_impulse_at_point writing to per-entity ForceAccum map, fixed-timestep substep loop with 120 Hz accumulator and dt-cap in src/engine/physics.h and src/engine/physics.cpp
-- [ ] T026 [US3] Implement collision response: impulse-based elastic response (restitution = min(e_A, e_B)), handle dynamic-dynamic and dynamic-static (inv_mass=0) pairs, Baumgarte positional correction (k_slop=0.005, k_baumgarte=0.3), clear force accumulators after each substep in src/engine/collision_response.h and src/engine/collision_response.cpp
+- [ ] T026 [US3] Implement collision response: impulse-based elastic response with hardcoded restitution = 1.0 (configurable restitution is post-MVP), handle dynamic-dynamic and dynamic-static (inv_mass=0) pairs, Baumgarte positional correction (k_slop=0.005, k_baumgarte=0.3), clear force accumulators after each substep in src/engine/collision_response.h and src/engine/collision_response.cpp
 - [ ] T027 [US3] Wire complete physics pipeline into engine_tick(): fixed-timestep substep loop containing force accumulation → Euler integration → world inertia update → AABB collision detection (from collider.h) → impulse response → Baumgarte correction → force clear, running before camera/render enqueue in src/engine/engine.cpp
 - [ ] T028 [US3] Update engine_app for E-M4: spawn 20+ dynamic rigid bodies with random initial velocities + 4 static obstacle walls, demonstrate elastic collisions in zero gravity, display simulation running at ≥30 FPS in src/engine/app/main.cpp
 
