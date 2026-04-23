@@ -20,7 +20,7 @@ constexpr float  max_asteroid_speed    = 50.0f;    // post-reflection speed cap 
 constexpr float  player_thrust         = 60.0f;    // forward/backward acceleration (units/sec²)
 constexpr float  player_strafe         = 40.0f;    // lateral acceleration (units/sec²)
 constexpr float  player_drag           = 0.97f;    // per-frame velocity damping factor
-constexpr float  player_turn_speed     = 1.8f;     // mouse sensitivity (radians/pixel·sec)
+constexpr float  player_turn_speed     = 0.002f;   // mouse look sensitivity (radians/pixel, no dt factor)
 constexpr float  boost_multiplier      = 2.0f;     // thrust scale while boost active
 
 // ---------------------------------------------------------------------------
