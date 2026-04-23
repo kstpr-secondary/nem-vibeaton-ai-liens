@@ -1,6 +1,6 @@
 # Engine Interface Spec
 
-> **Status:** `FROZEN — v1.1` (promoted from Engine SpecKit `contracts/engine-api.md`)  
+> **Status:** `FROZEN — v1.2` (promoted from Engine SpecKit `contracts/engine-api.md`)  
 > **Source**: Promoted from `specs/002-ecs-physics-engine/contracts/engine-api.md`  
 > **Upstream dependency**: Renderer interface spec (`renderer-interface-spec.md`, FROZEN v1.1).
 
@@ -8,11 +8,14 @@
 
 ## Version
 
-`v1.0-frozen`
+`v1.2-frozen`
 
 ### Changelog
 
 - **v0.1-draft**: Initial promotion from Engine SpecKit contracts. Full API surface defined.
+- **v1.0-frozen**: First frozen release after E-M1–E-M3 implementation.
+- **v1.1-frozen**: Added input bridge and raycast/collision query APIs (E-M3).
+- **v1.2-frozen**: Added Phase 6 physics: `ForceAccum` component, `make_box_inv_inertia_body()`, `make_sphere_inv_inertia_body()`, `update_world_inertia()`, fixed-timestep substep loop at 120 Hz, impulse-based elastic collision response with Baumgarte correction (E-M4).
 
 ---
 
@@ -96,6 +99,12 @@ struct Dynamic {};
 struct Interactable {};
 struct CameraActive {};
 struct DestroyPending {};
+
+// Physics force accumulator (attached to Dynamic entities)
+struct ForceAccum {
+    glm::vec3 force  = glm::vec3(0.0f);
+    glm::vec3 torque = glm::vec3(0.0f);
+};
 
 // =========================================================================
 // Query result types
@@ -225,6 +234,15 @@ void engine_apply_impulse_at_point(
 );
 
 // =========================================================================
+// Physics — Inertia Tensor Helpers (for game-layer RigidBody setup)
+// =========================================================================
+
+glm::mat3 make_box_inv_inertia_body(float mass, glm::vec3 half_extents);
+glm::mat3 make_sphere_inv_inertia_body(float mass, float radius);
+void update_world_inertia(RigidBody& rb, const glm::quat& rotation,
+                          const glm::mat3& inv_inertia_body);
+
+// =========================================================================
 // Physics Queries
 // =========================================================================
 
@@ -251,10 +269,11 @@ void engine_set_active_camera(entt::entity e);
 ## Calling Convention
 
 1. **Initialization**: `renderer_init(config)` → `engine_init(engine_config)` → `renderer_set_frame_callback(frame_cb, user_data)` → `renderer_set_input_callback(input_cb, user_data)` → `renderer_run()` (blocking).
-2. **Per-frame tick** (inside registered FrameCallback): `renderer_begin_frame()` → `engine_tick(dt)` (which internally calls `renderer_set_camera`, `renderer_set_directional_light`, `renderer_enqueue_draw` × N) → `renderer_end_frame()`.
+2. **Per-frame tick** (inside registered FrameCallback): `renderer_begin_frame()` → `engine_tick(dt)` (which internally runs fixed-timestep physics substeps at 120 Hz, then calls `renderer_set_camera`, `renderer_set_directional_light`, `renderer_enqueue_draw` × N) → `renderer_end_frame()`.
 3. All engine API calls must be on the main thread (inherited from sokol_app requirement).
 4. `engine_tick(dt)` must be called between `renderer_begin_frame()` and `renderer_end_frame()`.
 5. Template functions (`engine_add_component`, etc.) are header-only; the game includes `engine.h` and the linker resolves through the engine static lib.
+6. **Physics setup**: Game layer must attach `ForceAccum` component to any entity tagged `Dynamic` before the first `engine_tick()` call. Use `make_box_inv_inertia_body()` or `make_sphere_inv_inertia_body()` to initialize `RigidBody::inv_inertia_body` at spawn time.
 
 ---
 
@@ -266,18 +285,21 @@ void engine_set_active_camera(entt::entity e);
 | `get_component<T>` on entity without T | UB — use `try_get_component` when uncertain |
 | `engine_load_gltf` with invalid path | Returns `{0}` (invalid handle); logs `[ENGINE] Failed to load: <path>` |
 | `engine_load_obj` with invalid path | Returns `{0}` (invalid handle); logs `[ENGINE] Failed to load: <path>` |
-| `apply_force` on entity without RigidBody | Silently ignored |
+| `apply_force` on entity without ForceAccum | Logs warning; force ignored |
+| `apply_impulse` on entity without RigidBody | Logs warning; impulse ignored |
+| `apply_impulse_at_point` on entity without Transform or RigidBody | Logs warning; impulse ignored |
 | `raycast` hits nothing | Returns `std::nullopt` |
 | `overlap_aabb` finds nothing | Returns empty vector |
 | `set_active_camera` on entity without Camera | Logs warning; camera unchanged |
 | Multiple `CameraActive` tags | `set_active_camera` removes old tag first; always exactly one |
 | dt is zero or negative | Clamped to small positive minimum; warning logged |
+| Physics dt > dt_cap | Clamped to dt_cap; simulation runs at capped rate |
 
 ---
 
 ## Mock Surface
 
-`src/engine/mocks/engine_mock.cpp` — activated by `USE_ENGINE_MOCKS=ON`. All void functions are no-ops. Entity-returning functions return a valid sentinel entity. Handle-returning functions return `{1}`. Query functions return empty results. Template functions compile against a static mock registry.
+`src/engine/mocks/engine_mock.cpp` — activated by `USE_ENGINE_MOCKS=ON`. All void functions are no-ops. Entity-returning functions return a valid sentinel entity. Handle-returning functions return `{1}`. Query functions return empty results. Template functions compile against a static mock registry. Physics helper functions (`make_box_inv_inertia_body`, `make_sphere_inv_inertia_body`, `update_world_inertia`) compute correct values even in mock build (pure functions, no side effects).
 
 ---
 
