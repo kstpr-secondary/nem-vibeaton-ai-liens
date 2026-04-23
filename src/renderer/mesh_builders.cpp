@@ -169,6 +169,58 @@ RendererMeshHandle renderer_make_sphere_mesh(float radius, int subdivisions) {
                                 static_cast<uint32_t>(index_count));
 }
 
-RendererMeshHandle renderer_make_cube_mesh(float /*half_extent*/) {
-    return {};
+RendererMeshHandle renderer_make_cube_mesh(float half_extent) {
+    float h = half_extent;
+
+    // Each face: 4 corners (BL, BR, TR, TL), flat normal, face-local-X tangent.
+    struct FaceData {
+        float p[4][3]; // positions
+        float n[3];    // normal
+        float t[3];    // tangent (U = face local X)
+    };
+
+    const FaceData faces[6] = {
+        // +X
+        { {{ h,-h, h},{ h,-h,-h},{ h, h,-h},{ h, h, h}}, { 1, 0, 0}, { 0, 0,-1} },
+        // -X
+        { {{-h,-h,-h},{-h,-h, h},{-h, h, h},{-h, h,-h}}, {-1, 0, 0}, { 0, 0, 1} },
+        // +Y
+        { {{-h, h, h},{ h, h, h},{ h, h,-h},{-h, h,-h}}, { 0, 1, 0}, { 1, 0, 0} },
+        // -Y
+        { {{-h,-h,-h},{ h,-h,-h},{ h,-h, h},{-h,-h, h}}, { 0,-1, 0}, { 1, 0, 0} },
+        // +Z
+        { {{-h,-h, h},{ h,-h, h},{ h, h, h},{-h, h, h}}, { 0, 0, 1}, { 1, 0, 0} },
+        // -Z
+        { {{ h,-h,-h},{-h,-h,-h},{-h, h,-h},{ h, h,-h}}, { 0, 0,-1}, {-1, 0, 0} },
+    };
+
+    // UV per corner: BL=(0,0), BR=(1,0), TR=(1,1), TL=(0,1)
+    const float uvs[4][2] = { {0.0f,0.0f}, {1.0f,0.0f}, {1.0f,1.0f}, {0.0f,1.0f} };
+
+    Vertex    verts[24];
+    uint32_t  indices[36];
+
+    for (int f = 0; f < 6; ++f) {
+        for (int v = 0; v < 4; ++v) {
+            Vertex& vert    = verts[f * 4 + v];
+            vert.position[0] = faces[f].p[v][0];
+            vert.position[1] = faces[f].p[v][1];
+            vert.position[2] = faces[f].p[v][2];
+            vert.normal[0]   = faces[f].n[0];
+            vert.normal[1]   = faces[f].n[1];
+            vert.normal[2]   = faces[f].n[2];
+            vert.uv[0]       = uvs[v][0];
+            vert.uv[1]       = uvs[v][1];
+            vert.tangent[0]  = faces[f].t[0];
+            vert.tangent[1]  = faces[f].t[1];
+            vert.tangent[2]  = faces[f].t[2];
+        }
+
+        uint32_t base    = static_cast<uint32_t>(f * 4);
+        uint32_t* idx    = &indices[f * 6];
+        idx[0] = base;     idx[1] = base + 1; idx[2] = base + 2; // tri 0
+        idx[3] = base;     idx[4] = base + 2; idx[5] = base + 3; // tri 1
+    }
+
+    return renderer_upload_mesh(verts, 24, indices, 36);
 }
