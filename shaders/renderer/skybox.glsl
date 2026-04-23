@@ -1,7 +1,7 @@
 @ctype mat4 glm::mat4
 
 @vs skybox_vs
-layout(binding=0) uniform vs_params {
+layout(binding=0) uniform skybox_vs_params {
     mat4 view_proj;  // projection * mat4(mat3(view)) — translation stripped from view
 };
 

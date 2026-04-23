@@ -1,29 +1,28 @@
-// sokol IMPL macros — must appear in exactly this one TU.
-// All other TUs include the headers without the IMPL define.
+// sokol IMPL macros — define BEFORE any sokol or project header include.
+// This TU owns the implementation; all other TUs include sokol headers
+// without the IMPL define.
 #define SOKOL_GFX_IMPL
 #define SOKOL_APP_IMPL
 #define SOKOL_GLUE_IMPL
 #define SOKOL_TIME_IMPL
 #define SOKOL_LOG_IMPL
+#define SOKOL_IMGUI_IMPL
+
+// Sokol headers first — this defines SOKOL_GFX_INCLUDED so that downstream
+// project headers (texture.h, skybox.h) skip their forward declarations.
 #include "sokol_gfx.h"
 #include "sokol_app.h"
 #include "sokol_glue.h"
 #include "sokol_time.h"
 #include "sokol_log.h"
-#define SOKOL_IMGUI_IMPL
 #include "imgui.h"
 #include "util/sokol_imgui.h"
 
+// Project headers — their sokol forward-decl guards see SOKOL_GFX_INCLUDED.
 #include "renderer.h"
 #include "debug_draw.h"
 #include "texture.h"
 #include "skybox.h"
-#include "shaders/magenta.glsl.h"
-#include "shaders/unlit.glsl.h"
-#include "shaders/line_quad.glsl.h"
-#include "pipeline_unlit.h"
-#include "pipeline_lambertian.h"
-#include "mesh_builders.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -31,6 +30,14 @@
 #include <cassert>
 #include <cmath>
 #include <cstdio>
+
+// Generated shader headers — must come AFTER glm (some use @ctype glm mappings).
+#include "shaders/magenta.glsl.h"
+#include "shaders/unlit.glsl.h"
+#include "shaders/line_quad.glsl.h"
+#include "pipeline_unlit.h"
+#include "pipeline_lambertian.h"
+#include "mesh_builders.h"
 
 // ---------------------------------------------------------------------------
 // Internal command types
@@ -342,7 +349,7 @@ void renderer_end_frame() {
     }
 
     // Uniform structs matching unlit.glsl layout (std140, @ctype glm types).
-    // Defined locally to avoid name collision with magenta.glsl.h's vs_params_t.
+    // Defined locally rather than using generated header types for clarity.
     struct UnlitVSParams { glm::mat4 mvp; };
     struct UnlitFSParams { glm::vec4 base_color; };
 

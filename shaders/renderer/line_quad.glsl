@@ -2,7 +2,7 @@
 @ctype vec4 glm::vec4
 
 @vs line_quad_vs
-layout(binding=0) uniform vs_params {
+layout(binding=0) uniform line_quad_vs_params {
     mat4 vp;
 };
 

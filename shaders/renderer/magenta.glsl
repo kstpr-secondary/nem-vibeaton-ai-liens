@@ -1,5 +1,5 @@
 @vs vs
-layout(binding=0) uniform vs_params {
+layout(binding=0) uniform magenta_vs_params {
     mat4 mvp;
 };
 in vec3 position;

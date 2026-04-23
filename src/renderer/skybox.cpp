@@ -155,9 +155,9 @@ void draw_skybox_pass(
     bind.samplers[SMP_smp]       = s_sampler;
     sg_apply_bindings(&bind);
 
-    vs_params_t vs_p       = { vp_no_trans };
+    skybox_vs_params_t vs_p       = { vp_no_trans };
     sg_range    vs_p_range = SG_RANGE(vs_p);
-    sg_apply_uniforms(UB_vs_params, &vs_p_range);
+    sg_apply_uniforms(UB_skybox_vs_params, &vs_p_range);
 
     sg_draw(0, 36, 1);
 

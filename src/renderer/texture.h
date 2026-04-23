@@ -3,7 +3,7 @@
 
 #include "renderer.h"
 
-// Manual forward declaration of sokol_gfx handles to avoid header redefinitions.
+// Forward declarations — skipped if sokol_gfx.h was already included.
 #ifndef SOKOL_GFX_INCLUDED
 struct sg_image { uint32_t id; };
 #endif
