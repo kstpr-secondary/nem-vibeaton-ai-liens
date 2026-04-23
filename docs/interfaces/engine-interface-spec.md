@@ -2,7 +2,7 @@
 
 > **Status:** Draft — to be populated during Engine SpecKit planning cycle.  
 > **Source**: Will be promoted from Engine SpecKit `contracts/` output.  
-> **Upstream dependency**: Renderer interface spec (`renderer-interface-spec.md`, FROZEN v1.0).
+> **Upstream dependency**: Renderer interface spec (`renderer-interface-spec.md`, FROZEN v1.1).
 
 ---
 
@@ -24,7 +24,7 @@ The engine consumes the renderer public API (frozen) and is consumed by the game
 
 > **Not binding.** These are illustrative signatures from `pre_planning_docs/Game Engine Concept and Milestones.md`. The Engine SpecKit will confirm final signatures.
 
-- **Lifecycle:** `init(renderer&, config)`, `shutdown()`, `tick(dt)`
+- **Lifecycle:** `init(config)`, `shutdown()`, `tick(dt)` — called from inside the renderer's registered `FrameCallback`
 - **Scene:** `create_entity()`, `destroy_entity(e)`, `add_component<T>(e, ...)`, `get_component<T>(e)`, `remove_component<T>(e)`, `view<Components...>()`
 - **Asset loading:** `load_gltf(path) → mesh_handle`, `load_obj(path) → mesh_handle`, `spawn_from_asset(path, pos, rot) → entity`
 - **Time:** `now()`, `delta_time()`

@@ -3,7 +3,7 @@
 > **Status**: DRAFT — produced by SpecKit plan phase.  
 > **Promotion path**: This file becomes authoritative at `docs/interfaces/engine-interface-spec.md` after human approval and freeze marker addition.  
 > **Freeze condition**: Must be frozen (version marker added, status changed to FROZEN) before the game workstream begins its SpecKit planning cycle.  
-> **Upstream dependency**: Renderer interface spec (`renderer-interface-spec.md`, FROZEN v1.0).
+> **Upstream dependency**: Renderer interface spec (`renderer-interface-spec.md`, FROZEN v1.1).
 
 ---
 
@@ -238,8 +238,8 @@ void engine_set_active_camera(entt::entity e);
 
 ## Calling Convention
 
-1. **Initialization**: `renderer_init(config)` → `engine_init(engine_config)` → renderer `set_input_callback` for engine's input handler → `renderer_run()` (blocking).
-2. **Per-frame tick** (inside renderer frame callback): `renderer_begin_frame()` → `engine_tick(dt)` (which internally calls `renderer_set_camera`, `renderer_set_directional_light`, `renderer_enqueue_draw` × N) → `renderer_end_frame()`.
+1. **Initialization**: `renderer_init(config)` → `engine_init(engine_config)` → `renderer_set_frame_callback(frame_cb, user_data)` → `renderer_set_input_callback(input_cb, user_data)` → `renderer_run()` (blocking).
+2. **Per-frame tick** (inside registered FrameCallback): `renderer_begin_frame()` → `engine_tick(dt)` (which internally calls `renderer_set_camera`, `renderer_set_directional_light`, `renderer_enqueue_draw` × N) → `renderer_end_frame()`.
 3. All engine API calls must be on the main thread (inherited from sokol_app requirement).
 4. `engine_tick(dt)` must be called between `renderer_begin_frame()` and `renderer_end_frame()`.
 5. Template functions (`engine_add_component`, etc.) are header-only; the game includes `engine.h` and the linker resolves through the engine static lib.
@@ -273,7 +273,7 @@ void engine_set_active_camera(entt::entity e);
 
 - `pre_planning_docs/Hackathon Master Blueprint.md`
 - `pre_planning_docs/Game Engine Concept and Milestones.md`
-- `docs/interfaces/renderer-interface-spec.md` (FROZEN v1.0)
+- `docs/interfaces/renderer-interface-spec.md` (FROZEN v1.1)
 - `docs/architecture/engine-architecture.md`
 - `specs/002-ecs-physics-engine/plan.md`
 - `specs/002-ecs-physics-engine/data-model.md`

@@ -1,13 +1,17 @@
 # Renderer Interface Spec
 
-> **Status:** `FROZEN — v1.0`
+> **Status:** `FROZEN — v1.1`
 > **Source**: Promoted from `specs/001-sokol-render-engine/contracts/renderer-api.md`
 
 ---
 
 ## Version
 
-`FROZEN — v1.0`
+`FROZEN — v1.1`
+
+### Changelog
+
+- **v1.1**: Added `FrameCallback` type and `renderer_set_frame_callback()` — required for engine/game to inject per-frame tick logic into the renderer-owned sokol_app loop. Approved by human supervisor.
 
 ---
 
@@ -115,10 +119,17 @@ struct RendererCamera {
 using InputCallback = void(*)(const void* sapp_event, void* user_data);
 
 // ---------------------------------------------------------------------------
+// Frame callback (v1.1) — consumer injects per-frame logic
+// ---------------------------------------------------------------------------
+
+using FrameCallback = void(*)(float dt, void* user_data);
+
+// ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
 
 void renderer_init(const RendererConfig& config);
+void renderer_set_frame_callback(FrameCallback cb, void* user_data);
 void renderer_set_input_callback(InputCallback cb, void* user_data);
 void renderer_run();
 void renderer_shutdown();
@@ -204,11 +215,12 @@ Material renderer_make_blinnphong_material(const float rgb[3], float shininess,
 
 ## Calling Convention
 
-1. `renderer_init()` → `renderer_set_input_callback()` → `renderer_run()` (blocking).
-2. Inside the frame tick (driven by `renderer_run`): `begin_frame()` → scene setup + enqueue → `end_frame()`.
-3. All calls on the main thread only (sokol_app requirement).
-4. All draw/scene functions outside `begin_frame`/`end_frame` are silently ignored.
-5. All resource handles are valid from creation until `renderer_shutdown()`.
+1. `renderer_init()` → `renderer_set_frame_callback()` → `renderer_set_input_callback()` → `renderer_run()` (blocking).
+2. Each frame, the renderer calls the registered `FrameCallback` with the frame delta time. Inside that callback the consumer calls: `begin_frame()` → scene setup + enqueue → `end_frame()`.
+3. If no frame callback is registered, `renderer_run()` renders empty frames (clear color only).
+4. All calls on the main thread only (sokol_app requirement).
+5. All draw/scene functions outside `begin_frame`/`end_frame` are silently ignored.
+6. All resource handles are valid from creation until `renderer_shutdown()`.
 
 ---
 
@@ -223,6 +235,7 @@ Material renderer_make_blinnphong_material(const float rgb[3], float shininess,
 | Zero-length line quad | Silently skipped |
 | `set_camera()` not called | Identity matrices; debug warning |
 | `set_directional_light()` not called | Previous frame's light retained; debug warning |
+| No frame callback registered | Empty frames (clear color); debug warning once |
 
 ---
 
