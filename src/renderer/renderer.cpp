@@ -15,6 +15,7 @@
 #include "util/sokol_imgui.h"
 
 #include "renderer.h"
+#include "debug_draw.h"
 #include "shaders/magenta.glsl.h"
 #include "pipeline_unlit.h"
 #include "pipeline_lambertian.h"
@@ -37,15 +38,8 @@ struct DrawCommand {
     Material           material;
 };
 
-struct LineQuadVertex {
-    float position[3];
-    float color[4];
-};
-
 // Pre-computed (billboarded) corners — 4 verts, 6 indices shared via offset math
-struct LineQuadCommand {
-    LineQuadVertex verts[4];
-};
+// LineQuadVertex and LineQuadCommand are defined in debug_draw.h
 
 // ---------------------------------------------------------------------------
 // Renderer state — file-private singleton
@@ -415,28 +409,15 @@ void renderer_enqueue_line_quad(const float p0[3], const float p1[3],
                                 float width, const float color[4]) {
     if (!state.frame_active) return;
     if (width <= 0.0f) return;
-    // reject zero-length segment
-    float dx = p1[0] - p0[0], dy = p1[1] - p0[1], dz = p1[2] - p0[2];
-    if (dx*dx + dy*dy + dz*dz == 0.0f) return;
     if (state.line_quad_count >= 256) {
         printf("[renderer] line_quad queue full — command dropped\n");
         return;
     }
-    // Store raw endpoints + attributes; billboard geometry computed later in end_frame
-    LineQuadCommand& cmd = state.line_quad_queue[state.line_quad_count++];
-    // Encode p0 in verts[0].position and p1 in verts[1].position; width in verts[0].color[3]
-    cmd.verts[0].position[0] = p0[0]; cmd.verts[0].position[1] = p0[1]; cmd.verts[0].position[2] = p0[2];
-    cmd.verts[1].position[0] = p1[0]; cmd.verts[1].position[1] = p1[1]; cmd.verts[1].position[2] = p1[2];
-    for (int i = 0; i < 4; ++i) {
-        cmd.verts[0].color[i] = color ? color[i] : 1.0f;
-        cmd.verts[1].color[i] = color ? color[i] : 1.0f;
-        cmd.verts[2].color[i] = color ? color[i] : 1.0f;
-        cmd.verts[3].color[i] = color ? color[i] : 1.0f;
+    LineQuadCommand& cmd = state.line_quad_queue[state.line_quad_count];
+    if (!debug_draw_compute_billboard(&cmd, p0, p1, width, color, state.camera.view)) {
+        return;  // degenerate segment — skip silently
     }
-    // width stored in verts[2].position[0] for later billboard expansion
-    cmd.verts[2].position[0] = width;
-    cmd.verts[2].position[1] = 0.0f;
-    cmd.verts[2].position[2] = 0.0f;
+    ++state.line_quad_count;
 }
 
 RendererTextureHandle renderer_upload_texture_2d(const void* pixels,
