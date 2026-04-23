@@ -352,6 +352,14 @@ target_compile_options(renderer PRIVATE
     $<$<COMPILE_LANGUAGE:CXX>:-Wno-unused-parameter>
 )
 
+# SOKOL_NO_ENTRY: renderer owns sapp_run(); no sokol-provided main().
+# SOKOL_GLCORE33: OpenGL 3.3 Core is the only backend for this project.
+target_compile_definitions(renderer
+    PUBLIC
+        SOKOL_NO_ENTRY
+        SOKOL_GLCORE33
+)
+
 add_custom_target(renderer_shaders)
 vibeaton_attach_shader_headers(renderer "${CMAKE_SOURCE_DIR}/shaders/renderer" renderer_shaders)
 
