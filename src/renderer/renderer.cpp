@@ -146,12 +146,44 @@ void renderer_set_skybox(RendererTextureHandle cubemap) {
 void renderer_enqueue_draw(RendererMeshHandle mesh,
                            const float        world_transform[16],
                            const Material&    material) {
-    (void)mesh; (void)world_transform; (void)material;
+    if (!state.frame_active) return;
+    if (!renderer_handle_valid(mesh)) return;
+    if (state.draw_count >= 1024) {
+        printf("[renderer] draw queue full — command dropped\n");
+        return;
+    }
+    DrawCommand& cmd = state.draw_queue[state.draw_count++];
+    cmd.mesh     = mesh;
+    cmd.material = material;
+    for (int i = 0; i < 16; ++i) cmd.world_transform[i] = world_transform[i];
 }
 
 void renderer_enqueue_line_quad(const float p0[3], const float p1[3],
                                 float width, const float color[4]) {
-    (void)p0; (void)p1; (void)width; (void)color;
+    if (!state.frame_active) return;
+    if (width <= 0.0f) return;
+    // reject zero-length segment
+    float dx = p1[0] - p0[0], dy = p1[1] - p0[1], dz = p1[2] - p0[2];
+    if (dx*dx + dy*dy + dz*dz == 0.0f) return;
+    if (state.line_quad_count >= 256) {
+        printf("[renderer] line_quad queue full — command dropped\n");
+        return;
+    }
+    // Store raw endpoints + attributes; billboard geometry computed later in end_frame
+    LineQuadCommand& cmd = state.line_quad_queue[state.line_quad_count++];
+    // Encode p0 in verts[0].position and p1 in verts[1].position; width in verts[0].color[3]
+    cmd.verts[0].position[0] = p0[0]; cmd.verts[0].position[1] = p0[1]; cmd.verts[0].position[2] = p0[2];
+    cmd.verts[1].position[0] = p1[0]; cmd.verts[1].position[1] = p1[1]; cmd.verts[1].position[2] = p1[2];
+    for (int i = 0; i < 4; ++i) {
+        cmd.verts[0].color[i] = color ? color[i] : 1.0f;
+        cmd.verts[1].color[i] = color ? color[i] : 1.0f;
+        cmd.verts[2].color[i] = color ? color[i] : 1.0f;
+        cmd.verts[3].color[i] = color ? color[i] : 1.0f;
+    }
+    // width stored in verts[2].position[0] for later billboard expansion
+    cmd.verts[2].position[0] = width;
+    cmd.verts[2].position[1] = 0.0f;
+    cmd.verts[2].position[2] = 0.0f;
 }
 
 RendererMeshHandle renderer_make_sphere_mesh(float radius, int subdivisions) {
