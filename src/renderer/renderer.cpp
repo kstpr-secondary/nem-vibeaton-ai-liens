@@ -16,6 +16,7 @@
 
 #include "renderer.h"
 #include "shaders/magenta.glsl.h"
+#include "pipeline_unlit.h"
 
 #include <cassert>
 #include <cstdio>
@@ -138,6 +139,7 @@ void renderer_internal_init() {
     state.pass_action.colors[0].clear_value.a = state.config.clear_a;
 
     make_magenta_pipeline();
+    state.pipeline_unlit = create_pipeline_unlit(state.pipeline_magenta);
 
     simgui_desc_t simgui_desc = {};
     simgui_desc.sample_count = sapp_sample_count();
