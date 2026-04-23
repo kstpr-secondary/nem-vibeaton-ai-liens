@@ -10,7 +10,8 @@
 #include "sokol_glue.h"
 #include "sokol_time.h"
 #include "sokol_log.h"
-#define SIMGUI_IMPL
+#define SOKOL_IMGUI_IMPL
+#include "imgui.h"
 #include "util/sokol_imgui.h"
 
 #include "renderer.h"
@@ -120,6 +121,58 @@ void make_magenta_pipeline() {
     }
 }
 
+// Called by sokol_app after the GL context is ready.
+// renderer_init() must have been called first to populate state.config.
+void renderer_internal_init() {
+    sg_desc gfx_desc = {};
+    gfx_desc.environment = sglue_environment();
+    gfx_desc.logger.func = slog_func;
+    sg_setup(&gfx_desc);
+
+    stm_setup();
+
+    state.pass_action.colors[0].load_action   = SG_LOADACTION_CLEAR;
+    state.pass_action.colors[0].clear_value.r = state.config.clear_r;
+    state.pass_action.colors[0].clear_value.g = state.config.clear_g;
+    state.pass_action.colors[0].clear_value.b = state.config.clear_b;
+    state.pass_action.colors[0].clear_value.a = state.config.clear_a;
+
+    make_magenta_pipeline();
+
+    simgui_desc_t simgui_desc = {};
+    simgui_desc.sample_count = sapp_sample_count();
+    simgui_setup(&simgui_desc);
+
+    state.initialized = true;
+}
+
+// Called by sokol_app for every input/window event.
+// Passes the event to ImGui first, then forwards to the registered InputCallback.
+void renderer_internal_event(const sapp_event* e) {
+    simgui_handle_event(e);
+    if (state.input_cb) {
+        state.input_cb(e, state.input_userdata);
+    }
+}
+
+// Called by sokol_app once per frame. Computes dt and forwards to the registered FrameCallback.
+// Full begin/end_frame orchestration is added in later tasks (R-024, R-039).
+void renderer_internal_frame() {
+    static uint64_t last_tick = 0;
+    uint64_t now = stm_now();
+    float dt = (last_tick == 0) ? 0.0f : static_cast<float>(stm_sec(stm_diff(now, last_tick)));
+    last_tick = now;
+
+    if (state.frame_cb) {
+        state.frame_cb(dt, state.frame_userdata);
+    }
+}
+
+// Called by sokol_app on window close / sapp_quit(). Delegates to renderer_shutdown().
+void renderer_internal_cleanup() {
+    renderer_shutdown();
+}
+
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -140,9 +193,37 @@ void renderer_set_input_callback(InputCallback cb, void* user_data) {
     state.input_userdata = user_data;
 }
 
-void renderer_run() {}
+void renderer_run() {
+    sapp_desc desc = {};
+    desc.init_cb    = renderer_internal_init;
+    desc.frame_cb   = renderer_internal_frame;
+    desc.cleanup_cb = renderer_internal_cleanup;
+    desc.event_cb   = renderer_internal_event;
+    desc.width      = state.config.width;
+    desc.height     = state.config.height;
+    desc.window_title = state.config.title;
+    desc.gl.major_version = 3;
+    desc.gl.minor_version = 3;
+    desc.logger.func = slog_func;
+    sapp_run(&desc);
+}
 
-void renderer_shutdown() {}
+void renderer_shutdown() {
+    simgui_shutdown();
+    sg_shutdown();
+    sapp_quit();
+
+    state.frame_active = false;
+
+    // Invalidate cached pipeline handles (GPU resources already freed by sg_shutdown)
+    state.pipeline_magenta     = {};
+    state.pipeline_unlit       = {};
+    state.pipeline_lambertian  = {};
+    state.pipeline_blinnphong  = {};
+    state.pipeline_transparent = {};
+    state.pipeline_line_quad   = {};
+    state.pipeline_skybox      = {};
+}
 
 void renderer_begin_frame() {
     assert(!state.frame_active && "renderer_begin_frame called while frame already active");
