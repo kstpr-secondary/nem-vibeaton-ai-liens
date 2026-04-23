@@ -1,3 +1,8 @@
+#include "renderer.h"
+
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 // sokol IMPL macros — must appear in exactly this one TU.
 // All other TUs include the headers without the IMPL define.
 #define SOKOL_GFX_IMPL
@@ -14,17 +19,17 @@
 #include "imgui.h"
 #include "util/sokol_imgui.h"
 
-#include "renderer.h"
 #include "shaders/magenta.glsl.h"
 #include "pipeline_unlit.h"
 #include "pipeline_lambertian.h"
+#include "pipeline_transparent.h"
+#include "pipeline_line_quad.h"
+#include "pipeline_skybox.h"
 #include "mesh_builders.h"
-
-#include <glm/glm.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 #include <cassert>
 #include <cmath>
+#include <cstddef>
 #include <cstdio>
 
 // ---------------------------------------------------------------------------
@@ -127,6 +132,18 @@ void make_magenta_pipeline() {
     }
 }
 
+void make_transparent_pipeline() {
+    state.pipeline_transparent = create_pipeline_transparent(state.pipeline_magenta);
+}
+
+void make_line_quad_pipeline() {
+    state.pipeline_line_quad = create_pipeline_line_quad(state.pipeline_magenta);
+}
+
+void make_skybox_pipeline() {
+    state.pipeline_skybox = create_pipeline_skybox(state.pipeline_magenta);
+}
+
 // Called by sokol_app after the GL context is ready.
 // renderer_init() must have been called first to populate state.config.
 void renderer_internal_init() {
@@ -146,6 +163,9 @@ void renderer_internal_init() {
     make_magenta_pipeline();
     state.pipeline_unlit       = create_pipeline_unlit(state.pipeline_magenta);
     state.pipeline_lambertian  = create_pipeline_lambertian(state.pipeline_magenta);
+    make_transparent_pipeline();
+    make_line_quad_pipeline();
+    make_skybox_pipeline();
 
     simgui_desc_t simgui_desc = {};
     simgui_desc.sample_count = sapp_sample_count();

@@ -1,3 +1,5 @@
+@ctype mat4 glm::mat4
+
 @vs vs
 layout(binding=0) uniform vs_params {
     mat4 mvp;
