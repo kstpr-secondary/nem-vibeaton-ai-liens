@@ -17,12 +17,14 @@
 #include "renderer.h"
 #include "shaders/magenta.glsl.h"
 #include "pipeline_unlit.h"
+#include "pipeline_lambertian.h"
 #include "mesh_builders.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include <cassert>
+#include <cmath>
 #include <cstdio>
 
 // ---------------------------------------------------------------------------
@@ -63,6 +65,7 @@ struct RendererState {
     glm::mat4             vp            = glm::mat4(1.0f); // projection × view; identity until set_camera is called
     bool                  camera_set    = false;            // reset each begin_frame
     DirectionalLight      light         = {};
+    bool                  light_set     = false;            // reset each begin_frame
     RendererTextureHandle skybox_handle = {};
 
     // Pipelines
@@ -141,7 +144,8 @@ void renderer_internal_init() {
     state.pass_action.colors[0].clear_value.a = state.config.clear_a;
 
     make_magenta_pipeline();
-    state.pipeline_unlit = create_pipeline_unlit(state.pipeline_magenta);
+    state.pipeline_unlit       = create_pipeline_unlit(state.pipeline_magenta);
+    state.pipeline_lambertian  = create_pipeline_lambertian(state.pipeline_magenta);
 
     simgui_desc_t simgui_desc = {};
     simgui_desc.sample_count = sapp_sample_count();
@@ -236,6 +240,7 @@ void renderer_begin_frame() {
     state.draw_count      = 0;
     state.line_quad_count = 0;
     state.camera_set      = false;
+    state.light_set       = false;
 
     simgui_frame_desc_t simgui_fd = {};
     simgui_fd.width      = sapp_width();
@@ -261,34 +266,98 @@ void renderer_end_frame() {
     struct UnlitVSParams { glm::mat4 mvp; };
     struct UnlitFSParams { glm::vec4 base_color; };
 
-    // Opaque draw dispatch — unlit pipeline only at this milestone
-    if (state.draw_count > 0) {
-        sg_apply_pipeline(state.pipeline_unlit);
+    // Lambertian uniform structs matching lambertian.glsl std140 layout.
+    // vec3 fields are padded to 16 bytes per std140 base-alignment rules.
+    struct LambertianVSParams {
+        glm::mat4 mvp;    // binding=0 slot 0
+        glm::mat4 model;  // binding=0 slot 1
+    };
+    struct LambertianFSParams {
+        float light_dir[3];    // offset  0
+        float _pad0;           // offset 12 — vec3 → 16-byte stride
+        float light_color[3];  // offset 16
+        float light_intensity; // offset 28
+        float base_color[4];   // offset 32
+    };
 
+    // --- Unlit pass ---------------------------------------------------------
+    if (state.draw_count > 0) {
+        bool bound = false;
         for (int i = 0; i < state.draw_count; ++i) {
             const DrawCommand& cmd = state.draw_queue[i];
+            if (cmd.material.shading_model != ShadingModel::Unlit) continue;
 
-            // MVP = projection×view × model
+            if (!bound) { sg_apply_pipeline(state.pipeline_unlit); bound = true; }
+
             glm::mat4 model = glm::make_mat4(cmd.world_transform);
             glm::mat4 mvp   = state.vp * model;
 
-            // Bind mesh buffers
             sg_bindings bind       = {};
             bind.vertex_buffers[0] = mesh_vbuf_get(cmd.mesh.id);
             bind.index_buffer      = mesh_ibuf_get(cmd.mesh.id);
             sg_apply_bindings(&bind);
 
-            // VS uniforms: slot 0 (binding=0 in unlit.glsl)
             UnlitVSParams vs_p = { mvp };
             sg_range vs_range  = SG_RANGE(vs_p);
             sg_apply_uniforms(0, &vs_range);
 
-            // FS uniforms: slot 1 (binding=1 in unlit.glsl)
             UnlitFSParams fs_p = { glm::vec4(cmd.material.base_color[0],
                                              cmd.material.base_color[1],
                                              cmd.material.base_color[2],
                                              cmd.material.base_color[3]) };
             sg_range fs_range  = SG_RANGE(fs_p);
+            sg_apply_uniforms(1, &fs_range);
+
+            sg_draw(0, static_cast<int>(mesh_index_count_get(cmd.mesh.id)), 1);
+        }
+    }
+
+    // --- Lambertian pass ----------------------------------------------------
+    {
+        if (!state.light_set) {
+            // Count Lambertian draws so we only warn when relevant
+            int lam_count = 0;
+            for (int i = 0; i < state.draw_count; ++i)
+                if (state.draw_queue[i].material.shading_model == ShadingModel::Lambertian) ++lam_count;
+            if (lam_count > 0)
+                printf("[renderer] WARNING: %d Lambertian draw(s) queued but no directional light set\n", lam_count);
+        }
+
+        bool bound = false;
+        for (int i = 0; i < state.draw_count; ++i) {
+            const DrawCommand& cmd = state.draw_queue[i];
+            if (cmd.material.shading_model != ShadingModel::Lambertian) continue;
+
+            if (!bound) { sg_apply_pipeline(state.pipeline_lambertian); bound = true; }
+
+            glm::mat4 model = glm::make_mat4(cmd.world_transform);
+            glm::mat4 mvp   = state.vp * model;
+
+            sg_bindings bind       = {};
+            bind.vertex_buffers[0] = mesh_vbuf_get(cmd.mesh.id);
+            bind.index_buffer      = mesh_ibuf_get(cmd.mesh.id);
+            sg_apply_bindings(&bind);
+
+            LambertianVSParams vs_p;
+            vs_p.mvp   = mvp;
+            vs_p.model = model;
+            sg_range vs_range = SG_RANGE(vs_p);
+            sg_apply_uniforms(0, &vs_range);
+
+            LambertianFSParams fs_p;
+            fs_p.light_dir[0]    = state.light.direction[0];
+            fs_p.light_dir[1]    = state.light.direction[1];
+            fs_p.light_dir[2]    = state.light.direction[2];
+            fs_p._pad0           = 0.0f;
+            fs_p.light_color[0]  = state.light.color[0];
+            fs_p.light_color[1]  = state.light.color[1];
+            fs_p.light_color[2]  = state.light.color[2];
+            fs_p.light_intensity = state.light.intensity;
+            fs_p.base_color[0]   = cmd.material.base_color[0];
+            fs_p.base_color[1]   = cmd.material.base_color[1];
+            fs_p.base_color[2]   = cmd.material.base_color[2];
+            fs_p.base_color[3]   = cmd.material.base_color[3];
+            sg_range fs_range    = SG_RANGE(fs_p);
             sg_apply_uniforms(1, &fs_range);
 
             sg_draw(0, static_cast<int>(mesh_index_count_get(cmd.mesh.id)), 1);
@@ -311,6 +380,16 @@ void renderer_set_camera(const RendererCamera& camera) {
 
 void renderer_set_directional_light(const DirectionalLight& light) {
     state.light = light;
+    float& dx = state.light.direction[0];
+    float& dy = state.light.direction[1];
+    float& dz = state.light.direction[2];
+    float len = sqrtf(dx*dx + dy*dy + dz*dz);
+    if (len < 1e-6f) {
+        dx = 0.0f; dy = -1.0f; dz = 0.0f;  // fallback: straight down
+    } else {
+        dx /= len; dy /= len; dz /= len;
+    }
+    state.light_set = true;
 }
 
 void renderer_set_skybox(RendererTextureHandle cubemap) {
@@ -385,10 +464,8 @@ Material renderer_make_unlit_material(const float rgba[4]) {
 }
 
 Material renderer_make_lambertian_material(const float rgb[3]) {
-    // Stub: full Lambertian pipeline added in R-031 (R-M2).
-    // Returns Unlit material so draw dispatch uses the existing unlit pipeline.
     Material m;
-    m.shading_model = ShadingModel::Unlit;
+    m.shading_model = ShadingModel::Lambertian;
     if (rgb) {
         m.base_color[0] = rgb[0]; m.base_color[1] = rgb[1];
         m.base_color[2] = rgb[2]; m.base_color[3] = 1.0f;
