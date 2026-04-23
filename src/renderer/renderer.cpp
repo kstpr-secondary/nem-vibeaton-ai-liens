@@ -247,6 +247,50 @@ void renderer_end_frame() {
         printf("[renderer] WARNING: renderer_set_camera not called before end_frame — using identity VP\n");
         state.vp = glm::mat4(1.0f);
     }
+
+    // Uniform structs matching unlit.glsl layout (std140, @ctype glm types).
+    // Defined locally to avoid name collision with magenta.glsl.h's vs_params_t.
+    struct UnlitVSParams { glm::mat4 mvp; };
+    struct UnlitFSParams { glm::vec4 base_color; };
+
+    // Opaque draw dispatch — unlit pipeline only at this milestone
+    if (state.draw_count > 0) {
+        sg_apply_pipeline(state.pipeline_unlit);
+
+        for (int i = 0; i < state.draw_count; ++i) {
+            const DrawCommand& cmd = state.draw_queue[i];
+
+            // MVP = projection×view × model
+            glm::mat4 model = glm::make_mat4(cmd.world_transform);
+            glm::mat4 mvp   = state.vp * model;
+
+            // Bind mesh buffers
+            sg_bindings bind       = {};
+            bind.vertex_buffers[0] = mesh_vbuf_get(cmd.mesh.id);
+            bind.index_buffer      = mesh_ibuf_get(cmd.mesh.id);
+            sg_apply_bindings(&bind);
+
+            // VS uniforms: slot 0 (binding=0 in unlit.glsl)
+            UnlitVSParams vs_p = { mvp };
+            sg_range vs_range  = SG_RANGE(vs_p);
+            sg_apply_uniforms(0, &vs_range);
+
+            // FS uniforms: slot 1 (binding=1 in unlit.glsl)
+            UnlitFSParams fs_p = { glm::vec4(cmd.material.base_color[0],
+                                             cmd.material.base_color[1],
+                                             cmd.material.base_color[2],
+                                             cmd.material.base_color[3]) };
+            sg_range fs_range  = SG_RANGE(fs_p);
+            sg_apply_uniforms(1, &fs_range);
+
+            sg_draw(0, static_cast<int>(mesh_index_count_get(cmd.mesh.id)), 1);
+        }
+    }
+
+    simgui_render();
+    sg_end_pass();
+    sg_commit();
+    state.frame_active = false;
 }
 
 void renderer_set_camera(const RendererCamera& camera) {
