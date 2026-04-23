@@ -9,9 +9,9 @@
 
 | Interface | File | Status | Frozen By | Engine SpecKit May Start |
 |---|---|---|---|---|
-| Renderer public API | `docs/interfaces/renderer-interface-spec.md` | Draft — frozen after R-M1 sign-off (task R-055) | Human supervisor after R-M1 | ❌ Not yet — wait for R-M1 |
-| Engine public API | `docs/interfaces/engine-interface-spec.md` | Draft — pending Engine SpecKit | — | ❌ No |
-| Game public API | `docs/interfaces/game-interface-spec.md` | Draft — pending Game SpecKit | — | ❌ No |
+| Renderer public API | `docs/interfaces/renderer-interface-spec.md` | **FROZEN — v1.0** | Human supervisor (2026-04-23) | ✅ Yes |
+| Engine public API | `docs/interfaces/engine-interface-spec.md` | Draft — pending Engine SpecKit | — | N/A |
+| Game public API | `docs/interfaces/game-interface-spec.md` | Draft — pending Game SpecKit | — | ❌ No — wait for engine freeze |
 
 ---
 
@@ -29,8 +29,8 @@
 ## Renderer Interface — Summary
 
 **File**: `docs/interfaces/renderer-interface-spec.md`  
-**Status**: Draft — frozen after R-M1 human sign-off (task R-055)  
-**Frozen after**: R-M1 (Unlit Forward Rendering + Procedural Scene milestone)
+**Status**: **FROZEN — v1.0** (2026-04-23, pre-implementation planning freeze)  
+**Frozen after**: Renderer SpecKit completion; human-reviewed and approved
 
 Key contracts:
 
