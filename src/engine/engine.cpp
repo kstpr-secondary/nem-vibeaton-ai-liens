@@ -101,13 +101,6 @@ void engine_set_active_camera(entt::entity e) {
 // Stubs for subsystems implemented in later phases
 // ---------------------------------------------------------------------------
 
-// Phase 4 — asset import
-RendererMeshHandle engine_load_gltf(const char*)  { return {}; }
-RendererMeshHandle engine_load_obj(const char*)   { return {}; }
-entt::entity engine_spawn_from_asset(const char*, const glm::vec3&, const glm::quat&, const Material&) {
-    return entt::null;
-}
-
 // Phase 5 — input
 bool      engine_key_down(int)     { return false; }
 glm::vec2 engine_mouse_delta()     { return {0.f, 0.f}; }
