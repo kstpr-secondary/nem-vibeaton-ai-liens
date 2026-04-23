@@ -16,6 +16,11 @@
 
 #include "renderer.h"
 #include "shaders/magenta.glsl.h"
+#include "pipeline_unlit.h"
+#include "mesh_builders.h"
+
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include <cassert>
 #include <cstdio>
@@ -55,6 +60,8 @@ struct RendererState {
 
     // Scene state (set per-frame via public API)
     RendererCamera        camera        = {};
+    glm::mat4             vp            = glm::mat4(1.0f); // projection × view; identity until set_camera is called
+    bool                  camera_set    = false;            // reset each begin_frame
     DirectionalLight      light         = {};
     RendererTextureHandle skybox_handle = {};
 
@@ -67,11 +74,7 @@ struct RendererState {
     sg_pipeline pipeline_line_quad;
     sg_pipeline pipeline_skybox;
 
-    // Mesh GPU resources — index 0 reserved (invalid handle id == 0)
-    sg_buffer mesh_vbufs[512]       = {};
-    sg_buffer mesh_ibufs[512]       = {};
-    uint32_t  mesh_index_counts[512] = {};
-    uint32_t  next_mesh_id           = 1;
+    // Mesh GPU resources are managed by mesh_builders.cpp (see mesh_vbuf_get / mesh_ibuf_get)
 
     // Texture GPU resources — index 0 reserved
     sg_image texture_table[256] = {};
@@ -138,6 +141,7 @@ void renderer_internal_init() {
     state.pass_action.colors[0].clear_value.a = state.config.clear_a;
 
     make_magenta_pipeline();
+    state.pipeline_unlit = create_pipeline_unlit(state.pipeline_magenta);
 
     simgui_desc_t simgui_desc = {};
     simgui_desc.sample_count = sapp_sample_count();
@@ -210,6 +214,7 @@ void renderer_run() {
 
 void renderer_shutdown() {
     simgui_shutdown();
+    mesh_store_shutdown(); // destroy GPU mesh buffers before sg_shutdown
     sg_shutdown();
     sapp_quit();
 
@@ -230,16 +235,78 @@ void renderer_begin_frame() {
     state.frame_active    = true;
     state.draw_count      = 0;
     state.line_quad_count = 0;
+    state.camera_set      = false;
+
+    simgui_frame_desc_t simgui_fd = {};
+    simgui_fd.width      = sapp_width();
+    simgui_fd.height     = sapp_height();
+    simgui_fd.delta_time = sapp_frame_duration();
+    simgui_fd.dpi_scale  = sapp_dpi_scale();
+    simgui_new_frame(&simgui_fd);
+
     sg_pass pass = {};
     pass.action    = state.pass_action;
     pass.swapchain = sglue_swapchain();
     sg_begin_pass(&pass);
 }
 
-void renderer_end_frame() {}
+void renderer_end_frame() {
+    if (!state.camera_set) {
+        printf("[renderer] WARNING: renderer_set_camera not called before end_frame — using identity VP\n");
+        state.vp = glm::mat4(1.0f);
+    }
+
+    // Uniform structs matching unlit.glsl layout (std140, @ctype glm types).
+    // Defined locally to avoid name collision with magenta.glsl.h's vs_params_t.
+    struct UnlitVSParams { glm::mat4 mvp; };
+    struct UnlitFSParams { glm::vec4 base_color; };
+
+    // Opaque draw dispatch — unlit pipeline only at this milestone
+    if (state.draw_count > 0) {
+        sg_apply_pipeline(state.pipeline_unlit);
+
+        for (int i = 0; i < state.draw_count; ++i) {
+            const DrawCommand& cmd = state.draw_queue[i];
+
+            // MVP = projection×view × model
+            glm::mat4 model = glm::make_mat4(cmd.world_transform);
+            glm::mat4 mvp   = state.vp * model;
+
+            // Bind mesh buffers
+            sg_bindings bind       = {};
+            bind.vertex_buffers[0] = mesh_vbuf_get(cmd.mesh.id);
+            bind.index_buffer      = mesh_ibuf_get(cmd.mesh.id);
+            sg_apply_bindings(&bind);
+
+            // VS uniforms: slot 0 (binding=0 in unlit.glsl)
+            UnlitVSParams vs_p = { mvp };
+            sg_range vs_range  = SG_RANGE(vs_p);
+            sg_apply_uniforms(0, &vs_range);
+
+            // FS uniforms: slot 1 (binding=1 in unlit.glsl)
+            UnlitFSParams fs_p = { glm::vec4(cmd.material.base_color[0],
+                                             cmd.material.base_color[1],
+                                             cmd.material.base_color[2],
+                                             cmd.material.base_color[3]) };
+            sg_range fs_range  = SG_RANGE(fs_p);
+            sg_apply_uniforms(1, &fs_range);
+
+            sg_draw(0, static_cast<int>(mesh_index_count_get(cmd.mesh.id)), 1);
+        }
+    }
+
+    simgui_render();
+    sg_end_pass();
+    sg_commit();
+    state.frame_active = false;
+}
 
 void renderer_set_camera(const RendererCamera& camera) {
-    state.camera = camera;
+    state.camera     = camera;
+    glm::mat4 view   = glm::make_mat4(camera.view);
+    glm::mat4 proj   = glm::make_mat4(camera.projection);
+    state.vp         = proj * view;
+    state.camera_set = true;
 }
 
 void renderer_set_directional_light(const DirectionalLight& light) {
@@ -293,19 +360,6 @@ void renderer_enqueue_line_quad(const float p0[3], const float p1[3],
     cmd.verts[2].position[2] = 0.0f;
 }
 
-RendererMeshHandle renderer_make_sphere_mesh(float radius, int subdivisions) {
-    (void)radius; (void)subdivisions; return {};
-}
-
-RendererMeshHandle renderer_make_cube_mesh(float half_extent) {
-    (void)half_extent; return {};
-}
-
-RendererMeshHandle renderer_upload_mesh(const Vertex* vertices, uint32_t vertex_count,
-                                        const uint32_t* indices, uint32_t index_count) {
-    (void)vertices; (void)vertex_count; (void)indices; (void)index_count; return {};
-}
-
 RendererTextureHandle renderer_upload_texture_2d(const void* pixels,
                                                  int width, int height, int channels) {
     (void)pixels; (void)width; (void)height; (void)channels; return {};
@@ -331,24 +385,27 @@ Material renderer_make_unlit_material(const float rgba[4]) {
 }
 
 Material renderer_make_lambertian_material(const float rgb[3]) {
+    // Stub: full Lambertian pipeline added in R-031 (R-M2).
+    // Returns Unlit material so draw dispatch uses the existing unlit pipeline.
     Material m;
-    m.shading_model = ShadingModel::Lambertian;
+    m.shading_model = ShadingModel::Unlit;
     if (rgb) {
         m.base_color[0] = rgb[0]; m.base_color[1] = rgb[1];
-        m.base_color[2] = rgb[2];
+        m.base_color[2] = rgb[2]; m.base_color[3] = 1.0f;
     }
     return m;
 }
 
 Material renderer_make_blinnphong_material(const float rgb[3], float shininess,
                                            RendererTextureHandle texture) {
+    // Stub: full BlinnPhong pipeline added in R-046 (R-M4).
+    // Returns Unlit material so draw dispatch uses the existing unlit pipeline.
+    (void)shininess; (void)texture;
     Material m;
-    m.shading_model = ShadingModel::BlinnPhong;
+    m.shading_model = ShadingModel::Unlit;
     if (rgb) {
         m.base_color[0] = rgb[0]; m.base_color[1] = rgb[1];
-        m.base_color[2] = rgb[2];
+        m.base_color[2] = rgb[2]; m.base_color[3] = 1.0f;
     }
-    m.shininess = shininess;
-    m.texture   = texture;
     return m;
 }
