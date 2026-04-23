@@ -1,3 +1,4 @@
 build/
 build.copilot-check/
+build-mock/
 tools/
