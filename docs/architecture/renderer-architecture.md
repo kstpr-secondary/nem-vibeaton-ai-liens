@@ -1,6 +1,6 @@
 # Renderer Architecture
 
-> **Status:** SpecKit plan phase output. Not frozen — becomes authoritative after human review and the interface freeze.
+> **Status:** FROZEN
 
 ---
 

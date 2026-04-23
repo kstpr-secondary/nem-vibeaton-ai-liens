@@ -1,14 +1,14 @@
 # Renderer Interface Spec
 
-> **Status:** Draft — produced by SpecKit plan phase. **Not frozen.**  
-> **Freeze procedure**: Human supervisor reviews, adds `FROZEN — v1.0` status, commits, and announces to engine workstream.  
+> **Status:** Draft — produced by SpecKit plan phase. **Not yet frozen.**  
+> **Freeze procedure**: After R-M1 human sign-off (task R-055), human supervisor adds `FROZEN — v1.0` status, commits, and announces to engine workstream.  
 > **Source**: Promoted from `specs/001-sokol-render-engine/contracts/renderer-api.md`
 
 ---
 
 ## Version
 
-`v0.1-draft` — pre-freeze. Breaking changes allowed until freeze marker is added.
+`FROZEN — v1.0`
 
 ---
 
