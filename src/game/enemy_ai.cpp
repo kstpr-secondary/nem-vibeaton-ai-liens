@@ -53,6 +53,9 @@ void enemy_ai_update(float /*dt*/) {
         // Face the player so the visual cube and firing origin make sense.
         t.rotation = glm::quatLookAtRH(dir, glm::vec3(0.f, 1.f, 0.f));
 
+        // Kill angular velocity — enemy rotation is AI-controlled only.
+        rb.angular_velocity = glm::vec3(0.f);
+
         // -------------------------------------------------------------------
         // Fire: range + LOS check + cooldown.
         // -------------------------------------------------------------------

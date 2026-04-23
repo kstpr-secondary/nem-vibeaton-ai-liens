@@ -1,4 +1,4 @@
 #pragma once
 
 #define PROJECT_SOURCE_ROOT "@CMAKE_SOURCE_DIR@"
-#define ASSET_ROOT          PROJECT_SOURCE_ROOT "/assets"
+#define ASSET_ROOT          PROJECT_SOURCE_ROOT

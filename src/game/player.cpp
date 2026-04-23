@@ -53,8 +53,9 @@ void player_update(float dt) {
         // Per-frame drag — keeps top speed finite without active decel input.
         rb.linear_velocity *= constants::player_drag;
 
-        // Strong angular damping — prevents perpetual spin from collisions.
-        rb.angular_velocity *= 0.9f;
+        // Kill all angular velocity — player rotation is mouse-controlled only.
+        // Physics collisions must not affect the ship's facing direction.
+        rb.angular_velocity = glm::vec3(0.f);
 
         // ----------------------------------------------------------------
         // Boost — hold Space to activate; drain/regen handled in T013
