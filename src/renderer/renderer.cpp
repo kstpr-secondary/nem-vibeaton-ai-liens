@@ -16,6 +16,8 @@
 
 #include "renderer.h"
 #include "debug_draw.h"
+#include "texture.h"
+#include "skybox.h"
 #include "shaders/magenta.glsl.h"
 #include "pipeline_unlit.h"
 #include "pipeline_lambertian.h"
@@ -72,10 +74,7 @@ struct RendererState {
     sg_pipeline pipeline_skybox;
 
     // Mesh GPU resources are managed by mesh_builders.cpp (see mesh_vbuf_get / mesh_ibuf_get)
-
-    // Texture GPU resources — index 0 reserved
-    sg_image texture_table[256] = {};
-    uint32_t next_texture_id    = 1;
+    // Texture GPU resources are managed by texture.cpp (see texture_get / texture_store_insert)
 
     // Lifecycle flags
     bool frame_active = false;
@@ -140,6 +139,8 @@ void renderer_internal_init() {
     make_magenta_pipeline();
     state.pipeline_unlit       = create_pipeline_unlit(state.pipeline_magenta);
     state.pipeline_lambertian  = create_pipeline_lambertian(state.pipeline_magenta);
+    state.pipeline_skybox      = skybox_create_pipeline(state.pipeline_magenta);
+    skybox_init_resources();
 
     simgui_desc_t simgui_desc = {};
     simgui_desc.sample_count = sapp_sample_count();
@@ -212,7 +213,9 @@ void renderer_run() {
 
 void renderer_shutdown() {
     simgui_shutdown();
-    mesh_store_shutdown(); // destroy GPU mesh buffers before sg_shutdown
+    skybox_shutdown();        // destroy skybox VBO/IBO/sampler before sg_shutdown
+    mesh_store_shutdown();    // destroy GPU mesh buffers before sg_shutdown
+    texture_store_shutdown(); // destroy GPU textures before sg_shutdown
     sg_shutdown();
     sapp_quit();
 
@@ -420,19 +423,8 @@ void renderer_enqueue_line_quad(const float p0[3], const float p1[3],
     ++state.line_quad_count;
 }
 
-RendererTextureHandle renderer_upload_texture_2d(const void* pixels,
-                                                 int width, int height, int channels) {
-    (void)pixels; (void)width; (void)height; (void)channels; return {};
-}
-
-RendererTextureHandle renderer_upload_texture_from_file(const char* path) {
-    (void)path; return {};
-}
-
-RendererTextureHandle renderer_upload_cubemap(const void* faces[6],
-                                              int face_width, int face_height, int channels) {
-    (void)faces; (void)face_width; (void)face_height; (void)channels; return {};
-}
+// renderer_upload_texture_2d, renderer_upload_texture_from_file, renderer_upload_cubemap
+// are implemented in texture.cpp (own texture store — see texture.h).
 
 Material renderer_make_unlit_material(const float rgba[4]) {
     Material m;
