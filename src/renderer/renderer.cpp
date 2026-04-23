@@ -236,6 +236,14 @@ void renderer_begin_frame() {
     state.draw_count      = 0;
     state.line_quad_count = 0;
     state.camera_set      = false;
+
+    simgui_frame_desc_t simgui_fd = {};
+    simgui_fd.width      = sapp_width();
+    simgui_fd.height     = sapp_height();
+    simgui_fd.delta_time = sapp_frame_duration();
+    simgui_fd.dpi_scale  = sapp_dpi_scale();
+    simgui_new_frame(&simgui_fd);
+
     sg_pass pass = {};
     pass.action    = state.pass_action;
     pass.swapchain = sglue_swapchain();
