@@ -67,19 +67,3 @@ sudo apt install -y \
 ---
 
 gemini update --quiet - по-малко junk в output-а
-
-
-
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
-cmake --build build
-
-If you want the per-workstream targets instead of a full build:
-
- cmake --build build --target renderer_app renderer_tests
- cmake --build build --target engine_app engine_tests
- cmake --build build --target game
-
----
-
-Download Sokol shader compiler:
-https://github.com/floooh/sokol-tools-bin/tree/master/bin/linux

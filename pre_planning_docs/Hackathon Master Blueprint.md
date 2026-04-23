@@ -77,11 +77,9 @@ All items **FIXED** unless noted.
 
 ### 3.3 Shader Pipeline and Graphics Backend
 
-**FIXED:** Only backend: **OpenGL 3.3 Core** on desktop Linux. Vulkan removed for hardware compatibility and reduced plumbing complexity.
+**FIXED:** Primary backend: **Vulkan** on desktop Linux. Fallback: **OpenGL 3.3 Core** via build flag.
 
 **FIXED:** Rendering engine owns `sokol_app` init and main frame callback. Game engine runs its tick from inside the renderer's frame callback. Input flows from `sokol_app` through renderer to engine.
-
-**FIXED (Iter 9):** Dear ImGui integration path is renderer-owned **`util/sokol_imgui.h`** from the pinned sokol repo. Do **not** introduce GLFW/SDL backends or any second windowing/input layer. The renderer initializes/shuts down ImGui, forwards `sokol_app` events into it, begins a new UI frame each render tick, and renders the UI draw data after the 3D scene. Game code only emits widgets/HUD content.
 
 **FIXED (Iter 9, revised):** Shaders are annotated `.glsl` files under `/shaders/renderer/` or `/shaders/game/`, **precompiled ahead of time via `sokol-shdc`** into per-backend headers (`${CMAKE_BINARY_DIR}/generated/shaders/<name>.glsl.h`). Consumed via `#include` + `shd_<name>_shader_desc(sg_query_backend())`. Reverses the earlier "runtime file loading is default" decision.
 
@@ -91,7 +89,7 @@ All items **FIXED** unless noted.
 
 **FIXED (Iter 9):** Runtime `sg_make_shader` / pipeline-creation callback logs errors and falls back to a magenta error pipeline — never crashes. Acceptance criterion on the shading milestone.
 
-**Cut:** Runtime GLSL loading; shader hot-reload; Vulkan backend. Hot-reload may be added later as a debug-only GL-backend path if time permits.
+**Cut:** Runtime GLSL loading; shader hot-reload. Hot-reload may be added later as a debug-only GL-backend path if time permits.
 
 ### 3.4 Assets
 
@@ -148,9 +146,9 @@ Rule (add to `AGENTS.md`): never hard-code relative asset paths; always compose 
 
 > Full details in Rendering Engine Spec.
 
-**MVP:** perspective camera, forward rendering, unlit→Lambertian, static skybox, line renderer (world-space quads), alpha blending (basic), simple procedural geometry, minimal shader-error reporting.
-**Desirable:** Blinn-Phong + diffuse textures, alpha-blended transparency queue (sorted back-to-front), custom shader hook, capsule mesh builder, normal maps.
-**Stretch/Cut:** frustum culling, front-to-back sort, stress test, normal maps, procedural sky shader, shadow mapping, PBR, deferred rendering, post-processing.
+**MVP:** perspective camera, forward rendering, unlit→Lambertian→Blinn-Phong, diffuse textures, static skybox, line renderer, simple procedural geometry, runtime GLSL loading, minimal shader-error reporting.
+**Desirable:** alpha blending queues, normal maps, GPU instancing, material hooks.
+**Stretch/Cut:** shadow mapping, PBR, deferred rendering, post-processing.
 
 ---
 
@@ -158,9 +156,9 @@ Rule (add to `AGENTS.md`): never hard-code relative asset paths; always compose 
 
 > Full details in Game Engine Spec.
 
-**MVP:** ECS via `entt`, asset/mesh upload bridge, game loop synced with renderer, input, Euler physics (linear-only collision response), AABB collision, raycasting, thin gameplay API. Capsule mesh builder is Desirable (renderer R-M5).
-**Desirable:** enemy steering, multiple lights, capsule mesh integration, prefab spawning helpers.
-**Stretch/Cut:** pathfinding, animation, audio, networking, editor, convex-hull colliders, spatial partitioning.
+**MVP:** ECS via `entt`, asset/mesh upload bridge, game loop synced with renderer, input, Euler physics, simple collision, raycasting, thin gameplay API.
+**Desirable:** enemy steering, multiple lights, prefab spawning helpers.
+**Stretch/Cut:** pathfinding, animation, audio, networking, editor.
 
 ---
 
@@ -168,7 +166,7 @@ Rule (add to `AGENTS.md`): never hard-code relative asset paths; always compose 
 
 > Full details in `GAME_DESIGN.md`.
 
-**MVP:** procedural asteroid field, player spaceship, enemy ships, plasma gun (projectile entity), laser beam (raycast + line quad with alpha fade), shields/HP, boost, containment boundary, alpha-blended VFX, Dear ImGui HUD.
+**MVP:** procedural asteroid field, player spaceship, enemy ships, plasma gun, laser beam, shields/HP, containment boundary, Dear ImGui HUD.
 **Stretch/Cut:** rocket launcher, power-ups, advanced VFX, mobile controls, station regen.
 
 Game workstream starts from frozen interfaces + mocks; must not block on full engine delivery.
@@ -612,13 +610,11 @@ Target: **~1 milestone merge per hour** per workstream (~5 total per workstream)
 ### 13.1 Scope-Cut Order (Contingency)
 
 If time runs short, cut in this order:
-1. Blinn-Phong (fallback to Lambertian only)
-2. Diffuse textures (solid colors only)
-3. Custom shader hook / shader-based explosion VFX
-4. Enemy AI steering (game-local seek only; no engine E-M5 swap)
-5. Multiple enemy ships (keep 1)
-6. Asteroid-asteroid collisions
-7. Capsule mesh builder
+1. Advanced VFX / Shields
+2. Blinn-Phong (fallback to Lambertian)
+3. Enemy AI steering (fallback to static/random)
+4. Procedural asteroid complexity
+5. Normal maps / Textures
 
 ### 13.2 Finalization and Demo Strategy
 
@@ -633,7 +629,6 @@ If time runs short, cut in this order:
 
 ### Infrastructure
 - [ ] Ubuntu 24.04 LTS verified on all machines. **(VERIFY: NVidia drivers and Vulkan support)**
-- [ ] OpenGL 3.3 Core backend verified on all laptops (Vulkan removed). **(VERIFY)**
 - [ ] Agreed hostnames set in `/etc/hostname` and recorded in `AGENTS.md`.
 - [ ] Clang, CMake, Ninja installed and tested.
 - [ ] Repo and worktrees created on all machines including RTX 3090.
@@ -649,7 +644,7 @@ If time runs short, cut in this order:
 - [ ] `.github/copilot-instructions.md` mirrors critical rules directly.
 - [ ] `.gemini/settings.json` context file points to `AGENTS.md`. **(VERIFY: settings syntax and path resolution)**
 - [ ] Role and domain skills generated and reviewed: `sokol-api`, `entt-ecs`, `cgltf-loading`, `glsl-patterns`, `physics-euler`.
-- [ ] Copilot, Claude, Gemini, and z.ai workflows verified on real repo structure targeting OpenGL 3.3. **(VERIFY: Copilot CLI availability and Gemini throughput)**
+- [ ] Copilot, Claude, Gemini, and z.ai workflows verified on real repo structure. **(VERIFY: Copilot CLI availability and Gemini throughput)**
 
 ### Local Agent (RTX 3090)
 - [ ] Context configured with documented prompt budget smaller than max.
@@ -708,9 +703,6 @@ If time runs short, cut in this order:
 17. **(Iter 9)** Build topology: `renderer` + `engine` static libs with standalone `renderer_app` / `engine_app` driver executables for solo iteration against procedural scenes; `game` executable; per-workstream target-scoped builds; full rebuild only at milestone sync (§3.5).
 18. **(Iter 9, revised)** Shaders **precompiled ahead-of-time via `sokol-shdc`** into per-backend headers; runtime GLSL loading and hot-reload cut. Shader-creation failures log and fall back to a magenta pipeline, never crash (§3.3).
 19. **(Iter 9)** Asset paths resolved via configure-time `ASSET_ROOT` macro from generated `paths.h`; no relative-path lookups at runtime (§3.6). Shaders require no runtime path (headers are linked in).
-20. **(Post-validation)** Graphics backend is OpenGL 3.3 Core only; Vulkan removed. All agents target GL 3.3.
-21. **(Post-validation)** Alpha blending (basic) is MVP in renderer R-M3 for laser beam and plasma VFX transparency.
-22. **(Post-validation)** Capsule mesh builder is Desirable (R-M5 / E-M5), not MVP. Engine E-M1 uses sphere + cube only.
 
 ---
 

@@ -53,11 +53,11 @@ Game-layer components (player controller, weapon state, shield, etc.) live in ga
 - `tick(dt)` invoked from renderer frame callback; engine calls renderer per-frame enqueue for every entity with Transform+Mesh+Material.
 - Directional-light entity and active-camera entity creation.
 - Full public scene API (create/destroy, add/get/remove components, view iteration).
-- Procedural shape spawners (`spawn_sphere`, `spawn_cube`) that consume renderer's mesh builders. Capsule spawner deferred to Desirable (requires renderer R-M5).
+- Procedural shape spawners (`spawn_sphere`, `spawn_cube`, `spawn_capsule`) that consume renderer's mesh builders.
 - No asset import yet.
 - `engine_app` driver: builds a hardcoded procedural ECS scene (handful of primitives) and renders it through the renderer.
 
-**Expected outcome:** `engine_app` shows an ECS-driven procedural scene of spheres and cubes rendered by the renderer. Game workstream can begin coding against engine API + mocks for M2–M4 pieces.
+**Expected outcome:** `engine_app` shows an ECS-driven procedural scene rendered by the renderer. Game workstream can begin coding against engine API + mocks for M2–M4 pieces.
 
 **Files:** `engine_core.{cpp,h}`, `scene_api.{cpp,h}`, `components.h`, `engine_app/main.cpp`.
 
@@ -117,10 +117,6 @@ Game-layer components (player controller, weapon state, shield, etc.) live in ga
 - Point Light component (position, color, intensity, range).
 - Engine uploads up to N point lights per frame to renderer.
 
-### E-M7 — Capsule Mesh Integration
-- Consume renderer's `make_capsule_mesh` in engine's spawn helpers.
-- Demo: `engine_app` renders a capsule alongside spheres and cubes.
-
 ---
 
 ## Milestone Group — Stretch
@@ -148,7 +144,6 @@ Game-layer components (player controller, weapon state, shield, etc.) live in ga
 - **Engine API exposes engine-owned abstractions**, not raw entt components externally in most cases — except `view<...>()` iteration, which the game will want. Concretely: the engine re-exports enough entt surface to iterate components but owns the component definitions.
 - **Mouse-pick / hit-testing UX** is a *game-layer* concern; engine only provides the `raycast` primitive.
 - **Pathfinding renamed to steering;** demoted from MVP to desirable (E-M5).
-- **Capsule mesh:** renderer R-M5 (Desirable), engine E-M7 (Desirable). MVP engine uses sphere + cube only.
 - **Component schema design** is SpecKit output, not a coding milestone.
 
 ---
