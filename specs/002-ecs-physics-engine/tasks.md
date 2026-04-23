@@ -103,15 +103,15 @@ All paths relative to repository root. Engine sources in `src/engine/`, tests in
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T018 [P] [US4] Write collision primitive tests: AABB-vs-AABB overlap true/false cases, world AABB computation from position + half_extents, ray-vs-AABB slab method hit/miss/distance/normal cases in src/engine/tests/test_collision.cpp
+- [x] T018 [P] [US4] Write collision primitive tests: AABB-vs-AABB overlap true/false cases, world AABB computation from position + half_extents, ray-vs-AABB slab method hit/miss/distance/normal cases in src/engine/tests/test_collision.cpp
 
 ### Implementation for User Story 4
 
-- [ ] T019 [P] [US4] Implement input bridge: register InputCallback with renderer_set_input_callback(), update InputState singleton (key_states[], mouse position, mouse delta, mouse buttons) from sokol_app events in src/engine/input.h and src/engine/input.cpp
-- [ ] T020 [US4] Implement collider system: compute world AABB from Transform.position ± Collider.half_extents, brute-force all-pairs AABB-vs-AABB overlap detection returning collision pairs with penetration depth and contact normal (minimum-penetration SAT axis) in src/engine/collider.h and src/engine/collider.cpp
-- [ ] T021 [US4] Implement raycast and overlap queries: engine_raycast() via ray-vs-AABB slab method returning nearest RaycastHit (entity, point, normal, distance), engine_overlap_aabb() returning all intersecting entities in src/engine/raycast.h and src/engine/raycast.cpp
-- [ ] T022 [US4] Wire input callback registration into engine_init(), add mouse delta computation to engine_tick() start, expose engine_key_down/engine_mouse_delta/engine_mouse_button/engine_mouse_position in src/engine/engine.cpp
-- [ ] T023 [US4] Update engine_app for E-M3: WASD+mouse FPS-style camera controller, spawn 50+ collidable entities to validate SC-005 raycast scale, highlight entity under crosshair via raycast, display hit info via fprintf in src/engine/app/main.cpp
+- [x] T019 [P] [US4] Implement input bridge: register InputCallback with renderer_set_input_callback(), update InputState singleton (key_states[], mouse position, mouse delta, mouse buttons) from sokol_app events in src/engine/input.h and src/engine/input.cpp
+- [x] T020 [US4] Implement collider system: compute world AABB from Transform.position ± Collider.half_extents, brute-force all-pairs AABB-vs-AABB overlap detection returning collision pairs with penetration depth and contact normal (minimum-penetration SAT axis) in src/engine/collider.h and src/engine/collider.cpp
+- [x] T021 [US4] Implement raycast and overlap queries: engine_raycast() via ray-vs-AABB slab method returning nearest RaycastHit (entity, point, normal, distance), engine_overlap_aabb() returning all intersecting entities in src/engine/raycast.h and src/engine/raycast.cpp
+- [x] T022 [US4] Wire input callback registration into engine_init(), add mouse delta computation to engine_tick() start, expose engine_key_down/engine_mouse_delta/engine_mouse_button/engine_mouse_position in src/engine/engine.cpp
+- [x] T023 [US4] Update engine_app for E-M3: WASD+mouse FPS-style camera controller, spawn 50+ collidable entities to validate SC-005 raycast scale, highlight entity under crosshair via raycast, display hit info via fprintf in src/engine/app/main.cpp
 
 **Checkpoint**: engine_app navigable with WASD+mouse. Raycasts return correct hits. Collision tests in test_collision.cpp pass. E-M3 acceptance criteria met.
 

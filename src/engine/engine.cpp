@@ -1,5 +1,6 @@
 #include "engine.h"
 #include "engine_time.h"
+#include "input.h"
 #include "scene_api.h"
 #include "camera.h"
 #include "math_utils.h"
@@ -22,6 +23,7 @@ void engine_init(const EngineConfig& config) {
     g_config   = config;
     g_registry = entt::registry{};
     time_init();
+    input_init();  // registers the input callback with the renderer (T022)
 }
 
 void engine_tick(float dt) {
@@ -34,7 +36,8 @@ void engine_tick(float dt) {
     }
     time_set_delta(dt);
 
-    // --- Phase 5: input delta update goes here ---
+    input_begin_frame();  // reset per-frame mouse delta (T022)
+
     // --- Phase 6: physics substep loop goes here ---
 
     // Camera: view + projection → renderer
@@ -98,24 +101,11 @@ void engine_set_active_camera(entt::entity e) {
 }
 
 // ---------------------------------------------------------------------------
-// Stubs for subsystems implemented in later phases
+// Stubs for Phase 6 physics force API
+// (engine_key_down, mouse_delta, mouse_button, mouse_position → input.cpp)
+// (engine_raycast, engine_overlap_aabb → raycast.cpp)
 // ---------------------------------------------------------------------------
 
-// Phase 5 — input
-bool      engine_key_down(int)     { return false; }
-glm::vec2 engine_mouse_delta()     { return {0.f, 0.f}; }
-bool      engine_mouse_button(int) { return false; }
-glm::vec2 engine_mouse_position()  { return {0.f, 0.f}; }
-
-// Phase 6 — physics force API
 void engine_apply_force(entt::entity, const glm::vec3&) {}
 void engine_apply_impulse(entt::entity, const glm::vec3&) {}
 void engine_apply_impulse_at_point(entt::entity, const glm::vec3&, const glm::vec3&) {}
-
-// Phase 5 — spatial queries
-std::optional<RaycastHit> engine_raycast(const glm::vec3&, const glm::vec3&, float) {
-    return std::nullopt;
-}
-std::vector<entt::entity> engine_overlap_aabb(const glm::vec3&, const glm::vec3&) {
-    return {};
-}

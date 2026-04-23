@@ -1,6 +1,4 @@
-#include <ctime>  // ensures struct timespec / CLOCK_MONOTONIC visible before sokol
-
-#define SOKOL_TIME_IMPL
+// SOKOL_TIME_IMPL is owned by the renderer (renderer.cpp) — include for declarations only.
 #include <sokol_time.h>
 
 #include "engine_time.h"
