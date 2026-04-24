@@ -630,6 +630,7 @@ Material renderer_make_unlit_material(const float rgba[4]) {
     if (rgba) {
         m.base_color[0] = rgba[0]; m.base_color[1] = rgba[1];
         m.base_color[2] = rgba[2]; m.base_color[3] = rgba[3];
+        m.alpha         = rgba[3];
     }
     return m;
 }
