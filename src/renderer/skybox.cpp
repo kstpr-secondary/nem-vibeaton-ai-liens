@@ -72,10 +72,13 @@ sg_pipeline skybox_create_pipeline(sg_pipeline magenta_fallback) {
     desc.layout.attrs[ATTR_skybox_position].offset = 0;
 
     desc.depth.compare       = SG_COMPAREFUNC_LESS_EQUAL;
-    desc.depth.write_enabled = true;   // write far-plane depth so skybox fills background
+    desc.depth.write_enabled = false;  // xyww trick puts skybox at z=1.0 (cleared depth) — no need to write
 
-    // Cull front faces: camera is inside the cube, so back faces face inward.
-    desc.cull_mode = SG_CULLMODE_FRONT;
+    // Sokol's default face_winding is SG_FACEWINDING_CW (see sg_query_pipeline_defaults).
+    // The cube is wound CCW from outside, so the inner faces present CW screen-space winding —
+    // sokol classifies those as FRONT. Disabling culling avoids the winding-vs-default trap and
+    // matches the sokol cubemap sample (sample-skybox-code/cubemap-jpeg-sapp.c).
+    desc.cull_mode = SG_CULLMODE_NONE;
     desc.label     = "skybox-pipeline";
 
     sg_pipeline pip = sg_make_pipeline(&desc);
