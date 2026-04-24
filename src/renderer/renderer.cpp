@@ -104,6 +104,11 @@ struct RendererState {
 
 RendererState state;
 
+// Line-quad static buffers — created lazily on first draw, destroyed in shutdown.
+static sg_buffer line_quad_vbuf = {};
+static sg_buffer line_quad_ibuf = {};
+static bool      line_quad_bufs_init = false;
+
 // Called from the internal sokol init callback (GL context exists at that point).
 // Stores the result in state.pipeline_magenta — all other pipeline helpers fall back to it.
 void make_magenta_pipeline() {
@@ -306,6 +311,9 @@ void renderer_shutdown() {
     skybox_shutdown();        // destroy skybox VBO/IBO/sampler before sg_shutdown
     mesh_store_shutdown();    // destroy GPU mesh buffers before sg_shutdown
     texture_store_shutdown(); // destroy GPU textures before sg_shutdown
+    if (line_quad_vbuf.id != 0) { sg_destroy_buffer(line_quad_vbuf); line_quad_vbuf = {}; }
+    if (line_quad_ibuf.id != 0) { sg_destroy_buffer(line_quad_ibuf); line_quad_ibuf = {}; }
+    line_quad_bufs_init = false;
     sg_shutdown();
     sapp_quit();
 
@@ -349,30 +357,43 @@ void renderer_end_frame() {
     }
 
     // Uniform structs matching unlit.glsl layout (std140, @ctype glm types).
-    // Defined locally rather than using generated header types for clarity.
     struct UnlitVSParams { glm::mat4 mvp; };
     struct UnlitFSParams { glm::vec4 base_color; };
 
     // Lambertian uniform structs matching lambertian.glsl std140 layout.
-    // vec3 fields are padded to 16 bytes per std140 base-alignment rules.
     struct LambertianVSParams {
-        glm::mat4 mvp;    // binding=0 slot 0
-        glm::mat4 model;  // binding=0 slot 1
+        glm::mat4 mvp;
+        glm::mat4 model;
     };
     struct LambertianFSParams {
-        float light_dir[3];    // offset  0
-        float _pad0;           // offset 12 — vec3 → 16-byte stride
-        float light_color[3];  // offset 16
-        float light_intensity; // offset 28
-        float base_color[4];   // offset 32
+        float light_dir[3];
+        float _pad0;
+        float light_color[3];
+        float light_intensity;
+        float base_color[4];
     };
 
-    // --- Unlit pass ---------------------------------------------------------
+    // --- (1) Skybox pass ----------------------------------------------------
+    if (state.skybox_handle.id != 0) {
+        sg_image cubemap_img = texture_get(state.skybox_handle.id);
+        if (sg_query_image_state(cubemap_img) == SG_RESOURCESTATE_VALID) {
+            glm::mat4 view_mat = glm::make_mat4(state.camera.view);
+            glm::mat4 proj_mat = glm::make_mat4(state.camera.projection);
+            draw_skybox_pass(state.pipeline_skybox, cubemap_img,
+                             glm::value_ptr(proj_mat), glm::value_ptr(view_mat));
+        } else {
+            printf("[renderer] WARNING: skybox texture not valid — skipping skybox pass\n");
+        }
+    }
+
+    // --- (2) Opaque draws (Unlit + Lambertian) ------------------------------
     if (state.draw_count > 0) {
+        // Unlit pass
         bool bound = false;
         for (int i = 0; i < state.draw_count; ++i) {
             const DrawCommand& cmd = state.draw_queue[i];
             if (cmd.material.shading_model != ShadingModel::Unlit) continue;
+            if (cmd.material.alpha < 1.0f) continue; // transparent → pass 3
 
             if (!bound) { sg_apply_pipeline(state.pipeline_unlit); bound = true; }
 
@@ -397,12 +418,9 @@ void renderer_end_frame() {
 
             sg_draw(0, static_cast<int>(mesh_index_count_get(cmd.mesh.id)), 1);
         }
-    }
 
-    // --- Lambertian pass ----------------------------------------------------
-    {
+        // Lambertian pass
         if (!state.light_set) {
-            // Count Lambertian draws so we only warn when relevant
             int lam_count = 0;
             for (int i = 0; i < state.draw_count; ++i)
                 if (state.draw_queue[i].material.shading_model == ShadingModel::Lambertian) ++lam_count;
@@ -410,10 +428,11 @@ void renderer_end_frame() {
                 printf("[renderer] WARNING: %d Lambertian draw(s) queued but no directional light set\n", lam_count);
         }
 
-        bool bound = false;
+        bound = false;
         for (int i = 0; i < state.draw_count; ++i) {
             const DrawCommand& cmd = state.draw_queue[i];
             if (cmd.material.shading_model != ShadingModel::Lambertian) continue;
+            if (cmd.material.alpha < 1.0f) continue; // transparent → pass 3
 
             if (!bound) { sg_apply_pipeline(state.pipeline_lambertian); bound = true; }
 
@@ -450,6 +469,78 @@ void renderer_end_frame() {
             sg_draw(0, static_cast<int>(mesh_index_count_get(cmd.mesh.id)), 1);
         }
     }
+
+    // --- (3) Transparent draws (alpha < 1.0) --------------------------------
+    {
+        bool bound = false;
+        for (int i = 0; i < state.draw_count; ++i) {
+            const DrawCommand& cmd = state.draw_queue[i];
+            if (cmd.material.alpha >= 1.0f) continue;
+
+            if (!bound) { sg_apply_pipeline(state.pipeline_transparent); bound = true; }
+
+            glm::mat4 model = glm::make_mat4(cmd.world_transform);
+            glm::mat4 mvp   = state.vp * model;
+
+            sg_bindings bind       = {};
+            bind.vertex_buffers[0] = mesh_vbuf_get(cmd.mesh.id);
+            bind.index_buffer      = mesh_ibuf_get(cmd.mesh.id);
+            sg_apply_bindings(&bind);
+
+            UnlitVSParams vs_p = { mvp };
+            sg_range vs_range  = SG_RANGE(vs_p);
+            sg_apply_uniforms(0, &vs_range);
+
+            UnlitFSParams fs_p = { glm::vec4(cmd.material.base_color[0],
+                                             cmd.material.base_color[1],
+                                             cmd.material.base_color[2],
+                                             cmd.material.base_color[3]) };
+            sg_range fs_range  = SG_RANGE(fs_p);
+            sg_apply_uniforms(1, &fs_range);
+
+            sg_draw(0, static_cast<int>(mesh_index_count_get(cmd.mesh.id)), 1);
+        }
+    }
+
+   // --- (4) Line quad draws ------------------------------------------------
+     if (state.line_quad_count > 0) {
+         sg_apply_pipeline(state.pipeline_line_quad);
+
+         if (!line_quad_bufs_init) {
+             static uint32_t line_quad_indices[6] = { 0, 1, 2, 0, 2, 3 };
+
+             sg_buffer_desc vdesc = {};
+             vdesc.size           = sizeof(LineQuadCommand);
+             vdesc.usage.vertex_buffer = true;
+             vdesc.usage.stream_update   = true;
+             vdesc.label               = "line-quad-vbuf";
+             line_quad_vbuf = sg_make_buffer(&vdesc);
+
+             sg_buffer_desc idesc = {};
+             idesc.size           = sizeof(line_quad_indices);
+             idesc.usage.index_buffer  = true;
+             idesc.usage.immutable     = true;
+             idesc.data                = SG_RANGE(line_quad_indices);
+             idesc.label               = "line-quad-ibuf";
+             line_quad_ibuf = sg_make_buffer(&idesc);
+
+             line_quad_bufs_init = true;
+         }
+
+         for (int i = 0; i < state.line_quad_count; ++i) {
+             const LineQuadCommand& cmd = state.line_quad_queue[i];
+
+             sg_range vrange = SG_RANGE(cmd.verts);
+             sg_update_buffer(line_quad_vbuf, &vrange);
+
+             sg_bindings bind = {};
+             bind.vertex_buffers[0] = line_quad_vbuf;
+             bind.index_buffer      = line_quad_ibuf;
+             sg_apply_bindings(&bind);
+
+             sg_draw(0, 6, 1);
+         }
+     }
 
     simgui_render();
     sg_end_pass();
