@@ -503,49 +503,66 @@ void renderer_end_frame() {
     }
 
    // --- (4) Line quad draws ------------------------------------------------
-     if (state.line_quad_count > 0) {
-         sg_apply_pipeline(state.pipeline_line_quad);
+      if (state.line_quad_count > 0) {
+          sg_apply_pipeline(state.pipeline_line_quad);
 
-         if (!line_quad_bufs_init) {
-             static uint32_t line_quad_indices[6] = { 0, 1, 2, 0, 2, 3 };
+          if (!line_quad_bufs_init) {
+              static uint32_t line_quad_indices[6] = { 0, 1, 2, 0, 2, 3 };
 
-             sg_buffer_desc vdesc = {};
-             vdesc.size           = sizeof(LineQuadCommand);
-             vdesc.usage.vertex_buffer = true;
-             vdesc.usage.stream_update   = true;
-             vdesc.label               = "line-quad-vbuf";
-             line_quad_vbuf = sg_make_buffer(&vdesc);
+              const int max_verts = 256 * 4;
+              sg_buffer_desc vdesc = {};
+              vdesc.size           = sizeof(LineQuadVertex) * max_verts;
+              vdesc.usage.vertex_buffer = true;
+              vdesc.usage.stream_update   = true;
+              vdesc.label               = "line-quad-vbuf";
+              line_quad_vbuf = sg_make_buffer(&vdesc);
 
-             sg_buffer_desc idesc = {};
-             idesc.size           = sizeof(line_quad_indices);
-             idesc.usage.index_buffer  = true;
-             idesc.usage.immutable     = true;
-             idesc.data                = SG_RANGE(line_quad_indices);
-             idesc.label               = "line-quad-ibuf";
-             line_quad_ibuf = sg_make_buffer(&idesc);
+              sg_buffer_desc idesc = {};
+              idesc.size           = sizeof(line_quad_indices);
+              idesc.usage.index_buffer  = true;
+              idesc.usage.immutable     = true;
+              idesc.data                = SG_RANGE(line_quad_indices);
+              idesc.label               = "line-quad-ibuf";
+              line_quad_ibuf = sg_make_buffer(&idesc);
 
-             line_quad_bufs_init = true;
-         }
+              line_quad_bufs_init = true;
+          }
 
-         for (int i = 0; i < state.line_quad_count; ++i) {
-             const LineQuadCommand& cmd = state.line_quad_queue[i];
+          // Upload all quad vertices in a single call (one update per frame).
+          {
+              static LineQuadVertex all_verts[256 * 4];
+              for (int i = 0; i < state.line_quad_count; ++i) {
+                  const LineQuadCommand& cmd = state.line_quad_queue[i];
+                  std::memcpy(all_verts + i * 4, cmd.verts, sizeof(cmd.verts));
+              }
+              sg_range vrange;
+             vrange.ptr = all_verts;
+             vrange.size = sizeof(LineQuadVertex) * state.line_quad_count * 4;
+              sg_update_buffer(line_quad_vbuf, &vrange);
+          }
 
-             sg_range vrange = SG_RANGE(cmd.verts);
-             sg_update_buffer(line_quad_vbuf, &vrange);
+          line_quad_vs_params_t vs_p = { state.vp };
+          sg_range vp_range = SG_RANGE(vs_p);
+          sg_apply_uniforms(0, &vp_range);
 
-             sg_bindings bind = {};
-             bind.vertex_buffers[0] = line_quad_vbuf;
-             bind.index_buffer      = line_quad_ibuf;
-             sg_apply_bindings(&bind);
+          sg_bindings bind = {};
+          bind.vertex_buffers[0] = line_quad_vbuf;
+          bind.index_buffer      = line_quad_ibuf;
+          sg_apply_bindings(&bind);
 
-             sg_draw(0, 6, 1);
-         }
-     }
+          for (int i = 0; i < state.line_quad_count; ++i) {
+              sg_draw(i * 4, 4, 1);
+          }
+      }
 
     simgui_render();
     sg_end_pass();
     sg_commit();
     state.frame_active = false;
+}
+
+int renderer_get_draw_count() {
+    return state.draw_count;
 }
 
 void renderer_set_camera(const RendererCamera& camera) {
