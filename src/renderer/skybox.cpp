@@ -1,3 +1,4 @@
+#include <GL/gl.h>
 #include "sokol_gfx.h"
 #include "skybox.h"
 #include "renderer.h"
@@ -71,7 +72,7 @@ sg_pipeline skybox_create_pipeline(sg_pipeline magenta_fallback) {
     desc.layout.attrs[ATTR_skybox_position].offset = 0;
 
     desc.depth.compare       = SG_COMPAREFUNC_LESS_EQUAL;
-    desc.depth.write_enabled = false;  // skybox must not pollute depth buffer
+    desc.depth.write_enabled = true;   // write far-plane depth so skybox fills background
 
     // Cull front faces: camera is inside the cube, so back faces face inward.
     desc.cull_mode = SG_CULLMODE_FRONT;
@@ -133,7 +134,14 @@ void draw_skybox_pass(
     const float proj[16],
     const float view[16])
 {
-    if (pip.id == 0 || cubemap_img.id == 0) return;
+    if (pip.id == 0 || cubemap_img.id == 0) {
+        printf("[renderer] skybox: skipped — pip=%u img=%u\n", (unsigned)pip.id, (unsigned)cubemap_img.id);
+        return;
+    }
+    if (sg_query_image_state(cubemap_img) != SG_RESOURCESTATE_VALID) {
+        printf("[renderer] skybox: image not valid (state=%d)\n", (int)sg_query_image_state(cubemap_img));
+        return;
+    }
 
     // Strip translation from view: rotation-only matrix keeps skybox at infinity.
     glm::mat4 view_mat      = glm::make_mat4(view);
@@ -160,6 +168,11 @@ void draw_skybox_pass(
     sg_apply_uniforms(UB_skybox_vs_params, &vs_p_range);
 
     sg_draw(0, 36, 1);
+
+    GLuint glerr = glGetError();
+    if (glerr != GL_NO_ERROR) {
+        printf("[renderer] skybox: GL error after sg_draw: 0x%x\n", (unsigned)glerr);
+    }
 
     sg_destroy_view(cubemap_view);
 }

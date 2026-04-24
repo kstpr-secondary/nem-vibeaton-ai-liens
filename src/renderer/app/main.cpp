@@ -73,11 +73,13 @@ static void on_frame(float dt, void*) {
         for (int i = 0; i < 6; ++i) {
             char path[512];
             snprintf(path, sizeof(path), "%s/skybox/%s", ASSET_ROOT, skybox_names[i]);
+            printf("[info] loading skybox face %d: %s\n", i, path);
             unsigned char* data = stbi_load(path, &w, &h, &ch, 4);
             if (data) {
                 faces[i] = data;
+                printf("[info]   loaded OK (%dx%d, %d ch)\n", w, h, ch);
             } else {
-                printf("[warn] failed to load skybox face: %s\n", path);
+                printf("[warn]   FAILED to load: %s\n", path);
                 faces[i] = nullptr;
             }
         }

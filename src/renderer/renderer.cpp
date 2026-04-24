@@ -373,20 +373,7 @@ void renderer_end_frame() {
         float base_color[4];
     };
 
-    // --- (1) Skybox pass ----------------------------------------------------
-    if (state.skybox_handle.id != 0) {
-        sg_image cubemap_img = texture_get(state.skybox_handle.id);
-        if (sg_query_image_state(cubemap_img) == SG_RESOURCESTATE_VALID) {
-            glm::mat4 view_mat = glm::make_mat4(state.camera.view);
-            glm::mat4 proj_mat = glm::make_mat4(state.camera.projection);
-            draw_skybox_pass(state.pipeline_skybox, cubemap_img,
-                             glm::value_ptr(proj_mat), glm::value_ptr(view_mat));
-        } else {
-            printf("[renderer] WARNING: skybox texture not valid — skipping skybox pass\n");
-        }
-    }
-
-    // --- (2) Opaque draws (Unlit + Lambertian) ------------------------------
+    // --- (1) Opaque draws (Unlit + Lambertian) ------------------------------
     if (state.draw_count > 0) {
         // Unlit pass
         bool bound = false;
@@ -551,9 +538,20 @@ void renderer_end_frame() {
           sg_apply_bindings(&bind);
 
           for (int i = 0; i < state.line_quad_count; ++i) {
-              sg_draw(i * 4, 4, 1);
-          }
-      }
+               sg_draw(i * 4, 4, 1);
+           }
+       }
+
+    // --- (5) Skybox pass (LAST — renders at far plane behind everything) ----
+    if (state.skybox_handle.id != 0) {
+        sg_image cubemap_img = texture_get(state.skybox_handle.id);
+        if (sg_query_image_state(cubemap_img) == SG_RESOURCESTATE_VALID) {
+            glm::mat4 view_mat = glm::make_mat4(state.camera.view);
+            glm::mat4 proj_mat = glm::make_mat4(state.camera.projection);
+            draw_skybox_pass(state.pipeline_skybox, cubemap_img,
+                             glm::value_ptr(proj_mat), glm::value_ptr(view_mat));
+        }
+    }
 
     simgui_render();
     sg_end_pass();

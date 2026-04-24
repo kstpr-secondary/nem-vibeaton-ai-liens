@@ -104,11 +104,16 @@ RendererTextureHandle renderer_upload_cubemap(
     desc.data.mip_levels[0] = { packed.data(), packed.size() };
     desc.label              = "cubemap";
 
+    printf("[renderer] cubemap: uploading %d faces, %dx%d, %d ch, total %zu bytes\n",
+           6, face_width, face_height, channels, packed.size());
+
     sg_image img = sg_make_image(&desc);
     if (sg_query_image_state(img) != SG_RESOURCESTATE_VALID) {
-        printf("[renderer] ERROR: cubemap upload failed\n");
+        printf("[renderer] ERROR: cubemap upload failed — image state=%d, id=%u\n",
+               (int)sg_query_image_state(img), (unsigned)img.id);
         return {};
     }
+    printf("[renderer] cubemap: uploaded successfully, handle id=%u\n", (unsigned)img.id);
     return texture_store_insert(img);
 }
 
