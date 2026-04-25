@@ -373,6 +373,17 @@ void renderer_end_frame() {
         float base_color[4];
     };
 
+    // --- (5) Skybox pass (LAST — renders at far plane behind everything) ----
+    if (state.skybox_handle.id != 0) {
+        sg_image cubemap_img = texture_get(state.skybox_handle.id);
+        if (sg_query_image_state(cubemap_img) == SG_RESOURCESTATE_VALID) {
+            glm::mat4 view_mat = glm::make_mat4(state.camera.view);
+            glm::mat4 proj_mat = glm::make_mat4(state.camera.projection);
+            draw_skybox_pass(state.pipeline_skybox, cubemap_img,
+                             glm::value_ptr(proj_mat), glm::value_ptr(view_mat));
+        }
+    }
+
     // --- (1) Opaque draws (Unlit + Lambertian) ------------------------------
     if (state.draw_count > 0) {
         // Unlit pass
@@ -542,16 +553,6 @@ void renderer_end_frame() {
            }
        }
 
-    // --- (5) Skybox pass (LAST — renders at far plane behind everything) ----
-    if (state.skybox_handle.id != 0) {
-        sg_image cubemap_img = texture_get(state.skybox_handle.id);
-        if (sg_query_image_state(cubemap_img) == SG_RESOURCESTATE_VALID) {
-            glm::mat4 view_mat = glm::make_mat4(state.camera.view);
-            glm::mat4 proj_mat = glm::make_mat4(state.camera.projection);
-            draw_skybox_pass(state.pipeline_skybox, cubemap_img,
-                             glm::value_ptr(proj_mat), glm::value_ptr(view_mat));
-        }
-    }
 
     simgui_render();
     sg_end_pass();
