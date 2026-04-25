@@ -43,7 +43,7 @@ set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
 FetchContent_Declare(
     sokol
     GIT_REPOSITORY https://github.com/floooh/sokol.git
-    GIT_TAG d48d3c09b7d5bc8da3e2d303e109f659a45108eb
+    GIT_TAG 1ecbb1c0d9968c9848e9a94c546e65204ea21de4
     GIT_SHALLOW ON
 )
 
