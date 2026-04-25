@@ -110,6 +110,9 @@ void renderer_shutdown();
 void renderer_begin_frame();
 void renderer_end_frame();
 
+// Query submitted draw count for ImGui HUD display.
+int renderer_get_draw_count();
+
 // ---------------------------------------------------------------------------
 // Scene setup (between begin_frame / end_frame)
 // ---------------------------------------------------------------------------

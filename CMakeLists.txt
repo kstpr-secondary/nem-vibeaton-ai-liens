@@ -392,6 +392,7 @@ vibeaton_attach_shader_headers(renderer "${CMAKE_SOURCE_DIR}/shaders/renderer" r
 
 add_executable(renderer_app ${renderer_app_sources})
 target_link_libraries(renderer_app PRIVATE renderer)
+target_include_directories(renderer_app PRIVATE ${imgui_SOURCE_DIR})
 
 # ====================================================================
 # Renderer tests (Catch2 when present)

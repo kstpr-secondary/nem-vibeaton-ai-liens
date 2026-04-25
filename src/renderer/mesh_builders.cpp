@@ -218,8 +218,8 @@ RendererMeshHandle renderer_make_cube_mesh(float half_extent) {
 
         uint32_t base    = static_cast<uint32_t>(f * 4);
         uint32_t* idx    = &indices[f * 6];
-        idx[0] = base;     idx[1] = base + 1; idx[2] = base + 2; // tri 0
-        idx[3] = base;     idx[4] = base + 2; idx[5] = base + 3; // tri 1
+        idx[0] = base;     idx[1] = base + 2; idx[2] = base + 1; // tri 0 (CCW)
+        idx[3] = base;     idx[4] = base + 3; idx[5] = base + 2; // tri 1 (CCW)
     }
 
     return renderer_upload_mesh(verts, 24, indices, 36);

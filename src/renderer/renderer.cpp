@@ -1,24 +1,28 @@
-// sokol IMPL macros — must appear in exactly this one TU.
-// All other TUs include the headers without the IMPL define.
+// sokol IMPL macros — define BEFORE any sokol or project header include.
+// This TU owns the implementation; all other TUs include sokol headers
+// without the IMPL define.
 #define SOKOL_GFX_IMPL
 #define SOKOL_APP_IMPL
 #define SOKOL_GLUE_IMPL
 #define SOKOL_TIME_IMPL
 #define SOKOL_LOG_IMPL
+#define SOKOL_IMGUI_IMPL
+
+// Sokol headers first — this defines SOKOL_GFX_INCLUDED so that downstream
+// project headers (texture.h, skybox.h) skip their forward declarations.
 #include "sokol_gfx.h"
 #include "sokol_app.h"
 #include "sokol_glue.h"
 #include "sokol_time.h"
 #include "sokol_log.h"
-#define SOKOL_IMGUI_IMPL
 #include "imgui.h"
 #include "util/sokol_imgui.h"
 
+// Project headers — their sokol forward-decl guards see SOKOL_GFX_INCLUDED.
 #include "renderer.h"
-#include "shaders/magenta.glsl.h"
-#include "pipeline_unlit.h"
-#include "pipeline_lambertian.h"
-#include "mesh_builders.h"
+#include "debug_draw.h"
+#include "texture.h"
+#include "skybox.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -26,6 +30,14 @@
 #include <cassert>
 #include <cmath>
 #include <cstdio>
+
+// Generated shader headers — must come AFTER glm (some use @ctype glm mappings).
+#include "shaders/magenta.glsl.h"
+#include "shaders/unlit.glsl.h"
+#include "shaders/line_quad.glsl.h"
+#include "pipeline_unlit.h"
+#include "pipeline_lambertian.h"
+#include "mesh_builders.h"
 
 // ---------------------------------------------------------------------------
 // Internal command types
@@ -37,15 +49,8 @@ struct DrawCommand {
     Material           material;
 };
 
-struct LineQuadVertex {
-    float position[3];
-    float color[4];
-};
-
 // Pre-computed (billboarded) corners — 4 verts, 6 indices shared via offset math
-struct LineQuadCommand {
-    LineQuadVertex verts[4];
-};
+// LineQuadVertex and LineQuadCommand are defined in debug_draw.h
 
 // ---------------------------------------------------------------------------
 // Renderer state — file-private singleton
@@ -78,10 +83,7 @@ struct RendererState {
     sg_pipeline pipeline_skybox;
 
     // Mesh GPU resources are managed by mesh_builders.cpp (see mesh_vbuf_get / mesh_ibuf_get)
-
-    // Texture GPU resources — index 0 reserved
-    sg_image texture_table[256] = {};
-    uint32_t next_texture_id    = 1;
+    // Texture GPU resources are managed by texture.cpp (see texture_get / texture_store_insert)
 
     // Lifecycle flags
     bool frame_active = false;
@@ -101,6 +103,11 @@ struct RendererState {
 };
 
 RendererState state;
+
+// Line-quad static buffers — created lazily on first draw, destroyed in shutdown.
+static sg_buffer line_quad_vbuf = {};
+static sg_buffer line_quad_ibuf = {};
+static bool      line_quad_bufs_init = false;
 
 // Called from the internal sokol init callback (GL context exists at that point).
 // Stores the result in state.pipeline_magenta — all other pipeline helpers fall back to it.
@@ -127,6 +134,85 @@ void make_magenta_pipeline() {
     }
 }
 
+// Transparent pipeline: same unlit shader, alpha blend enabled, depth write OFF.
+void make_transparent_pipeline() {
+    sg_shader shd = sg_make_shader(unlit_shader_desc(sg_query_backend()));
+    if (sg_query_shader_state(shd) != SG_RESOURCESTATE_VALID) {
+        printf("[renderer] ERROR: transparent shader creation failed — using magenta fallback\n");
+        state.pipeline_transparent = state.pipeline_magenta;
+        return;
+    }
+
+    sg_pipeline_desc desc = {};
+    desc.shader     = shd;
+    desc.index_type = SG_INDEXTYPE_UINT32;
+
+    desc.layout.buffers[0].stride              = sizeof(Vertex);
+    desc.layout.attrs[ATTR_unlit_position].format = SG_VERTEXFORMAT_FLOAT3;
+    desc.layout.attrs[ATTR_unlit_position].offset  = offsetof(Vertex, position);
+
+    desc.depth.compare       = SG_COMPAREFUNC_LESS_EQUAL;
+    desc.depth.write_enabled = false;  // depth write OFF for correct transparency
+    desc.cull_mode           = SG_CULLMODE_BACK;
+
+    desc.colors[0].blend.enabled          = true;
+    desc.colors[0].blend.src_factor_rgb   = SG_BLENDFACTOR_SRC_ALPHA;
+    desc.colors[0].blend.dst_factor_rgb   = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    desc.colors[0].blend.src_factor_alpha = SG_BLENDFACTOR_ONE;
+    desc.colors[0].blend.dst_factor_alpha = SG_BLENDFACTOR_ZERO;
+
+    desc.label = "transparent-pipeline";
+
+    sg_pipeline pip = sg_make_pipeline(&desc);
+    if (sg_query_pipeline_state(pip) != SG_RESOURCESTATE_VALID) {
+        printf("[renderer] ERROR: transparent pipeline creation failed — using magenta fallback\n");
+        state.pipeline_transparent = state.pipeline_magenta;
+        return;
+    }
+    state.pipeline_transparent = pip;
+}
+
+// Line-quad pipeline: position+color layout, alpha blend, depth write OFF.
+// Draws pre-billboarded quads from line_quad_queue.
+void make_line_quad_pipeline() {
+    sg_shader shd = sg_make_shader(line_quad_shader_desc(sg_query_backend()));
+    if (sg_query_shader_state(shd) != SG_RESOURCESTATE_VALID) {
+        printf("[renderer] ERROR: line_quad shader creation failed — using magenta fallback\n");
+        state.pipeline_line_quad = state.pipeline_magenta;
+        return;
+    }
+
+    sg_pipeline_desc desc = {};
+    desc.shader     = shd;
+    desc.index_type = SG_INDEXTYPE_UINT32;
+
+    desc.layout.buffers[0].stride = sizeof(LineQuadVertex);
+    desc.layout.attrs[ATTR_line_quad_position].format = SG_VERTEXFORMAT_FLOAT3;
+    desc.layout.attrs[ATTR_line_quad_position].offset  = offsetof(LineQuadVertex, position);
+    desc.layout.attrs[ATTR_line_quad_color].format    = SG_VERTEXFORMAT_FLOAT4;
+    desc.layout.attrs[ATTR_line_quad_color].offset     = offsetof(LineQuadVertex, color);
+
+    desc.depth.compare       = SG_COMPAREFUNC_LESS_EQUAL;
+    desc.depth.write_enabled = false;  // depth write OFF (blended on top)
+    desc.cull_mode           = SG_CULLMODE_NONE;  // billboards: both faces visible
+
+    desc.colors[0].blend.enabled          = true;
+    desc.colors[0].blend.src_factor_rgb   = SG_BLENDFACTOR_SRC_ALPHA;
+    desc.colors[0].blend.dst_factor_rgb   = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    desc.colors[0].blend.src_factor_alpha = SG_BLENDFACTOR_ONE;
+    desc.colors[0].blend.dst_factor_alpha = SG_BLENDFACTOR_ZERO;
+
+    desc.label = "line-quad-pipeline";
+
+    sg_pipeline pip = sg_make_pipeline(&desc);
+    if (sg_query_pipeline_state(pip) != SG_RESOURCESTATE_VALID) {
+        printf("[renderer] ERROR: line_quad pipeline creation failed — using magenta fallback\n");
+        state.pipeline_line_quad = state.pipeline_magenta;
+        return;
+    }
+    state.pipeline_line_quad = pip;
+}
+
 // Called by sokol_app after the GL context is ready.
 // renderer_init() must have been called first to populate state.config.
 void renderer_internal_init() {
@@ -146,6 +232,10 @@ void renderer_internal_init() {
     make_magenta_pipeline();
     state.pipeline_unlit       = create_pipeline_unlit(state.pipeline_magenta);
     state.pipeline_lambertian  = create_pipeline_lambertian(state.pipeline_magenta);
+    state.pipeline_skybox      = skybox_create_pipeline(state.pipeline_magenta);
+    skybox_init_resources();
+    make_transparent_pipeline();
+    make_line_quad_pipeline();
 
     simgui_desc_t simgui_desc = {};
     simgui_desc.sample_count = sapp_sample_count();
@@ -218,7 +308,12 @@ void renderer_run() {
 
 void renderer_shutdown() {
     simgui_shutdown();
-    mesh_store_shutdown(); // destroy GPU mesh buffers before sg_shutdown
+    skybox_shutdown();        // destroy skybox VBO/IBO/sampler before sg_shutdown
+    mesh_store_shutdown();    // destroy GPU mesh buffers before sg_shutdown
+    texture_store_shutdown(); // destroy GPU textures before sg_shutdown
+    if (line_quad_vbuf.id != 0) { sg_destroy_buffer(line_quad_vbuf); line_quad_vbuf = {}; }
+    if (line_quad_ibuf.id != 0) { sg_destroy_buffer(line_quad_ibuf); line_quad_ibuf = {}; }
+    line_quad_bufs_init = false;
     sg_shutdown();
     sapp_quit();
 
@@ -262,30 +357,41 @@ void renderer_end_frame() {
     }
 
     // Uniform structs matching unlit.glsl layout (std140, @ctype glm types).
-    // Defined locally to avoid name collision with magenta.glsl.h's vs_params_t.
     struct UnlitVSParams { glm::mat4 mvp; };
     struct UnlitFSParams { glm::vec4 base_color; };
 
     // Lambertian uniform structs matching lambertian.glsl std140 layout.
-    // vec3 fields are padded to 16 bytes per std140 base-alignment rules.
     struct LambertianVSParams {
-        glm::mat4 mvp;    // binding=0 slot 0
-        glm::mat4 model;  // binding=0 slot 1
+        glm::mat4 mvp;
+        glm::mat4 model;
     };
     struct LambertianFSParams {
-        float light_dir[3];    // offset  0
-        float _pad0;           // offset 12 — vec3 → 16-byte stride
-        float light_color[3];  // offset 16
-        float light_intensity; // offset 28
-        float base_color[4];   // offset 32
+        float light_dir[3];
+        float _pad0;
+        float light_color[3];
+        float light_intensity;
+        float base_color[4];
     };
 
-    // --- Unlit pass ---------------------------------------------------------
+    // --- (5) Skybox pass (LAST — renders at far plane behind everything) ----
+    if (state.skybox_handle.id != 0) {
+        sg_image cubemap_img = texture_get(state.skybox_handle.id);
+        if (sg_query_image_state(cubemap_img) == SG_RESOURCESTATE_VALID) {
+            glm::mat4 view_mat = glm::make_mat4(state.camera.view);
+            glm::mat4 proj_mat = glm::make_mat4(state.camera.projection);
+            draw_skybox_pass(state.pipeline_skybox, cubemap_img,
+                             glm::value_ptr(proj_mat), glm::value_ptr(view_mat));
+        }
+    }
+
+    // --- (1) Opaque draws (Unlit + Lambertian) ------------------------------
     if (state.draw_count > 0) {
+        // Unlit pass
         bool bound = false;
         for (int i = 0; i < state.draw_count; ++i) {
             const DrawCommand& cmd = state.draw_queue[i];
             if (cmd.material.shading_model != ShadingModel::Unlit) continue;
+            if (cmd.material.alpha < 1.0f) continue; // transparent → pass 3
 
             if (!bound) { sg_apply_pipeline(state.pipeline_unlit); bound = true; }
 
@@ -310,12 +416,9 @@ void renderer_end_frame() {
 
             sg_draw(0, static_cast<int>(mesh_index_count_get(cmd.mesh.id)), 1);
         }
-    }
 
-    // --- Lambertian pass ----------------------------------------------------
-    {
+        // Lambertian pass
         if (!state.light_set) {
-            // Count Lambertian draws so we only warn when relevant
             int lam_count = 0;
             for (int i = 0; i < state.draw_count; ++i)
                 if (state.draw_queue[i].material.shading_model == ShadingModel::Lambertian) ++lam_count;
@@ -323,10 +426,11 @@ void renderer_end_frame() {
                 printf("[renderer] WARNING: %d Lambertian draw(s) queued but no directional light set\n", lam_count);
         }
 
-        bool bound = false;
+        bound = false;
         for (int i = 0; i < state.draw_count; ++i) {
             const DrawCommand& cmd = state.draw_queue[i];
             if (cmd.material.shading_model != ShadingModel::Lambertian) continue;
+            if (cmd.material.alpha < 1.0f) continue; // transparent → pass 3
 
             if (!bound) { sg_apply_pipeline(state.pipeline_lambertian); bound = true; }
 
@@ -364,10 +468,100 @@ void renderer_end_frame() {
         }
     }
 
+    // --- (3) Transparent draws (alpha < 1.0) --------------------------------
+    {
+        bool bound = false;
+        for (int i = 0; i < state.draw_count; ++i) {
+            const DrawCommand& cmd = state.draw_queue[i];
+            if (cmd.material.alpha >= 1.0f) continue;
+
+            if (!bound) { sg_apply_pipeline(state.pipeline_transparent); bound = true; }
+
+            glm::mat4 model = glm::make_mat4(cmd.world_transform);
+            glm::mat4 mvp   = state.vp * model;
+
+            sg_bindings bind       = {};
+            bind.vertex_buffers[0] = mesh_vbuf_get(cmd.mesh.id);
+            bind.index_buffer      = mesh_ibuf_get(cmd.mesh.id);
+            sg_apply_bindings(&bind);
+
+            UnlitVSParams vs_p = { mvp };
+            sg_range vs_range  = SG_RANGE(vs_p);
+            sg_apply_uniforms(0, &vs_range);
+
+            UnlitFSParams fs_p = { glm::vec4(cmd.material.base_color[0],
+                                             cmd.material.base_color[1],
+                                             cmd.material.base_color[2],
+                                             cmd.material.base_color[3]) };
+            sg_range fs_range  = SG_RANGE(fs_p);
+            sg_apply_uniforms(1, &fs_range);
+
+            sg_draw(0, static_cast<int>(mesh_index_count_get(cmd.mesh.id)), 1);
+        }
+    }
+
+   // --- (4) Line quad draws ------------------------------------------------
+      if (state.line_quad_count > 0) {
+          sg_apply_pipeline(state.pipeline_line_quad);
+
+          if (!line_quad_bufs_init) {
+              static uint32_t line_quad_indices[6] = { 0, 1, 2, 0, 2, 3 };
+
+              const int max_verts = 256 * 4;
+              sg_buffer_desc vdesc = {};
+              vdesc.size           = sizeof(LineQuadVertex) * max_verts;
+              vdesc.usage.vertex_buffer = true;
+              vdesc.usage.stream_update   = true;
+              vdesc.label               = "line-quad-vbuf";
+              line_quad_vbuf = sg_make_buffer(&vdesc);
+
+              sg_buffer_desc idesc = {};
+              idesc.size           = sizeof(line_quad_indices);
+              idesc.usage.index_buffer  = true;
+              idesc.usage.immutable     = true;
+              idesc.data                = SG_RANGE(line_quad_indices);
+              idesc.label               = "line-quad-ibuf";
+              line_quad_ibuf = sg_make_buffer(&idesc);
+
+              line_quad_bufs_init = true;
+          }
+
+          // Upload all quad vertices in a single call (one update per frame).
+          {
+              static LineQuadVertex all_verts[256 * 4];
+              for (int i = 0; i < state.line_quad_count; ++i) {
+                  const LineQuadCommand& cmd = state.line_quad_queue[i];
+                  std::memcpy(all_verts + i * 4, cmd.verts, sizeof(cmd.verts));
+              }
+              sg_range vrange;
+             vrange.ptr = all_verts;
+             vrange.size = sizeof(LineQuadVertex) * state.line_quad_count * 4;
+              sg_update_buffer(line_quad_vbuf, &vrange);
+          }
+
+          line_quad_vs_params_t vs_p = { state.vp };
+          sg_range vp_range = SG_RANGE(vs_p);
+          sg_apply_uniforms(0, &vp_range);
+
+          sg_bindings bind = {};
+          bind.vertex_buffers[0] = line_quad_vbuf;
+          bind.index_buffer      = line_quad_ibuf;
+          sg_apply_bindings(&bind);
+
+          for (int i = 0; i < state.line_quad_count; ++i) {
+               sg_draw(i * 4, 4, 1);
+           }
+       }
+
+
     simgui_render();
     sg_end_pass();
     sg_commit();
     state.frame_active = false;
+}
+
+int renderer_get_draw_count() {
+    return state.draw_count;
 }
 
 void renderer_set_camera(const RendererCamera& camera) {
@@ -415,43 +609,19 @@ void renderer_enqueue_line_quad(const float p0[3], const float p1[3],
                                 float width, const float color[4]) {
     if (!state.frame_active) return;
     if (width <= 0.0f) return;
-    // reject zero-length segment
-    float dx = p1[0] - p0[0], dy = p1[1] - p0[1], dz = p1[2] - p0[2];
-    if (dx*dx + dy*dy + dz*dz == 0.0f) return;
     if (state.line_quad_count >= 256) {
         printf("[renderer] line_quad queue full — command dropped\n");
         return;
     }
-    // Store raw endpoints + attributes; billboard geometry computed later in end_frame
-    LineQuadCommand& cmd = state.line_quad_queue[state.line_quad_count++];
-    // Encode p0 in verts[0].position and p1 in verts[1].position; width in verts[0].color[3]
-    cmd.verts[0].position[0] = p0[0]; cmd.verts[0].position[1] = p0[1]; cmd.verts[0].position[2] = p0[2];
-    cmd.verts[1].position[0] = p1[0]; cmd.verts[1].position[1] = p1[1]; cmd.verts[1].position[2] = p1[2];
-    for (int i = 0; i < 4; ++i) {
-        cmd.verts[0].color[i] = color ? color[i] : 1.0f;
-        cmd.verts[1].color[i] = color ? color[i] : 1.0f;
-        cmd.verts[2].color[i] = color ? color[i] : 1.0f;
-        cmd.verts[3].color[i] = color ? color[i] : 1.0f;
+    LineQuadCommand& cmd = state.line_quad_queue[state.line_quad_count];
+    if (!debug_draw_compute_billboard(&cmd, p0, p1, width, color, state.camera.view)) {
+        return;  // degenerate segment — skip silently
     }
-    // width stored in verts[2].position[0] for later billboard expansion
-    cmd.verts[2].position[0] = width;
-    cmd.verts[2].position[1] = 0.0f;
-    cmd.verts[2].position[2] = 0.0f;
+    ++state.line_quad_count;
 }
 
-RendererTextureHandle renderer_upload_texture_2d(const void* pixels,
-                                                 int width, int height, int channels) {
-    (void)pixels; (void)width; (void)height; (void)channels; return {};
-}
-
-RendererTextureHandle renderer_upload_texture_from_file(const char* path) {
-    (void)path; return {};
-}
-
-RendererTextureHandle renderer_upload_cubemap(const void* faces[6],
-                                              int face_width, int face_height, int channels) {
-    (void)faces; (void)face_width; (void)face_height; (void)channels; return {};
-}
+// renderer_upload_texture_2d, renderer_upload_texture_from_file, renderer_upload_cubemap
+// are implemented in texture.cpp (own texture store — see texture.h).
 
 Material renderer_make_unlit_material(const float rgba[4]) {
     Material m;
@@ -459,6 +629,7 @@ Material renderer_make_unlit_material(const float rgba[4]) {
     if (rgba) {
         m.base_color[0] = rgba[0]; m.base_color[1] = rgba[1];
         m.base_color[2] = rgba[2]; m.base_color[3] = rgba[3];
+        m.alpha         = rgba[3];
     }
     return m;
 }

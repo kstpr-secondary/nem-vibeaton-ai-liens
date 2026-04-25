@@ -3,7 +3,7 @@
 @ctype vec3 glm::vec3
 
 @vs lambertian_vs
-layout(binding=0) uniform vs_params {
+layout(binding=0) uniform lambertian_vs_params {
     mat4 mvp;
     mat4 model;
 };
@@ -22,7 +22,7 @@ void main() {
 @end
 
 @fs lambertian_fs
-layout(binding=1) uniform fs_params {
+layout(binding=1) uniform lambertian_fs_params {
     vec3 light_dir;
     vec3 light_color;
     float light_intensity;
