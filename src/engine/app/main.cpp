@@ -52,7 +52,8 @@ static void update_camera(float dt) {
 // Frame callback
 // ---------------------------------------------------------------------------
 
-static void setup_scene();  // forward declaration — defined below
+static void setup_scene();        // forward declaration — defined below
+static void update_highlight(float dt);
 
 static bool g_scene_setup_done = false;
 
@@ -64,156 +65,221 @@ static void frame_cb(float dt, void* /*user_data*/) {
     renderer_begin_frame();
     update_camera(dt);
     engine_tick(dt);
+    update_highlight(dt);
     renderer_end_frame();
 }
 
 // ---------------------------------------------------------------------------
-// E-M4 scene setup: zero-gravity physics demo
+// E-M3 / E-M4 scene setup: mixed cubes + asteroids with Lambertian materials
 // ---------------------------------------------------------------------------
 
+static bool g_highlight_active = false;
+static RaycastHit g_last_hit   = {};
+
 static void setup_scene() {
-    // Camera at distance to see the whole scene
+    // Camera — FPS-style controller position
     g_cam_entity = engine_create_entity();
-    engine_add_component<Transform>(g_cam_entity).position = {0.f, 0.f, 40.f};
+    engine_add_component<Transform>(g_cam_entity).position = {0.f, 2.f, 25.f};
     engine_add_component<Camera>(g_cam_entity);
     engine_set_active_camera(g_cam_entity);
 
-    // Directional light
+    // Directional light for Lambertian shading
     auto light = engine_create_entity();
     auto& l    = engine_add_component<Light>(light);
     l.direction = {-0.6f, -1.f, -0.4f};
     l.color     = {1.f, 1.f, 1.f};
-    l.intensity = 1.5f;
+    l.intensity = 2.0f;
 
-    // Materials
-    float rgba_red[4]   = {1.f, 0.25f, 0.25f, 1.f};
-    float rgba_gray[4]  = {0.5f, 0.5f, 0.5f, 1.f};
+    // Lambertian materials — earthy / rocky tones for cubes and asteroids
+    float rgb_cube[3]   = {0.55f, 0.40f, 0.30f};
+    float rgb_asteroid[3] = {0.35f, 0.30f, 0.28f};
 
-    Material dyn_mat   = renderer_make_unlit_material(rgba_red);
-    Material wall_mat  = renderer_make_unlit_material(rgba_gray);
+    Material cube_mat     = renderer_make_lambertian_material(rgb_cube);
+    Material asteroid_mat = renderer_make_lambertian_material(rgb_asteroid);
 
-    // Random number generator for initial velocities
-    std::mt19937 gen(42);  // Fixed seed for reproducibility
+    // Random number generator — fixed seed for reproducibility
+    std::mt19937 gen(42);
     std::uniform_real_distribution<float> pos_dist(-8.f, 8.f);
     std::uniform_real_distribution<float> vel_dist(-3.f, 3.f);
 
-    // Spawn 20+ dynamic rigid bodies with random initial velocities
-    constexpr int kNumBodies = 24;
-    for (int i = 0; i < kNumBodies; ++i) {
+    // --- Dynamic cubes: 40 entities ---
+    constexpr int kNumCubes = 40;
+    for (int i = 0; i < kNumCubes; ++i) {
         auto e = engine_create_entity();
 
-        // Random position in a box
         auto& t = engine_add_component<Transform>(e);
         t.position = {pos_dist(gen), pos_dist(gen), pos_dist(gen) * 0.5f};
 
-        // Mesh: cube with half-extent 0.5
-        engine_add_component<Mesh>(e).handle = renderer_make_cube_mesh(0.5f);
-        engine_add_component<EntityMaterial>(e).mat = dyn_mat;
+        float half = 0.3f + 0.2f * (static_cast<float>(i % 5)) / 5.0f;
+        engine_add_component<Mesh>(e).handle = renderer_make_cube_mesh(half);
+        engine_add_component<EntityMaterial>(e).mat = cube_mat;
 
-        // Collider
-        engine_add_component<Collider>(e).half_extents = {0.5f, 0.5f, 0.5f};
+        engine_add_component<Collider>(e).half_extents = {half, half, half};
 
-        // RigidBody
         auto& rb = engine_add_component<RigidBody>(e);
         rb.mass = 1.0f;
         rb.inv_mass = 1.0f;
-        rb.restitution = 1.0f;  // Perfectly elastic
+        rb.restitution = 1.0f;
         rb.linear_velocity = {vel_dist(gen), vel_dist(gen), vel_dist(gen)};
         rb.angular_velocity = {vel_dist(gen) * 0.5f, vel_dist(gen) * 0.5f, vel_dist(gen) * 0.5f};
+        rb.inv_inertia_body = make_box_inv_inertia_body(rb.mass, {half, half, half});
+        rb.inv_inertia = rb.inv_inertia_body;
 
-        // Compute body-space inverse inertia for a box
-        rb.inv_inertia_body = make_box_inv_inertia_body(rb.mass, {0.5f, 0.5f, 0.5f});
-        rb.inv_inertia = rb.inv_inertia_body;  // Initial world-space inertia
-
-        // Tags and physics components
         engine_add_component<Dynamic>(e);
         engine_add_component<ForceAccum>(e);
         engine_add_component<Interactable>(e);
     }
 
-    // Spawn 4 static obstacle walls forming a box arena
+    // --- Dynamic asteroids: 20 entities (glTF) ---
+    constexpr int kNumAsteroids = 20;
+    const char* k_asset_path = "models/Asteroid_1a.glb";
+    auto asteroid_handle = engine_load_gltf(k_asset_path);
+
+    if (!renderer_handle_valid(asteroid_handle)) {
+        fprintf(stderr, "[ENGINE] glTF: failed to load %s/%s (%d will be cubes instead)\n",
+                ASSET_ROOT, k_asset_path, kNumAsteroids);
+    }
+
+    int asteroid_count = 0;
+    for (int i = 0; i < kNumAsteroids; ++i) {
+        auto e = engine_create_entity();
+        auto& t = engine_add_component<Transform>(e);
+        t.position = {pos_dist(gen), pos_dist(gen), pos_dist(gen) * 0.5f};
+
+        if (renderer_handle_valid(asteroid_handle)) {
+            float scale = 1.5f + 0.8f * (static_cast<float>(i % 4)) / 4.0f;
+            t.scale = {scale, scale, scale};
+            engine_add_component<Mesh>(e).handle = asteroid_handle;
+            engine_add_component<EntityMaterial>(e).mat = asteroid_mat;
+
+            // Approximate AABB for scaled asteroid
+            engine_add_component<Collider>(e).half_extents = {2.0f * scale, 1.5f * scale, 1.5f * scale};
+
+            auto& rb = engine_add_component<RigidBody>(e);
+            rb.mass = 3.0f;
+            rb.inv_mass = 1.0f / 3.0f;
+            rb.restitution = 1.0f;
+            rb.linear_velocity = {vel_dist(gen), vel_dist(gen), vel_dist(gen)};
+            rb.angular_velocity = {vel_dist(gen) * 0.3f, vel_dist(gen) * 0.3f, vel_dist(gen) * 0.3f};
+            rb.inv_inertia_body = make_box_inv_inertia_body(rb.mass, {2.0f * scale, 1.5f * scale, 1.5f * scale});
+            rb.inv_inertia = rb.inv_inertia_body;
+
+            asteroid_count++;
+        } else {
+            // Fallback: spawn a cube instead
+            float half = 0.6f + 0.2f * (static_cast<float>(i % 3)) / 3.0f;
+            t.scale = {half, half, half};
+            engine_add_component<Mesh>(e).handle = renderer_make_cube_mesh(1.0f);
+            engine_add_component<EntityMaterial>(e).mat = asteroid_mat;
+            engine_add_component<Collider>(e).half_extents = {half, half, half};
+
+            auto& rb = engine_add_component<RigidBody>(e);
+            rb.mass = 2.0f;
+            rb.inv_mass = 0.5f;
+            rb.restitution = 1.0f;
+            rb.linear_velocity = {vel_dist(gen), vel_dist(gen), vel_dist(gen)};
+            rb.angular_velocity = {vel_dist(gen) * 0.3f, vel_dist(gen) * 0.3f, vel_dist(gen) * 0.3f};
+            rb.inv_inertia_body = make_box_inv_inertia_body(rb.mass, {half, half, half});
+            rb.inv_inertia = rb.inv_inertia_body;
+        }
+
+        engine_add_component<Dynamic>(e);
+        engine_add_component<ForceAccum>(e);
+        engine_add_component<Interactable>(e);
+    }
+
+    // --- Static arena walls: 4 ---
     struct WallDef {
         glm::vec3 position;
         glm::vec3 half_extents;
     };
 
     WallDef walls[] = {
-        {{0.f, 12.f, 0.f},  {12.f, 1.f, 12.f}},   // Top
-        {{0.f, -12.f, 0.f}, {12.f, 1.f, 12.f}},   // Bottom
-        {{-12.f, 0.f, 0.f}, {1.f, 12.f, 12.f}},   // Left
-        {{12.f, 0.f, 0.f},  {1.f, 12.f, 12.f}},   // Right
+        {{0.f, 14.f, 0.f},  {14.f, 1.f, 14.f}},   // Top
+        {{0.f, -14.f, 0.f}, {14.f, 1.f, 14.f}},   // Bottom
+        {{-14.f, 0.f, 0.f}, {1.f, 14.f, 14.f}},   // Left
+        {{14.f, 0.f, 0.f},  {1.f, 14.f, 14.f}},   // Right
     };
 
     for (const auto& wall : walls) {
         auto e = engine_create_entity();
-
         auto& t = engine_add_component<Transform>(e);
         t.position = wall.position;
 
-        // Visual mesh (scaled box)
         engine_add_component<Mesh>(e).handle = renderer_make_cube_mesh(1.0f);
-        engine_add_component<EntityMaterial>(e).mat = wall_mat;
-        t.scale = wall.half_extents;  // Scale to match wall size
+        engine_add_component<EntityMaterial>(e).mat = asteroid_mat;
+        t.scale = wall.half_extents;
 
-        // Collider
         engine_add_component<Collider>(e).half_extents = wall.half_extents;
-
-        // Static tag (no RigidBody needed)
+        engine_add_component<Interactable>(e);
         engine_add_component<Static>(e);
     }
 
-    // glTF asset alongside the procedurals — same path convention as game (models/)
-    float rgba_gold[4] = {1.f, 0.8f, 0.3f, 1.f};
-    Material asset_mat = renderer_make_unlit_material(rgba_gold);
-
-    const char* k_asset_path = "models/Asteroid_1a.glb";
-    auto handle = engine_load_gltf(k_asset_path);
-    if (!renderer_handle_valid(handle)) {
-        fprintf(stderr, "[ENGINE] glTF: failed to load %s/%s\n", ASSET_ROOT, k_asset_path);
-    } else {
-        fprintf(stderr, "[ENGINE] glTF: loaded OK, handle=%u\n", handle.id);
+    // --- Central feature: one large asteroid at origin ---
+    if (renderer_handle_valid(asteroid_handle)) {
+        auto central = engine_create_entity();
+        Transform ct{};
+        ct.position   = {0.f, 0.f, 0.f};
+        ct.scale      = {3.5f, 3.5f, 3.5f};
+        engine_add_component<Transform>(central, ct);
+        auto& c_mesh   = engine_add_component<Mesh>(central);
+        c_mesh.handle  = asteroid_handle;
+        engine_add_component<EntityMaterial>(central).mat = asteroid_mat;
+        engine_add_component<Collider>(central).half_extents = {7.f, 5.5f, 5.5f};
+        engine_add_component<Interactable>(central);
+        engine_add_component<Static>(central);
     }
 
-    entt::entity asset_e = entt::null;
-    if (renderer_handle_valid(handle)) {
-        asset_e = engine_create_entity();
-        Transform t{};
-        t.position   = {0.f, 0.f, 0.f};
-        t.scale      = {3.f, 3.f, 3.f};
-        engine_add_component<Transform>(asset_e, t);
-        auto& mesh   = engine_add_component<Mesh>(asset_e);
-        mesh.handle  = handle;
-        engine_add_component<EntityMaterial>(asset_e).mat = asset_mat;
-
-        // Collider — approximate bounding box of scaled asteroid (~11 x 7 x 7)
-        engine_add_component<Collider>(asset_e).half_extents = {5.5f, 3.5f, 3.5f};
-
-        // RigidBody with random initial velocity (like cubes)
-        auto& rb = engine_add_component<RigidBody>(asset_e);
-        rb.mass         = 5.0f;
-        rb.inv_mass     = 0.2f;
-        rb.restitution  = 1.0f;
-        rb.linear_velocity = {vel_dist(gen), vel_dist(gen), vel_dist(gen)};
-        rb.angular_velocity = {vel_dist(gen) * 0.3f, vel_dist(gen) * 0.3f, vel_dist(gen) * 0.3f};
-        rb.inv_inertia_body = make_box_inv_inertia_body(rb.mass, {5.5f, 3.5f, 3.5f});
-        rb.inv_inertia      = rb.inv_inertia_body;
-
-        // Tag as dynamic so physics integrates it
-        engine_add_component<Dynamic>(asset_e);
-
-        // ForceAccum (required by physics system)
-        engine_add_component<ForceAccum>(asset_e);
-    }
-
+    int total = kNumCubes + asteroid_count + 4;
+    if (renderer_handle_valid(asteroid_handle))
+        total += 1;  // central asteroid
     fprintf(stderr,
-            "[ENGINE] E-M4 scene ready: 1 camera, 1 light, "
-            "%d dynamic rigid bodies, 4 static walls",
-            kNumBodies);
-    if (asset_e != entt::null)
-        fprintf(stderr, ", 1 glTF asset");
-    fprintf(stderr, "\n");
+            "[ENGINE] E-M3 scene ready: 1 camera, 1 light, "
+            "%d dynamic entities (%d cubes, %d asteroids), static walls + central feature\n",
+            total, kNumCubes, asteroid_count);
     fprintf(stderr, "[ENGINE] Controls: WASD move, QE up/down, mouse look\n");
-    fprintf(stderr, "[ENGINE] Physics: zero-gravity elastic collisions at 120 Hz\n");
+    fprintf(stderr, "[ENGINE] Crosshair raycasts nearest Interactable entity\n");
+}
+
+// ---------------------------------------------------------------------------
+// Raycast highlight — called every frame after engine_tick()
+// ---------------------------------------------------------------------------
+
+static void update_highlight(float dt) {
+    (void)dt;
+
+    // Cast ray from camera center along forward direction
+    if (!engine_registry().valid(g_cam_entity)) return;
+
+    auto& cam_t = engine_get_component<Transform>(g_cam_entity);
+    auto& cam_c = engine_get_component<Camera>(g_cam_entity);
+    (void)cam_c;
+
+    glm::quat rot = cam_t.rotation;
+    glm::vec3 forward = rot * glm::vec3(0.f, 0.f, -1.f);
+    forward = glm::normalize(forward);
+
+    auto hit_opt = engine_raycast(cam_t.position, forward, 200.f);
+
+    if (hit_opt.has_value()) {
+        g_highlight_active = true;
+        g_last_hit         = hit_opt.value();
+
+        // Print hit info every second (approximately)
+        static float s_last_print = -1.f;
+        float t = static_cast<float>(engine_now());
+        if (t - s_last_print >= 1.0f) {
+            s_last_print = t;
+            fprintf(stderr,
+                    "[ENGINE] Raycast hit: entity=%u, dist=%.2f, point=(%.2f, %.2f, %.2f), normal=(%.2f, %.2f, %.2f)\n",
+                    static_cast<unsigned>(g_last_hit.entity),
+                    g_last_hit.distance,
+                    g_last_hit.point.x, g_last_hit.point.y, g_last_hit.point.z,
+                    g_last_hit.normal.x, g_last_hit.normal.y, g_last_hit.normal.z);
+        }
+    } else {
+        g_highlight_active = false;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -222,7 +288,7 @@ static void setup_scene() {
 
 int main() {
     RendererConfig rcfg{};
-    rcfg.title  = "engine_app — E-M4: Euler Physics + Elastic Collisions";
+    rcfg.title  = "engine_app — E-M3: Raycast + Collidable Entities";
     rcfg.width  = 1280;
     rcfg.height = 720;
     renderer_init(rcfg);

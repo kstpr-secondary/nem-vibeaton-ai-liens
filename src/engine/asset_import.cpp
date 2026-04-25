@@ -83,12 +83,12 @@ ImportedMesh asset_import_gltf(const char* relative_path) {
                 cgltf_accessor_unpack_floats(uv_acc, out.uvs.data(), n * 2);
             }
 
-            // Indices
+            // Indices — reverse winding to convert CW (Blender glTF default) → CCW.
             if (prim.indices) {
                 size_t cnt = prim.indices->count;
                 out.indices.resize(cnt);
                 for (size_t i = 0; i < cnt; ++i)
-                    out.indices[i] = static_cast<uint32_t>(cgltf_accessor_read_index(prim.indices, i));
+                    out.indices[cnt - 1 - i] = static_cast<uint32_t>(cgltf_accessor_read_index(prim.indices, i));
             } else {
                 // Unindexed mesh — generate sequential indices
                 out.indices.resize(n);
