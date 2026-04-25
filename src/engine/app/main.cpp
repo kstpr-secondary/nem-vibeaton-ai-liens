@@ -178,12 +178,31 @@ static void setup_scene() {
     if (renderer_handle_valid(handle)) {
         asset_e = engine_create_entity();
         Transform t{};
-        t.position   = {0.f, -4.f, 0.f};
-        t.scale      = {5.f, 5.f, 5.f};
+        t.position   = {0.f, 0.f, 0.f};
+        t.scale      = {3.f, 3.f, 3.f};
         engine_add_component<Transform>(asset_e, t);
         auto& mesh   = engine_add_component<Mesh>(asset_e);
         mesh.handle  = handle;
         engine_add_component<EntityMaterial>(asset_e).mat = asset_mat;
+
+        // Collider — approximate bounding box of scaled asteroid (~11 x 7 x 7)
+        engine_add_component<Collider>(asset_e).half_extents = {5.5f, 3.5f, 3.5f};
+
+        // RigidBody with random initial velocity (like cubes)
+        auto& rb = engine_add_component<RigidBody>(asset_e);
+        rb.mass         = 5.0f;
+        rb.inv_mass     = 0.2f;
+        rb.restitution  = 1.0f;
+        rb.linear_velocity = {vel_dist(gen), vel_dist(gen), vel_dist(gen)};
+        rb.angular_velocity = {vel_dist(gen) * 0.3f, vel_dist(gen) * 0.3f, vel_dist(gen) * 0.3f};
+        rb.inv_inertia_body = make_box_inv_inertia_body(rb.mass, {5.5f, 3.5f, 3.5f});
+        rb.inv_inertia      = rb.inv_inertia_body;
+
+        // Tag as dynamic so physics integrates it
+        engine_add_component<Dynamic>(asset_e);
+
+        // ForceAccum (required by physics system)
+        engine_add_component<ForceAccum>(asset_e);
     }
 
     fprintf(stderr,
