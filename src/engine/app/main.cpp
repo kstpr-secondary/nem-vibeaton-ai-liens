@@ -79,7 +79,7 @@ static RaycastHit g_last_hit   = {};
 static void setup_scene() {
     // Camera — FPS-style controller position
     g_cam_entity = engine_create_entity();
-    engine_add_component<Transform>(g_cam_entity).position = {0.f, 2.f, 25.f};
+    engine_add_component<Transform>(g_cam_entity).position = {0.f, 2.f, 35.f};
     engine_add_component<Camera>(g_cam_entity);
     engine_set_active_camera(g_cam_entity);
 
@@ -97,10 +97,15 @@ static void setup_scene() {
     Material cube_mat     = renderer_make_lambertian_material(rgb_cube);
     Material asteroid_mat = renderer_make_lambertian_material(rgb_asteroid);
 
+    // Unlit transparent material for front/back walls (alpha < 1.0 triggers
+    // the transparent pipeline with alpha blending and depth-write OFF)
+    float rgba_wall[4]    = {0.55f, 0.40f, 0.30f, 0.30f};
+    Material wall_mat     = renderer_make_unlit_material(rgba_wall);
+
     // Random number generator — fixed seed for reproducibility
     std::mt19937 gen(42);
     std::uniform_real_distribution<float> pos_dist(-8.f, 8.f);
-    std::uniform_real_distribution<float> vel_dist(-3.f, 3.f);
+    std::uniform_real_distribution<float> vel_dist(-9.f, 9.f);
 
     // --- Dynamic cubes: 40 entities ---
     constexpr int kNumCubes = 40;
@@ -188,29 +193,31 @@ static void setup_scene() {
         engine_add_component<Interactable>(e);
     }
 
-    // --- Static arena walls: 4 ---
+    // --- Static arena walls: 6 (box ~70 units across) ---
     struct WallDef {
         glm::vec3 position;
         glm::vec3 half_extents;
     };
 
     WallDef walls[] = {
-        {{0.f, 14.f, 0.f},  {14.f, 1.f, 14.f}},   // Top
-        {{0.f, -14.f, 0.f}, {14.f, 1.f, 14.f}},   // Bottom
-        {{-14.f, 0.f, 0.f}, {1.f, 14.f, 14.f}},   // Left
-        {{14.f, 0.f, 0.f},  {1.f, 14.f, 14.f}},   // Right
+        {{0.f, 35.f, 0.f},   {35.f, 1.f, 35.f}},   // Top
+        {{0.f, -35.f, 0.f},  {35.f, 1.f, 35.f}},   // Bottom
+        {{-35.f, 0.f, 0.f},  {1.f, 35.f, 35.f}},   // Left
+        {{35.f, 0.f, 0.f},   {1.f, 35.f, 35.f}},   // Right
+        {{0.f, 0.f, 35.f},   {35.f, 35.f, 1.f}},   // Front (transparent)
+        {{0.f, 0.f, -35.f},  {35.f, 35.f, 1.f}},   // Back (transparent)
     };
 
-    for (const auto& wall : walls) {
+    for (int i = 0; i < 6; ++i) {
         auto e = engine_create_entity();
         auto& t = engine_add_component<Transform>(e);
-        t.position = wall.position;
+        t.position = walls[i].position;
 
         engine_add_component<Mesh>(e).handle = renderer_make_cube_mesh(1.0f);
-        engine_add_component<EntityMaterial>(e).mat = asteroid_mat;
-        t.scale = wall.half_extents;
+        engine_add_component<EntityMaterial>(e).mat = (i < 4) ? asteroid_mat : wall_mat;
+        t.scale = walls[i].half_extents;
 
-        engine_add_component<Collider>(e).half_extents = wall.half_extents;
+        engine_add_component<Collider>(e).half_extents = walls[i].half_extents;
         engine_add_component<Interactable>(e);
         engine_add_component<Static>(e);
     }
@@ -230,7 +237,7 @@ static void setup_scene() {
         engine_add_component<Static>(central);
     }
 
-    int total = kNumCubes + asteroid_count + 4;
+    int total = kNumCubes + asteroid_count + 6;
     if (renderer_handle_valid(asteroid_handle))
         total += 1;  // central asteroid
     fprintf(stderr,
@@ -288,7 +295,7 @@ static void update_highlight(float dt) {
 
 int main() {
     RendererConfig rcfg{};
-    rcfg.title  = "engine_app — E-M3: Raycast + Collidable Entities";
+    rcfg.title  = "engine_app — E-M4: Rigid Bodies in Transparent Arena";
     rcfg.width  = 1280;
     rcfg.height = 720;
     renderer_init(rcfg);
