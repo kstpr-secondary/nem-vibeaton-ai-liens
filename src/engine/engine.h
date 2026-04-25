@@ -144,6 +144,15 @@ void engine_apply_impulse_at_point(
 );
 
 // =========================================================================
+// Physics — Inertia Tensor Helpers (for game-layer RigidBody setup)
+// =========================================================================
+
+glm::mat3 make_box_inv_inertia_body(float mass, glm::vec3 half_extents);
+glm::mat3 make_sphere_inv_inertia_body(float mass, float radius);
+void update_world_inertia(RigidBody& rb, const glm::quat& rotation,
+                          const glm::mat3& inv_inertia_body);
+
+// =========================================================================
 // Physics Queries
 // =========================================================================
 
