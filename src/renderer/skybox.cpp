@@ -78,7 +78,7 @@ sg_pipeline skybox_create_pipeline(sg_pipeline magenta_fallback) {
     // The cube is wound CCW from outside, so the inner faces present CW screen-space winding —
     // sokol classifies those as FRONT. Disabling culling avoids the winding-vs-default trap and
     // matches the sokol cubemap sample (sample-skybox-code/cubemap-jpeg-sapp.c).
-    desc.cull_mode = SG_CULLMODE_NONE;
+    desc.cull_mode = SG_CULLMODE_BACK;
     desc.label     = "skybox-pipeline";
 
     sg_pipeline pip = sg_make_pipeline(&desc);
