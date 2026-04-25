@@ -25,12 +25,7 @@ MatchState& get_match_state() {
     return s_match_state;
 }
 
-// Directional light — configured at init, submitted every frame in render_submit.
-static DirectionalLight s_light = {
-    {-0.4f, -0.8f, -0.4f},
-    {1.0f,  0.95f, 0.9f },
-    1.0f
-};
+
 
 // Explosion VFX lifetime — how long the death sphere stays visible.
 static constexpr float k_explosion_lifetime = 0.6f;
@@ -40,8 +35,6 @@ static constexpr float k_explosion_lifetime = 0.6f;
 // ---------------------------------------------------------------------------
 
 static void render_submit() {
-    renderer_set_directional_light(s_light);
-
     auto& reg  = engine_registry();
     auto  view = reg.view<Transform, Mesh, EntityMaterial>();
     for (auto e : view) {
@@ -209,8 +202,14 @@ void game_init() {
     s_match_state.phase          = MatchPhase::Playing;
     s_match_state.phase_enter_time = engine_now();
 
-    // Directional light — warm sun from upper-left.
-    s_light = {{-0.4f, -0.8f, -0.4f}, {1.0f, 0.95f, 0.9f}, 1.0f};
+    // Directional light entity — warm sun from upper-left.
+    // The engine iterates all Light entities each tick and pushes them to
+    // the renderer via renderer_set_directional_light.
+    auto light_e = engine_create_entity();
+    auto& l      = engine_add_component<Light>(light_e);
+    l.direction  = {-0.4f, -0.8f, -0.4f};
+    l.color      = {1.0f, 0.95f, 0.9f};
+    l.intensity  = 1.0f;
 
     // Player ship at field centre.
     spawn_player(glm::vec3(0.f));

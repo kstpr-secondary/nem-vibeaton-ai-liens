@@ -48,10 +48,22 @@ void player_update(float dt) {
         if (engine_key_down(SAPP_KEYCODE_A)) accel -= right   * constants::player_strafe;
         if (engine_key_down(SAPP_KEYCODE_D)) accel += right   * constants::player_strafe;
 
-        rb.linear_velocity += accel * dt;
+        // Accumulate thrust/strafe force via the engine's ForceAccum API so
+        // Euler integration handles it correctly across fixed-timestep substeps.
+        if (glm::dot(accel, accel) > 1e-6f) {
+            auto* fb = engine_try_get_component<ForceAccum>(e);
+            if (fb) {
+                fb->force += accel * rb.mass;
+            }
+        }
 
-        // Per-frame drag — keeps top speed finite without active decel input.
-        rb.linear_velocity *= constants::player_drag;
+        // Continuous drag force — F_drag = -drag_coeff * v — keeps top speed
+        // finite.  Coefficient tuned to match the original per-frame multiplier
+        // behaviour across the engine's fixed-timestep substeps.
+        auto* drag_fb = engine_try_get_component<ForceAccum>(e);
+        if (drag_fb) {
+            drag_fb->force -= constants::player_drag_coeff * rb.linear_velocity;
+        }
 
         // Kill all angular velocity — player rotation is mouse-controlled only.
         // Physics collisions must not affect the ship's facing direction.
