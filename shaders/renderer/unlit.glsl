@@ -2,7 +2,7 @@
 @ctype vec4 glm::vec4
 
 @vs unlit_vs
-layout(binding=0) uniform vs_params {
+layout(binding=0) uniform unlit_vs_params {
     mat4 mvp;
 };
 
@@ -14,7 +14,7 @@ void main() {
 @end
 
 @fs unlit_fs
-layout(binding=1) uniform fs_params {
+layout(binding=1) uniform unlit_fs_params {
     vec4 base_color;
 };
 

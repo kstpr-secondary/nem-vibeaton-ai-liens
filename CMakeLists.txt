@@ -43,7 +43,7 @@ set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
 FetchContent_Declare(
     sokol
     GIT_REPOSITORY https://github.com/floooh/sokol.git
-    GIT_TAG master
+    GIT_TAG 1ecbb1c0d9968c9848e9a94c546e65204ea21de4
     GIT_SHALLOW ON
 )
 
@@ -392,6 +392,7 @@ vibeaton_attach_shader_headers(renderer "${CMAKE_SOURCE_DIR}/shaders/renderer" r
 
 add_executable(renderer_app ${renderer_app_sources})
 target_link_libraries(renderer_app PRIVATE renderer)
+target_include_directories(renderer_app PRIVATE ${imgui_SOURCE_DIR})
 
 # ====================================================================
 # Renderer tests (Catch2 when present)
