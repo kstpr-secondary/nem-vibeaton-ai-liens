@@ -1,9 +1,13 @@
 #include <engine.h>
+#include <paths.h>
 #include <sokol_app.h>          // SAPP_KEYCODE_* constants
 #include <glm/gtc/quaternion.hpp>
 #include <cstdio>
 #include <cmath>
 #include <random>
+#include <filesystem>
+#include <string>
+#include <vector>
 
 // ---------------------------------------------------------------------------
 // FPS camera controller state
@@ -158,10 +162,37 @@ static void setup_scene() {
         engine_add_component<Static>(e);
     }
 
+    // glTF asset alongside the procedurals — same path convention as game (models/)
+    float rgba_gold[4] = {1.f, 0.8f, 0.3f, 1.f};
+    Material asset_mat = renderer_make_unlit_material(rgba_gold);
+
+    const char* k_asset_path = "models/Asteroid_1a.glb";
+    auto handle = engine_load_gltf(k_asset_path);
+    if (!renderer_handle_valid(handle)) {
+        fprintf(stderr, "[ENGINE] glTF: failed to load %s/%s\n", ASSET_ROOT, k_asset_path);
+    } else {
+        fprintf(stderr, "[ENGINE] glTF: loaded OK, handle=%u\n", handle.id);
+    }
+
+    entt::entity asset_e = entt::null;
+    if (renderer_handle_valid(handle)) {
+        asset_e = engine_create_entity();
+        Transform t{};
+        t.position   = {0.f, -4.f, 0.f};
+        t.scale      = {5.f, 5.f, 5.f};
+        engine_add_component<Transform>(asset_e, t);
+        auto& mesh   = engine_add_component<Mesh>(asset_e);
+        mesh.handle  = handle;
+        engine_add_component<EntityMaterial>(asset_e).mat = asset_mat;
+    }
+
     fprintf(stderr,
             "[ENGINE] E-M4 scene ready: 1 camera, 1 light, "
-            "%d dynamic rigid bodies, 4 static walls\n",
+            "%d dynamic rigid bodies, 4 static walls",
             kNumBodies);
+    if (asset_e != entt::null)
+        fprintf(stderr, ", 1 glTF asset");
+    fprintf(stderr, "\n");
     fprintf(stderr, "[ENGINE] Controls: WASD move, QE up/down, mouse look\n");
     fprintf(stderr, "[ENGINE] Physics: zero-gravity elastic collisions at 120 Hz\n");
 }

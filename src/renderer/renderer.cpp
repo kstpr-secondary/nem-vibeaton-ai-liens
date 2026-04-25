@@ -393,6 +393,8 @@ void renderer_end_frame() {
             if (cmd.material.shading_model != ShadingModel::Unlit) continue;
             if (cmd.material.alpha < 1.0f) continue; // transparent → pass 3
 
+            fprintf(stderr, "[RENDERER] unlit draw: mesh_id=%u idx_count=%u\n",
+                    cmd.mesh.id, mesh_index_count_get(cmd.mesh.id));
             if (!bound) { sg_apply_pipeline(state.pipeline_unlit); bound = true; }
 
             glm::mat4 model = glm::make_mat4(cmd.world_transform);

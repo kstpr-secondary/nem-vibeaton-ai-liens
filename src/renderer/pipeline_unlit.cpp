@@ -29,7 +29,7 @@ sg_pipeline create_pipeline_unlit(sg_pipeline magenta_fallback) {
 
     desc.depth.compare       = SG_COMPAREFUNC_LESS_EQUAL;
     desc.depth.write_enabled = true;
-    desc.cull_mode           = SG_CULLMODE_BACK;
+    desc.cull_mode           = SG_CULLMODE_NONE;
     desc.label               = "unlit-pipeline";
 
     sg_pipeline pip = sg_make_pipeline(&desc);
