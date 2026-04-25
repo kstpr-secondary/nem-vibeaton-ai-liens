@@ -9,9 +9,9 @@
 
 | Interface | File | Status | Frozen By | Downstream May Start |
 |---|---|---|---|---|
-| Renderer public API | `docs/interfaces/renderer-interface-spec.md` | **FROZEN — v1.1** | Human supervisor (2026-04-23) | ✅ Engine SpecKit complete |
-| Engine public API | `docs/interfaces/engine-interface-spec.md` | **DRAFT — v0.1** (promoted from Engine SpecKit) | — | ❌ Game SpecKit waits for engine freeze |
-| Game public API | `docs/interfaces/game-interface-spec.md` | Placeholder — pending Game SpecKit | — | N/A |
+| Renderer public API | `docs/interfaces/renderer-interface-spec.md` | **FROZEN — v1.1** | Human supervisor (2026-04-23) | ✅ Engine + Game SpecKit complete |
+| Engine public API | `docs/interfaces/engine-interface-spec.md` | **FROZEN — v1.2** | Human supervisor (post E-M4) | ✅ Game SpecKit complete |
+| Game public API | `docs/interfaces/game-interface-spec.md` | **DRAFT — v0.1** (promoted from Game SpecKit, 2026-04-26) | — | N/A — game is final consumer |
 
 ---
 
@@ -50,8 +50,8 @@ See `docs/interfaces/renderer-interface-spec.md` for the full C++ header.
 ## Engine Interface — Summary
 
 **File**: `docs/interfaces/engine-interface-spec.md`  
-**Status**: **DRAFT — v0.1** (promoted from Engine SpecKit `contracts/engine-api.md`)  
-**Will be frozen after**: E-M1 (Bootstrap + ECS + Scene API) implemented and human-reviewed
+**Status**: **FROZEN — v1.2** (post E-M4 — Phase 6 physics added: `ForceAccum`, `make_box_inv_inertia_body`, `make_sphere_inv_inertia_body`, `update_world_inertia`, fixed-timestep substep loop, impulse-based elastic response with Baumgarte correction)
+**Frozen after**: E-M1–E-M4 implemented and human-reviewed
 
 Key contracts:
 
@@ -74,16 +74,18 @@ See `docs/interfaces/engine-interface-spec.md` for the full C++ header.
 
 ## Game Interface — Summary
 
-**File**: `docs/interfaces/game-interface-spec.md`  
-**Status**: Placeholder — to be populated during Game SpecKit  
-**Will be frozen after**: G-M1 (Flight Controller + Scene + Camera milestone)
+**File**: `docs/interfaces/game-interface-spec.md`
+**Status**: **DRAFT — v0.1** (promoted from Game SpecKit `contracts/game-api.md` on 2026-04-26)
+**Will be frozen after**: G-M1 (Flight + Scene + Camera) lands and the lifecycle calling convention is validated end-to-end against real upstream
 
-Expected contracts (pre-SpecKit sketch — not binding):
+Key contracts:
 
-- `game_init(engine_handle, renderer_handle)`
-- `game_tick(dt)` — update all gameplay systems
-- `game_render()` — emit draw calls to renderer
-- HUD: uses renderer-owned Dear ImGui path; no second ImGui context.
+- **Lifecycle**: `void game_init()` → register `FrameCallback` + `InputCallback` → `renderer_run()` → `game_shutdown()`. Game is the final consumer; nothing depends on its API.
+- **Per-frame tick**: `game_tick(dt)` runs an 11-step system order — `engine_tick` → `containment_update` → `player_update` → `enemy_ai_update` → `weapon_update` → `projectile_update` → `damage_resolve` → `match_state_update` → `camera_rig_update` → `render_submit` → `hud_render`. Order is part of the contract.
+- **Match state machine**: 4 states — `Playing → PlayerDead/Victory → Restarting → Playing`. Victory is checked before PlayerDead (simultaneous death → player wins).
+- **Single registry**: engine owns it; game iterates via `engine_registry().view<...>()` and templated component helpers.
+- **HUD**: renderer owns ImGui setup/event-forward/new_frame/render; game emits widgets only.
+- **Mock surface**: game ships none; consumes `USE_RENDERER_MOCKS=ON` and/or `USE_ENGINE_MOCKS=ON` while upstream lands. At promotion time both upstream interfaces are frozen — mocks are demo-day fallback only.
 
 ---
 

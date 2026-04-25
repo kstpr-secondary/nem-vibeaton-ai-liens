@@ -1,6 +1,6 @@
 # Cross-Workstream Architecture
 
-> **Status:** Living document — renderer section frozen; engine and game sections populated when their SpecKit runs complete.  
+> **Status:** Living document — renderer + engine sections frozen; game section populated 2026-04-26 from Game SpecKit.
 > For workstream-local detail, see the per-workstream architecture docs below.
 
 ---
@@ -96,11 +96,12 @@ sokol_app main loop (owned by renderer)
 
 ## Game — Architecture Summary
 
-> Full detail: `docs/architecture/game-architecture.md` (populated after Game SpecKit)
+> Full detail: `docs/architecture/game-architecture.md` (populated 2026-04-26 from Game SpecKit `docs/planning/speckit/game/`)
 
-- **Owns**: player flight controller, third-person camera rig, asteroid field + containment, weapon systems (laser raycast + plasma projectile), HP/shields/boost, enemy AI, Dear ImGui HUD, restart/win/quit flow.
-- **Does not own**: renderer internals, engine ECS internals.
-- **Starts from**: frozen `renderer.h` + `engine.h` interfaces + mocks; swaps real implementations at milestone merges.
+- **Owns**: player flight controller, third-person camera rig, asteroid field + spherical containment, weapon systems (laser raycast + plasma projectile), HP/Shield/Boost resources + regen, game-local seek+shoot enemy AI, Dear ImGui HUD widgets, 4-state match flow (Playing → PlayerDead/Victory → Restarting → Playing), restart/quit flow, all game-layer ECS components.
+- **Does not own**: window, GPU context, sokol_app loop, ImGui lifecycle, shader pipelines (renderer); ECS registry, physics, collision detection, raycast, asset import, input pump (engine).
+- **Consumes**: `engine.h` (FROZEN v1.2) and `renderer.h` (FROZEN v1.1) only.
+- **Tick contract**: 11-step `game_tick(dt)` — see `docs/interfaces/game-interface-spec.md` for the full order and rationale.
 
 ### Game Milestones
 
@@ -149,5 +150,5 @@ sokol_app main loop (owned by renderer)
 | Workstream | File | Status |
 |---|---|---|
 | Renderer | `docs/architecture/renderer-architecture.md` | **FROZEN** |
-| Engine | `docs/architecture/engine-architecture.md` | **Populated** (from Engine SpecKit) |
-| Game | `docs/architecture/game-architecture.md` | Placeholder — pending Game SpecKit |
+| Engine | `docs/architecture/engine-architecture.md` | **Populated** (from Engine SpecKit; FROZEN v1.2) |
+| Game | `docs/architecture/game-architecture.md` | **Populated** (from Game SpecKit, 2026-04-26) |

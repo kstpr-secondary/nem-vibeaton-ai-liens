@@ -1,7 +1,8 @@
 # Game Design Document
 
-> **Status:** Populated from `pre_planning_docs/Game Concept and Milestones.md`.  
-> **Upstream**: Engine interface (`engine-interface-spec.md`, DRAFT v0.1). Renderer interface (`renderer-interface-spec.md`, FROZEN v1.1).
+> **Status:** Updated 2026-04-26 with Game SpecKit clarifications.
+> **Upstream**: Engine interface (`engine-interface-spec.md`, **FROZEN v1.2**). Renderer interface (`renderer-interface-spec.md`, **FROZEN v1.1**).
+> **SpecKit source**: `docs/planning/speckit/game/spec.md` (clarifications session 2026-04-23).
 
 ---
 
@@ -12,6 +13,16 @@ A third-person 3D space shooter in a contained asteroid field. Freelancer-inspir
 The game runs against engine + renderer mocks at T+0 so the game workstream never idles on upstream delivery. Each milestone leaves the game in a playable, demoable state.
 
 **Core loop:** fly → shoot enemies → avoid asteroids & incoming fire → survive → win when field is cleared. Death restarts the match.
+
+---
+
+## SpecKit Clarifications (2026-04-23)
+
+These three points override any earlier ambiguity in the seed concept and are part of the freeze contract:
+
+1. **Match state machine** — Four states only: `Playing → PlayerDead/Victory → Restarting → Playing`. Terminal phases (`PlayerDead`, `Victory`) display an overlay and run an auto-restart countdown; `Restarting` clears entities and rebuilds the scene before transitioning back to `Playing`. Manual restart skips the countdown.
+2. **Simultaneous death** — If the last enemy and the player both reach 0 HP in the same tick, the match transitions to **Victory**. Enemy deaths are evaluated before player death within `match_state_update` so the win condition wins.
+3. **Collision damage threshold** — None. Every collision deals damage proportional to relative kinetic energy. Slow taps deal sub-1 damage (effectively masked by shield regen); hard rams deal significant damage. There is no minimum cutoff to tune.
 
 ---
 
@@ -166,3 +177,15 @@ Freelancer-style flight with strafe overlay.
 | G-M4 | R-M1 + renderer-owned `sokol_imgui` | E-M1 |
 | G-M5 | — | E-M5 (steering) |
 | G-M6 | R-M5 (custom shader + alpha) | E-M4 |
+
+At Game SpecKit promotion (2026-04-26) renderer R-M1..R-M3 and engine E-M1..E-M4 are all delivered (renderer FROZEN v1.1; engine FROZEN v1.2), so the game runs end-to-end against real upstream for the entire MVP. Mocks remain available via `-DUSE_RENDERER_MOCKS=ON` / `-DUSE_ENGINE_MOCKS=ON` as a demo-day fallback if any upstream regresses.
+
+---
+
+## Cross-References
+
+- Game architecture: `docs/architecture/game-architecture.md`
+- Game interface (procedural API contract): `docs/interfaces/game-interface-spec.md`
+- Game workstream design: `docs/game-design/game-workstream-design.md`
+- Game tasks (live): `_coordination/game/TASKS.md`
+- Game SpecKit artifacts: `docs/planning/speckit/game/`
