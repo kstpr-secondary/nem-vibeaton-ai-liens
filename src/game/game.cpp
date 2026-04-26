@@ -202,12 +202,12 @@ void game_init() {
     s_match_state.phase          = MatchPhase::Playing;
     s_match_state.phase_enter_time = engine_now();
 
-    // Directional light entity — warm sun from upper-left.
+    // Directional light entity — warm sun from upper-left at ~60° elevation.
     // The engine iterates all Light entities each tick and pushes them to
     // the renderer via renderer_set_directional_light.
     auto light_e = engine_create_entity();
     auto& l      = engine_add_component<Light>(light_e);
-    l.direction  = {-0.4f, -0.8f, -0.4f};
+    l.direction  = {0.366f, 0.695f, 0.474f};
     l.color      = {1.0f, 0.95f, 0.9f};
     l.intensity  = 1.0f;
 
