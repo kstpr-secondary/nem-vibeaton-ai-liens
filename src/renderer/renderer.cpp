@@ -219,6 +219,7 @@ void renderer_internal_init() {
     sg_desc gfx_desc = {};
     gfx_desc.environment = sglue_environment();
     gfx_desc.logger.func = slog_func;
+    gfx_desc.buffer_pool_size = 2048;
     sg_setup(&gfx_desc);
 
     stm_setup();

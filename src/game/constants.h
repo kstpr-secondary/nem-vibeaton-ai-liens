@@ -9,8 +9,8 @@ namespace constants {
 // Field / containment
 // ---------------------------------------------------------------------------
 
-constexpr float  field_radius          = 1000.0f;  // spherical play boundary (units)
-constexpr int    asteroid_count        = 200;
+constexpr float  field_radius          = 350.0f;   // spherical play boundary (units)
+constexpr int    asteroid_count        = 600;
 constexpr float  max_asteroid_speed    = 50.0f;    // post-reflection speed cap (units/sec)
 
 // ---------------------------------------------------------------------------
@@ -68,8 +68,8 @@ constexpr float  enemy_fire_cooldown   = 0.5f;     // seconds between enemy plas
 // Asteroid size tiers — Small
 // ---------------------------------------------------------------------------
 
-constexpr float  asteroid_small_scale      = 2.0f;
-constexpr float  asteroid_small_mass       = 5.0f;
+constexpr float  asteroid_small_scale      = 4.5f;
+constexpr float  asteroid_small_mass       = 15.0f;
 constexpr float  asteroid_small_speed_min  = 5.0f;
 constexpr float  asteroid_small_speed_max  = 15.0f;
 constexpr float  asteroid_small_spin_max   = 1.5f;   // angular velocity magnitude (rad/sec)
@@ -78,8 +78,8 @@ constexpr float  asteroid_small_spin_max   = 1.5f;   // angular velocity magnitu
 // Asteroid size tiers — Medium
 // ---------------------------------------------------------------------------
 
-constexpr float  asteroid_medium_scale     = 5.0f;
-constexpr float  asteroid_medium_mass      = 20.0f;
+constexpr float  asteroid_medium_scale     = 9.0f;
+constexpr float  asteroid_medium_mass      = 70.0f;
 constexpr float  asteroid_medium_speed_min = 3.0f;
 constexpr float  asteroid_medium_speed_max = 10.0f;
 constexpr float  asteroid_medium_spin_max  = 0.8f;
@@ -88,16 +88,16 @@ constexpr float  asteroid_medium_spin_max  = 0.8f;
 // Asteroid size tiers — Large
 // ---------------------------------------------------------------------------
 
-constexpr float  asteroid_large_scale      = 10.0f;
-constexpr float  asteroid_large_mass       = 60.0f;
+constexpr float  asteroid_large_scale      = 36.0f;
+constexpr float  asteroid_large_mass       = 1620.0f;
 constexpr float  asteroid_large_speed_min  = 1.0f;
 constexpr float  asteroid_large_speed_max  = 5.0f;
 constexpr float  asteroid_large_spin_max   = 0.3f;
 
 // Tier distribution out of asteroid_count (must sum to 1.0)
-constexpr float  asteroid_tier_small_frac  = 0.5f;  // 100 small
-constexpr float  asteroid_tier_medium_frac = 0.35f; // 70 medium
-// large fills the remainder                         // 30 large
+constexpr float  asteroid_tier_small_frac  = 0.35f; // 210 small (from 600 total)
+constexpr float  asteroid_tier_medium_frac = 0.30f; // 180 medium
+// large fills the remainder                         // 210 large
 
 // ---------------------------------------------------------------------------
 // Camera rig (third-person)

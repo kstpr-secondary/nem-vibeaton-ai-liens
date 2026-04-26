@@ -138,11 +138,9 @@ void draw_skybox_pass(
     const float view[16])
 {
     if (pip.id == 0 || cubemap_img.id == 0) {
-        printf("[renderer] skybox: skipped — pip=%u img=%u\n", (unsigned)pip.id, (unsigned)cubemap_img.id);
         return;
     }
     if (sg_query_image_state(cubemap_img) != SG_RESOURCESTATE_VALID) {
-        printf("[renderer] skybox: image not valid (state=%d)\n", (int)sg_query_image_state(cubemap_img));
         return;
     }
 
@@ -171,11 +169,6 @@ void draw_skybox_pass(
     sg_apply_uniforms(UB_skybox_vs_params, &vs_p_range);
 
     sg_draw(0, 36, 1);
-
-    GLuint glerr = glGetError();
-    if (glerr != GL_NO_ERROR) {
-        printf("[renderer] skybox: GL error after sg_draw: 0x%x\n", (unsigned)glerr);
-    }
 
     sg_destroy_view(cubemap_view);
 }
