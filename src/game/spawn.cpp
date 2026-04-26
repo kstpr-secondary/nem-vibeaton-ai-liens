@@ -10,7 +10,13 @@ static constexpr const char* k_player_model    = "models/spaceship1.glb";
 static constexpr const char* k_enemy_model     = "models/spaceship1.glb";
 static constexpr const char* k_asteroid_model  = "models/Asteroid_1a.glb";
 
-// Approximate collider half-extents for each model (tuned from visual inspection).
+// Scale factors per model — tuned so the ship occupies ~10% of screen width.
+// glTF models are typically 50-80 Blender units; divide to fit the viewport.
+static constexpr float k_player_scale          = 0.0125f;
+static constexpr float k_enemy_scale           = 0.0125f;
+
+// Approximate collider half-extents, proportional to the scaled mesh size.
+// Collider should roughly match the visual AABB so collision feels correct.
 static constexpr float k_player_half_extent  = 2.0f;
 static constexpr float k_enemy_half_extent   = 2.0f;
 
@@ -60,7 +66,7 @@ static entt::entity spawn_from_model(const char* model_path,
 // ---------------------------------------------------------------------------
 
 entt::entity spawn_player(const glm::vec3& position) {
-    entt::entity e = spawn_from_model(k_player_model, position, 1.0f);
+    entt::entity e = spawn_from_model(k_player_model, position, k_player_scale);
 
     auto& rb             = engine_add_component<RigidBody>(e);
     rb.mass              = 10.0f;
@@ -101,7 +107,7 @@ entt::entity spawn_player(const glm::vec3& position) {
 // ---------------------------------------------------------------------------
 
 entt::entity spawn_enemy(const glm::vec3& position) {
-    entt::entity e = spawn_from_model(k_enemy_model, position, 1.0f);
+    entt::entity e = spawn_from_model(k_enemy_model, position, k_enemy_scale);
 
     auto& rb             = engine_add_component<RigidBody>(e);
     rb.mass              = 10.0f;

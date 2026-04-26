@@ -103,8 +103,8 @@ constexpr float  asteroid_tier_medium_frac = 0.30f; // 180 medium
 // Camera rig (third-person)
 // ---------------------------------------------------------------------------
 
-constexpr float  cam_offset_back       = 15.0f;    // units behind player
-constexpr float  cam_offset_up         = 5.0f;     // units above player
+constexpr float  cam_offset_back       = 30.0f;    // units behind player
+constexpr float  cam_offset_up         = 10.0f;    // units above player
 constexpr float  cam_lag_factor        = 8.0f;     // lerp rate (higher = tighter follow)
 
 // ---------------------------------------------------------------------------

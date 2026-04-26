@@ -14,7 +14,10 @@ struct ImportedMesh {
     bool empty() const { return positions.empty(); }
 };
 
-// Load the first triangle primitive from a glTF/GLB file.
+// Load the largest indexed mesh from a glTF/GLB file by index count.
+// A glTF file may contain multiple meshes (body, engines, wings, cockpit);
+// the largest one is almost always the main body. Internal geometry from
+// smaller meshes would look wrong when rendered alone.
 // relative_path is resolved via ASSET_ROOT (e.g. "Asteroid_1a.glb").
 // Returns empty ImportedMesh on failure; logs [ENGINE] warnings.
 ImportedMesh asset_import_gltf(const char* relative_path);
