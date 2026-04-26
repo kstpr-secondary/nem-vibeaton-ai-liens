@@ -233,9 +233,9 @@ void game_init() {
 }
 
 void game_tick(float dt) {
-    engine_tick(dt);            // 1. physics, collision, entity cleanup
-    containment_update();       // 2. boundary reflection + speed cap
-    player_update(dt);          // 3. flight controls, boost, regen
+    player_update(dt);          // 1. flight controls — set up forces first
+    engine_tick(dt);            // 2. physics, collision, entity cleanup — uses accumulated forces
+    containment_update();       // 3. boundary reflection + speed cap
     enemy_ai_update(dt);        // 4. seek player, fire plasma on cooldown
     weapon_update(dt);          // 5. fire processing, cooldown advancement
     projectile_update(dt);      // 6. lifetime check, despawn expired

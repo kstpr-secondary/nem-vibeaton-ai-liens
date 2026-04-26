@@ -10,6 +10,11 @@
 // so the projectile starts outside the enemy's own collider.
 static constexpr float k_ship_half   = 1.5f;
 
+// Ry(180) first: X→-X, Z→-Z. Then Rx(+90): Y→-Z (nose fwd), -Z→+Y (up).
+static const glm::quat k_ship_base_orientation = glm::quat(1.f, 0.f, 0.f, 0.f) *
+    glm::angleAxis(glm::half_pi<float>(), glm::vec3(1.f, 0.f, 0.f)) *
+    glm::angleAxis(glm::pi<float>(), glm::vec3(0.f, 0.f, 1.f));
+
 void enemy_ai_update(float /*dt*/) {
     auto& reg = engine_registry();
 
@@ -50,8 +55,9 @@ void enemy_ai_update(float /*dt*/) {
         else
             rb.linear_velocity *= 0.9f;  // damp when stopped
 
-        // Face the player so the visual cube and firing origin make sense.
-        t.rotation = glm::quatLookAtRH(dir, glm::vec3(0.f, 1.f, 0.f));
+        // Face the player so the visual nose points along the seek direction.
+        // Compose with model base orientation (Y-up glTF → -Z-forward game).
+        t.rotation = k_ship_base_orientation * glm::quatLookAtRH(dir, glm::vec3(0.f, 1.f, 0.f));
 
         // Kill angular velocity — enemy rotation is AI-controlled only.
         rb.angular_velocity = glm::vec3(0.f);

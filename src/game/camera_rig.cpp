@@ -26,10 +26,10 @@ void camera_rig_update(float dt) {
     const glm::vec3 player_pos = pt.position;
 
     // Desired position: offset behind and above the ship.
-    // Use only the yaw (Y-axis) of the player's facing so pitch/roll from
-    // collisions don't make the camera orbit or flip.
+    // Ship nose is +Y in model space; after full rotation (base + turn),
+    // gives the world-space forward direction for camera offset.
     const glm::vec3 forward = glm::normalize(glm::vec3(
-        pt.rotation * glm::vec3(0.f, 0.f, -1.f)));
+        pt.rotation * glm::vec3(0.f, 1.f, 0.f)));
 
     const glm::vec3 desired_pos = player_pos
         - forward * constants::cam_offset_back

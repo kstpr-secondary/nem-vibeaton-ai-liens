@@ -60,7 +60,7 @@ constexpr float  plasma_sphere_radius  = 0.4f;     // projectile mesh radius (un
 
 constexpr float  enemy_health_max      = 100.0f;
 constexpr float  enemy_shield_max      = 50.0f;
-constexpr float  enemy_pursuit_speed   = 30.0f;    // units/sec seek velocity
+constexpr float  enemy_pursuit_speed   = 12.0f;    // units/sec seek velocity
 constexpr float  enemy_fire_range      = 300.0f;   // units — fire only within this distance
 constexpr float  enemy_fire_cooldown   = 0.5f;     // seconds between enemy plasma shots
 

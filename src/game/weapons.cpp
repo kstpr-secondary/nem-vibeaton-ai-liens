@@ -30,9 +30,11 @@ bool weapon_ready(const WeaponState& ws) {
 // ---------------------------------------------------------------------------
 
 static void laser_fire(entt::entity player_e,
-                        const Transform& t,
-                        WeaponState& ws) {
-    const glm::vec3 forward = t.rotation * glm::vec3(0.f, 0.f, -1.f);
+                         const Transform& t,
+                         WeaponState& ws) {
+    // Ship nose is +Y in model space; after full rotation (base + turn),
+    // gives the world-space forward direction for weapons.
+    const glm::vec3 forward = t.rotation * glm::vec3(0.f, 1.f, 0.f);
     const glm::vec3 origin  = t.position;
 
     glm::vec3 end = origin + forward * constants::laser_max_range;
@@ -65,9 +67,10 @@ static void laser_fire(entt::entity player_e,
 static constexpr float k_ship_half = 1.5f;
 
 static void plasma_fire(entt::entity player_e,
-                         const Transform& t,
-                         WeaponState& ws) {
-    const glm::vec3 forward   = t.rotation * glm::vec3(0.f, 0.f, -1.f);
+                          const Transform& t,
+                          WeaponState& ws) {
+    // Ship nose is +Y in model space.
+    const glm::vec3 forward   = t.rotation * glm::vec3(0.f, 1.f, 0.f);
     const glm::vec3 spawn_pos = t.position
         + forward * (k_ship_half + constants::plasma_sphere_radius + 0.1f);
     const glm::vec3 velocity  = forward * ws.plasma_speed;

@@ -20,6 +20,10 @@ static constexpr float k_enemy_scale           = 0.0125f;
 static constexpr float k_player_half_extent  = 2.0f;
 static constexpr float k_enemy_half_extent   = 2.0f;
 
+static const glm::quat k_ship_base_orientation = glm::quat(1.f, 0.f, 0.f, 0.f) *
+    glm::angleAxis(glm::half_pi<float>(), glm::vec3(1.f, 0.f, 0.f)) *
+    glm::angleAxis(glm::pi<float>(), glm::vec3(0.f, 0.f, 1.f));
+
 // Scale factors per asteroid tier to match the constants.
 static constexpr float k_asteroid_scale_small  = constants::asteroid_small_scale  / 2.0f;
 static constexpr float k_asteroid_scale_medium = constants::asteroid_medium_scale / 2.0f;
@@ -49,6 +53,7 @@ static entt::entity spawn_from_model(const char* model_path,
     Transform t{};
     t.position = position;
     t.scale    = glm::vec3(scale);
+    t.rotation = glm::quat(1.f, 0.f, 0.f, 0.f);  // identity — caller may override
     reg.emplace<Transform>(e, t);
 
     const float default_color[3] = {0.7f, 0.7f, 0.7f};
@@ -67,10 +72,13 @@ static entt::entity spawn_from_model(const char* model_path,
 
 entt::entity spawn_player(const glm::vec3& position) {
     entt::entity e = spawn_from_model(k_player_model, position, k_player_scale);
+    engine_get_component<Transform>(e).rotation = k_ship_base_orientation;
 
     auto& rb             = engine_add_component<RigidBody>(e);
     rb.mass              = 10.0f;
     rb.inv_mass          = 1.0f / rb.mass;
+    rb.linear_velocity   = glm::vec3(0.f, 0.f, 0.f);
+    rb.angular_velocity  = glm::vec3(0.f, 0.f, 0.f);
     rb.restitution       = 0.4f;
     rb.inv_inertia_body  = box_inv_inertia(rb.mass, k_player_half_extent);
     rb.inv_inertia       = rb.inv_inertia_body;
@@ -108,10 +116,13 @@ entt::entity spawn_player(const glm::vec3& position) {
 
 entt::entity spawn_enemy(const glm::vec3& position) {
     entt::entity e = spawn_from_model(k_enemy_model, position, k_enemy_scale);
+    engine_get_component<Transform>(e).rotation = k_ship_base_orientation;
 
     auto& rb             = engine_add_component<RigidBody>(e);
     rb.mass              = 10.0f;
     rb.inv_mass          = 1.0f / rb.mass;
+    rb.linear_velocity   = glm::vec3(0.f, 0.f, 0.f);
+    rb.angular_velocity  = glm::vec3(0.f, 0.f, 0.f);
     rb.restitution       = 0.4f;
     rb.inv_inertia_body  = box_inv_inertia(rb.mass, k_enemy_half_extent);
     rb.inv_inertia       = rb.inv_inertia_body;
