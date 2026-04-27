@@ -1,3 +1,6 @@
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 #include "sokol_gfx.h"
 #include "texture.h"
 #include "renderer.h"
@@ -70,10 +73,26 @@ RendererTextureHandle renderer_upload_texture_2d(
 }
 
 RendererTextureHandle renderer_upload_texture_from_file(const char* path) {
-    // Stub: full implementation requires stb_image (R-M4 scope).
-    (void)path;
-    printf("[renderer] WARNING: renderer_upload_texture_from_file not yet implemented\n");
-    return {};
+    if (!path) return {};
+
+    int w = 0, h = 0, ch = 0;
+    unsigned char* data = stbi_load(path, &w, &h, &ch, 4);
+    if (!data) {
+        printf("[renderer] ERROR: stbi_load failed for '%s'\n", path);
+        return {};
+    }
+
+    RendererTextureHandle handle = renderer_upload_texture_2d(data, w, h, 4);
+    stbi_image_free(data);
+
+    if (!renderer_handle_valid(handle)) {
+        printf("[renderer] ERROR: texture upload failed for '%s' (%dx%d)\n", path, w, h);
+        return {};
+    }
+
+    printf("[renderer] texture loaded: '%s' (%dx%d, 4ch), handle id=%u\n",
+           path, w, h, (unsigned)handle.id);
+    return handle;
 }
 
 RendererTextureHandle renderer_upload_cubemap(
