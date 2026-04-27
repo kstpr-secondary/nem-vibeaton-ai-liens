@@ -6,9 +6,9 @@
 #include <glm/gtc/quaternion.hpp>
 
 // Model paths (relative to ASSET_ROOT).
-static constexpr const char* k_player_model    = "models/spaceship1.glb";
-static constexpr const char* k_enemy_model     = "models/spaceship1.glb";
-static constexpr const char* k_asteroid_model  = "models/Asteroid_1a.glb";
+static constexpr const char* k_player_model    = "spaceship1.glb";
+static constexpr const char* k_enemy_model     = "spaceship1.glb";
+static constexpr const char* k_asteroid_model  = "Asteroid_1a.glb";
 
 // Scale factors per model — tuned so the ship occupies ~10% of screen width.
 // glTF models are typically 50-80 Blender units; divide to fit the viewport.

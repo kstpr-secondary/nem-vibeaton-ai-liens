@@ -1,5 +1,5 @@
 #include "sokol_gfx.h"
-#include "mesh_builders.h"
+#include "mesh_internal.h"
 #include "renderer.h"
 
 #include <cstdio>
@@ -15,6 +15,9 @@ namespace {
 static sg_buffer  s_vbufs[512]        = {};
 static sg_buffer  s_ibufs[512]        = {};
 static uint32_t   s_index_counts[512] = {};
+static uint32_t   s_ref_counts[512]   = {};
+static uint32_t   s_free_list[512]    = {};
+static uint32_t   s_free_top          = 0;
 static uint32_t   s_next_id           = 1;
 
 } // namespace
@@ -28,13 +31,42 @@ sg_buffer mesh_ibuf_get(uint32_t id)        { return s_ibufs[id]; }
 uint32_t  mesh_index_count_get(uint32_t id) { return s_index_counts[id]; }
 
 void mesh_store_shutdown() {
-    for (uint32_t i = 1; i < s_next_id; ++i) {
-        sg_destroy_buffer(s_vbufs[i]);
-        sg_destroy_buffer(s_ibufs[i]);
-        s_vbufs[i] = {};
-        s_ibufs[i] = {};
+    for (uint32_t i = 1; i < 512; ++i) {
+        if (s_ref_counts[i] > 0) {
+            sg_destroy_buffer(s_vbufs[i]);
+            sg_destroy_buffer(s_ibufs[i]);
+            s_vbufs[i] = {};
+            s_ibufs[i] = {};
+            s_ref_counts[i] = 0;
+        }
     }
-    s_next_id = 1;
+    s_free_top     = 0;
+    s_next_id      = 1;
+}
+
+void mesh_store_ref_inc(uint32_t id) {
+    if (id > 0 && id < 512)
+        ++s_ref_counts[id];
+}
+
+static void mesh_store_free(uint32_t id) {
+    if (id > 0 && id < 512 && s_ref_counts[id] == 0) {
+        sg_destroy_buffer(s_vbufs[id]);
+        sg_destroy_buffer(s_ibufs[id]);
+        s_vbufs[id]     = {};
+        s_ibufs[id]     = {};
+        s_index_counts[id] = 0;
+        s_ref_counts[id]    = 0;
+        s_free_list[s_free_top++] = id;
+    }
+}
+
+void mesh_store_ref_dec(uint32_t id) {
+    if (id > 0 && id < 512) {
+        if (s_ref_counts[id] > 0)
+            --s_ref_counts[id];
+        mesh_store_free(id);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -47,9 +79,15 @@ RendererMeshHandle renderer_upload_mesh(
     const uint32_t* indices,
     uint32_t        index_count)
 {
-    if (s_next_id >= 512) {
-        printf("[renderer] ERROR: mesh store full (max 511 meshes)\n");
-        return {0};
+    uint32_t id;
+    if (s_free_top > 0) {
+        id = s_free_list[--s_free_top];
+    } else {
+        if (s_next_id >= 512) {
+            printf("[renderer] ERROR: mesh store full (max 511 meshes)\n");
+            return {0};
+        }
+        id = s_next_id++;
     }
 
     sg_buffer_desc vdesc = {};
@@ -77,10 +115,10 @@ RendererMeshHandle renderer_upload_mesh(
         return {0};
     }
 
-    uint32_t id = s_next_id++;
     s_vbufs[id]        = vbuf;
     s_ibufs[id]        = ibuf;
     s_index_counts[id] = index_count;
+    s_ref_counts[id]   = 1;
 
     return { id };
 }

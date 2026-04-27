@@ -137,7 +137,7 @@ static void setup_scene() {
 
     // --- Dynamic asteroids: 20 entities (glTF) ---
     constexpr int kNumAsteroids = 20;
-    const char* k_asset_path = "models/Asteroid_1a.glb";
+    const char* k_asset_path = "Asteroid_1a.glb";
     auto asteroid_handle = engine_load_gltf(k_asset_path);
 
     if (!renderer_handle_valid(asteroid_handle)) {

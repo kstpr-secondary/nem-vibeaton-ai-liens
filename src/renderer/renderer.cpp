@@ -40,7 +40,7 @@
 #include "pipeline_unlit.h"
 #include "pipeline_lambertian.h"
 #include "pipeline_blinnphong.h"
-#include "mesh_builders.h"
+#include "mesh_internal.h"
 
 // ---------------------------------------------------------------------------
 // Internal command types
