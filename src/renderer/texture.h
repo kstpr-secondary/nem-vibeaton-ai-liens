@@ -14,6 +14,7 @@ struct sg_image { uint32_t id; };
 // ---------------------------------------------------------------------------
 
 sg_image              texture_get(uint32_t id);
+sg_sampler            texture_get_sampler(uint32_t id);
 RendererTextureHandle texture_store_insert(sg_image img);
 void                  texture_store_shutdown();
 

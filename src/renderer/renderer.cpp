@@ -26,6 +26,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_inverse.hpp>
 
 #include <cassert>
 #include <cmath>
@@ -35,8 +36,10 @@
 #include "shaders/magenta.glsl.h"
 #include "shaders/unlit.glsl.h"
 #include "shaders/line_quad.glsl.h"
+#include "shaders/blinnphong.glsl.h"
 #include "pipeline_unlit.h"
 #include "pipeline_lambertian.h"
+#include "pipeline_blinnphong.h"
 #include "mesh_builders.h"
 
 // ---------------------------------------------------------------------------
@@ -233,6 +236,7 @@ void renderer_internal_init() {
     make_magenta_pipeline();
     state.pipeline_unlit       = create_pipeline_unlit(state.pipeline_magenta);
     state.pipeline_lambertian  = create_pipeline_lambertian(state.pipeline_magenta);
+    state.pipeline_blinnphong  = create_pipeline_blinnphong(state.pipeline_magenta);
     state.pipeline_skybox      = skybox_create_pipeline(state.pipeline_magenta);
     skybox_init_resources();
     make_transparent_pipeline();
@@ -471,6 +475,78 @@ void renderer_end_frame() {
         }
     }
 
+    // --- (2b) Opaque Blinn-Phong draws --------------------------------------
+    {
+        struct BlinnPhongVSParams { glm::mat4 mvp; glm::mat4 model; glm::mat4 normal_mat; };
+        struct BlinnPhongFSParams {
+            glm::vec4 base_color;
+            glm::vec4 light_dir_ws;
+            glm::vec4 light_color_inten;
+            glm::vec4 view_pos_w;
+            glm::vec4 spec_shin;
+            glm::vec4 flags;
+        };
+
+        bool bound = false;
+        for (int i = 0; i < state.draw_count; ++i) {
+            const DrawCommand& cmd = state.draw_queue[i];
+            if (cmd.material.shading_model != ShadingModel::BlinnPhong) continue;
+            if (cmd.material.alpha < 1.0f) continue;
+
+            if (!bound) { sg_apply_pipeline(state.pipeline_blinnphong); bound = true; }
+
+            glm::mat4 model = glm::make_mat4(cmd.world_transform);
+            glm::mat4 mvp   = state.vp * model;
+            glm::mat3 normal_mat = glm::inverse(glm::mat3(model));
+
+            sg_bindings bind       = {};
+            bind.vertex_buffers[0] = mesh_vbuf_get(cmd.mesh.id);
+            bind.index_buffer      = mesh_ibuf_get(cmd.mesh.id);
+
+            if (cmd.material.texture.id != 0) {
+                sg_image tex_img = texture_get(cmd.material.texture.id);
+                if (sg_query_image_state(tex_img) == SG_RESOURCESTATE_VALID) {
+                    sg_view_desc vdesc   = {};
+                    vdesc.texture.image  = tex_img;
+                    sg_view tex_view     = sg_make_view(&vdesc);
+                    bind.views[VIEW_albedo_tex] = tex_view;
+                    sg_destroy_view(tex_view);
+                }
+                sg_sampler tex_smp = texture_get_sampler(cmd.material.texture.id);
+                if (tex_smp.id != 0) {
+                    bind.samplers[SMP_smp] = tex_smp;
+                }
+            }
+
+            sg_apply_bindings(&bind);
+
+            BlinnPhongVSParams vs_p;
+            vs_p.mvp        = mvp;
+            vs_p.model      = model;
+            vs_p.normal_mat = normal_mat;
+            sg_range vs_range = SG_RANGE(vs_p);
+            sg_apply_uniforms(UB_blinnphong_vs_params, &vs_range);
+
+            float light_dir_norm[3] = { state.light.direction[0], state.light.direction[1], state.light.direction[2] };
+            glm::vec3 light_dir_from = glm::vec3(-light_dir_norm[0], -light_dir_norm[1], -light_dir_norm[2]);
+
+            glm::mat4 cam_view  = glm::make_mat4(state.camera.view);
+            glm::vec3 cam_world = glm::vec3(cam_view[3][0], cam_view[3][1], cam_view[3][2]);
+
+            BlinnPhongFSParams fs_p;
+            fs_p.base_color         = glm::vec4(cmd.material.base_color[0], cmd.material.base_color[1], cmd.material.base_color[2], cmd.material.base_color[3]);
+            fs_p.light_dir_ws       = glm::vec4(light_dir_from.x, light_dir_from.y, light_dir_from.z, 0.0f);
+            fs_p.light_color_inten  = glm::vec4(state.light.color[0], state.light.color[1], state.light.color[2], state.light.intensity);
+            fs_p.view_pos_w         = glm::vec4(cam_world.x, cam_world.y, cam_world.z, 0.0f);
+            fs_p.spec_shin          = glm::vec4(1.0f, 1.0f, 1.0f, cmd.material.shininess);
+            fs_p.flags              = glm::vec4(cmd.material.texture.id != 0 ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f);
+            sg_range fs_range = SG_RANGE(fs_p);
+            sg_apply_uniforms(UB_blinnphong_fs_params, &fs_range);
+
+            sg_draw(0, static_cast<int>(mesh_index_count_get(cmd.mesh.id)), 1);
+        }
+    }
+
     // --- (3) Transparent draws (alpha < 1.0) --------------------------------
     {
         bool bound = false;
@@ -648,15 +724,16 @@ Material renderer_make_lambertian_material(const float rgb[3]) {
 }
 
 Material renderer_make_blinnphong_material(const float rgb[3], float shininess,
-                                           RendererTextureHandle texture) {
-    // Stub: full BlinnPhong pipeline added in R-046 (R-M4).
-    // Returns Unlit material so draw dispatch uses the existing unlit pipeline.
-    (void)shininess; (void)texture;
+                                            RendererTextureHandle texture) {
     Material m;
-    m.shading_model = ShadingModel::Unlit;
+    m.shading_model = ShadingModel::BlinnPhong;
+    m.shininess     = shininess;
+    m.texture       = texture;
     if (rgb) {
         m.base_color[0] = rgb[0]; m.base_color[1] = rgb[1];
         m.base_color[2] = rgb[2]; m.base_color[3] = 1.0f;
+    } else {
+        m.base_color[0] = 1.0f; m.base_color[1] = 1.0f; m.base_color[2] = 1.0f; m.base_color[3] = 1.0f;
     }
     return m;
 }

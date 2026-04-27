@@ -17,6 +17,7 @@
 namespace {
 
 static sg_image  s_images[256] = {};
+static sg_sampler s_samplers[256] = {};
 static uint32_t  s_next_id     = 1;
 
 } // namespace
@@ -30,6 +31,24 @@ sg_image texture_get(uint32_t id) {
     return s_images[id];
 }
 
+sg_sampler texture_get_sampler(uint32_t id) {
+    if (id == 0 || id >= s_next_id) return {};
+    return s_samplers[id];
+}
+
+static void ensure_sampler(uint32_t id, sg_image img) {
+    if (s_samplers[id].id != 0) return;
+    (void)img;
+    sg_sampler_desc sd = {};
+    sd.mag_filter     = SG_FILTER_LINEAR;
+    sd.min_filter     = SG_FILTER_LINEAR;
+    sd.wrap_u         = SG_WRAP_REPEAT;
+    sd.wrap_v         = SG_WRAP_REPEAT;
+    sd.wrap_w         = SG_WRAP_REPEAT;
+    sd.label          = "texture-sampler";
+    s_samplers[id]    = sg_make_sampler(&sd);
+}
+
 RendererTextureHandle texture_store_insert(sg_image img) {
     if (s_next_id >= 256) {
         printf("[renderer] ERROR: texture store full (max 255 textures)\n");
@@ -37,6 +56,7 @@ RendererTextureHandle texture_store_insert(sg_image img) {
     }
     uint32_t id    = s_next_id++;
     s_images[id]   = img;
+    ensure_sampler(id, img);
     return { id };
 }
 
@@ -44,6 +64,8 @@ void texture_store_shutdown() {
     for (uint32_t i = 1; i < s_next_id; ++i) {
         sg_destroy_image(s_images[i]);
         s_images[i] = {};
+        sg_destroy_sampler(s_samplers[i]);
+        s_samplers[i] = {};
     }
     s_next_id = 1;
 }
