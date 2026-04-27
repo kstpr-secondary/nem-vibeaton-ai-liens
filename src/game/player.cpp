@@ -35,34 +35,38 @@ void player_update(float dt) {
 
         // ----------------------------------------------------------------
         // Thrust and strafe — apply acceleration in local ship space
+        // Player input is applied directly to velocity for immediate,
+        // per-frame responsiveness (standard game-control pattern).
         // ----------------------------------------------------------------
-        const glm::vec3 forward = t.rotation * glm::vec3(0.f, 0.f, -1.f);
-        const glm::vec3 right   = t.rotation * glm::vec3(1.f, 0.f,  0.f);
+        const glm::vec3 forward = t.rotation * glm::vec3(0.f, 1.f, 0.f);
+        const glm::vec3 right   = t.rotation * glm::vec3(-1.f, 0.f, 0.f);
 
         const float thrust_accel = constants::player_thrust
             * (boost.active && boost.current > 0.f ? constants::boost_multiplier : 1.f);
 
-        glm::vec3 accel(0.f);
-        if (engine_key_down(SAPP_KEYCODE_W)) accel += forward * thrust_accel;
-        if (engine_key_down(SAPP_KEYCODE_S)) accel -= forward * thrust_accel;
-        if (engine_key_down(SAPP_KEYCODE_A)) accel -= right   * constants::player_strafe;
-        if (engine_key_down(SAPP_KEYCODE_D)) accel += right   * constants::player_strafe;
+        const bool is_thrusting =
+            engine_key_down(SAPP_KEYCODE_W) ||
+            engine_key_down(SAPP_KEYCODE_S) ||
+            engine_key_down(SAPP_KEYCODE_A) ||
+            engine_key_down(SAPP_KEYCODE_D);
 
-        // Accumulate thrust/strafe force via the engine's ForceAccum API so
-        // Euler integration handles it correctly across fixed-timestep substeps.
-        if (glm::dot(accel, accel) > 1e-6f) {
-            auto* fb = engine_try_get_component<ForceAccum>(e);
-            if (fb) {
-                fb->force += accel * rb.mass;
+        if (engine_key_down(SAPP_KEYCODE_W))
+            rb.linear_velocity += forward * thrust_accel * dt;
+        if (engine_key_down(SAPP_KEYCODE_S))
+            rb.linear_velocity -= forward * thrust_accel * dt;
+        if (engine_key_down(SAPP_KEYCODE_A))
+            rb.linear_velocity -= right   * constants::player_strafe * dt;
+        if (engine_key_down(SAPP_KEYCODE_D))
+            rb.linear_velocity += right   * constants::player_strafe * dt;
+
+        // Drag force — only applied when not thrusting, so the player can
+        // accelerate freely.  Uses ForceAccum so Euler integration handles it
+        // correctly across fixed-timestep substeps.
+        if (!is_thrusting) {
+            auto* drag_fb = engine_try_get_component<ForceAccum>(e);
+            if (drag_fb) {
+                drag_fb->force -= constants::player_drag_coeff * rb.linear_velocity;
             }
-        }
-
-        // Continuous drag force — F_drag = -drag_coeff * v — keeps top speed
-        // finite.  Coefficient tuned to match the original per-frame multiplier
-        // behaviour across the engine's fixed-timestep substeps.
-        auto* drag_fb = engine_try_get_component<ForceAccum>(e);
-        if (drag_fb) {
-            drag_fb->force -= constants::player_drag_coeff * rb.linear_velocity;
         }
 
         // Kill all angular velocity — player rotation is mouse-controlled only.
