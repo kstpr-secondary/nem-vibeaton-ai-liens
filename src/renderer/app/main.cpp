@@ -28,7 +28,10 @@ struct AppState {
     RendererMeshHandle sphere;
     RendererMeshHandle cube;
     RendererMeshHandle transparent_sphere;
+    RendererMeshHandle blinnphong_sphere_textured;
+    RendererMeshHandle blinnphong_sphere_untextured;
     RendererTextureHandle skybox_tex;
+    RendererTextureHandle asteroid_tex;
 };
 
 static AppState g_app;
@@ -95,6 +98,18 @@ static void on_frame(float dt, void*) {
             printf("[warn] skybox load failed\n");
         }
 
+        g_app.blinnphong_sphere_textured = renderer_make_sphere_mesh(1.0f, 16);
+        g_app.blinnphong_sphere_untextured = renderer_make_sphere_mesh(1.0f, 16);
+
+        const char* tex_path = ASSET_ROOT "/textures/asteroid.png";
+        printf("[info] loading texture: %s\n", tex_path);
+        g_app.asteroid_tex = renderer_upload_texture_from_file(tex_path);
+        if (renderer_handle_valid(g_app.asteroid_tex)) {
+            printf("[info] asteroid texture loaded OK\n");
+        } else {
+            printf("[warn] asteroid texture load failed\n");
+        }
+
         g_app.initialized = true;
     }
 
@@ -119,9 +134,9 @@ static void on_frame(float dt, void*) {
     renderer_begin_frame();
     renderer_set_camera(cam);
 
-    // Directional light: dir={1,-1,-0.5}, white, intensity=1.5
+    // Directional light: dir={1,11,-0.5}, white, intensity=1.5
     DirectionalLight light;
-    light.direction[0] = 1.0f; light.direction[1] = -1.0f; light.direction[2] = -0.5f;
+    light.direction[0] = 1.0f; light.direction[1] =  1.0f; light.direction[2] = -0.5f;
     light.color[0]     = 1.0f; light.color[1]     =  1.0f; light.color[2]     =  1.0f;
     light.intensity    = 1.5f;
     renderer_set_directional_light(light);
@@ -171,6 +186,40 @@ static void on_frame(float dt, void*) {
             mat = renderer_make_unlit_material(rgba);
         }
         renderer_enqueue_draw(item.mesh, transform, mat);
+    }
+
+    // ---- R-M4 Blinn-Phong demo: textured + untextured sphere side-by-side ----
+    {
+        glm::mat4 model_left  = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-9.0f, 0.0f, -6.0f)), glm::vec3(1.5f));
+        glm::mat4 model_right = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3( 9.0f, 0.0f, -6.0f)), glm::vec3(1.5f));
+        float tr_left[16], tr_right[16];
+        std::memcpy(tr_left,  glm::value_ptr(model_left),  sizeof(tr_left));
+        std::memcpy(tr_right, glm::value_ptr(model_right), sizeof(tr_right));
+
+        float white[3]       = {1.0f, 1.0f, 1.0f};
+        float fallback_rgb[3] = {0.9f, 0.5f, 0.2f};
+        float blue_rgb[3]     = {0.3f, 0.7f, 0.9f};
+
+        Material mat_textured;
+        if (renderer_handle_valid(g_app.asteroid_tex)) {
+            mat_textured = renderer_make_blinnphong_material(white, 64.0f, g_app.asteroid_tex);
+        } else {
+            mat_textured = renderer_make_blinnphong_material(fallback_rgb, 64.0f, {});
+        }
+        Material mat_untextured = renderer_make_blinnphong_material(blue_rgb, 128.0f, {});
+
+        printf("[info] R-M4: Blinn-Phong textured=%s untextured (shininess=%.0f / %.0f)\n",
+               renderer_handle_valid(g_app.asteroid_tex) ? "YES" : "NO (color fallback)",
+               mat_textured.shininess, mat_untextured.shininess);
+
+        renderer_enqueue_draw(g_app.blinnphong_sphere_textured,  tr_left, mat_textured);
+        renderer_enqueue_draw(g_app.blinnphong_sphere_untextured, tr_right, mat_untextured);
+
+        // Labels via line-quads: "TEXTURED" left sphere, "UNLIT" right sphere
+        float label_color[4] = {1.0f, 1.0f, 1.0f, 0.8f};
+        float top_left[3]    = {-9.0f, 2.5f, -6.0f};
+        float top_right[3]   = { 9.0f, 2.5f, -6.0f};
+        renderer_enqueue_line_quad(top_left, top_right, 0.03f, label_color);
     }
 
     // ---- Transparent geometry (small spheres with alpha < 1.0) ----
@@ -238,7 +287,7 @@ static void on_frame(float dt, void*) {
 
 int main() {
     RendererConfig cfg;
-    cfg.title   = "R-M3 MVP [L=Mixed/AllUnlit/AllLambertian]";
+    cfg.title   = "R-M4 Blinn-Phong + Textures [L=Mixed/AllUnlit/AllLambertian]";
     cfg.clear_r = 0.05f;
     cfg.clear_g = 0.05f;
     cfg.clear_b = 0.10f;

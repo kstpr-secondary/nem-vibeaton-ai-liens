@@ -16,15 +16,21 @@
 
 namespace {
 
-static sg_image  s_images[256] = {};
+static sg_image  s_images[256]   = {};
+static sg_view   s_views[256]    = {};
 static sg_sampler s_samplers[256] = {};
-static uint32_t  s_next_id     = 1;
+static uint32_t  s_next_id      = 1;
 
 } // namespace
 
 // ---------------------------------------------------------------------------
 // Internal accessors
 // ---------------------------------------------------------------------------
+
+sg_view texture_get_view(uint32_t id) {
+    if (id == 0 || id >= s_next_id) return {};
+    return s_views[id];
+}
 
 sg_image texture_get(uint32_t id) {
     if (id == 0 || id >= s_next_id) return {};
@@ -34,6 +40,13 @@ sg_image texture_get(uint32_t id) {
 sg_sampler texture_get_sampler(uint32_t id) {
     if (id == 0 || id >= s_next_id) return {};
     return s_samplers[id];
+}
+
+static void ensure_view(uint32_t id, sg_image img) {
+    if (s_views[id].id != 0) return;
+    sg_view_desc vd = {};
+    vd.texture.image = img;
+    s_views[id] = sg_make_view(&vd);
 }
 
 static void ensure_sampler(uint32_t id, sg_image img) {
@@ -56,14 +69,17 @@ RendererTextureHandle texture_store_insert(sg_image img) {
     }
     uint32_t id    = s_next_id++;
     s_images[id]   = img;
+    ensure_view(id, img);
     ensure_sampler(id, img);
     return { id };
 }
 
 void texture_store_shutdown() {
     for (uint32_t i = 1; i < s_next_id; ++i) {
+        sg_destroy_view(s_views[i]);
+        s_views[i]   = {};
         sg_destroy_image(s_images[i]);
-        s_images[i] = {};
+        s_images[i]  = {};
         sg_destroy_sampler(s_samplers[i]);
         s_samplers[i] = {};
     }

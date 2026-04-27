@@ -4,7 +4,8 @@
 #include <paths.h>
 #include <cstdio>
 
-#define STB_IMAGE_IMPLEMENTATION
+// stb_image implementation is already provided by librenderer.a (texture.cpp).
+// Do NOT define STB_IMAGE_IMPLEMENTATION here — it causes duplicate symbols.
 #include "stb_image.h"
 
 static bool s_game_inited = false;

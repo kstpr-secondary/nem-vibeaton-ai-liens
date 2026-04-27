@@ -103,6 +103,11 @@ struct RendererState {
 
     // Pass action — clear color populated from config in the GL init callback
     sg_pass_action pass_action = {};
+
+    // Dummy 1×1 white texture + sampler + view for untextured BlinnPhong draws.
+    sg_image dummy_blinnphong_tex = {};
+    sg_view dummy_blinnphong_view = {};
+    sg_sampler dummy_blinnphong_smp = {};
 };
 
 RendererState state;
@@ -232,6 +237,30 @@ void renderer_internal_init() {
     state.pass_action.colors[0].clear_value.g = state.config.clear_g;
     state.pass_action.colors[0].clear_value.b = state.config.clear_b;
     state.pass_action.colors[0].clear_value.a = state.config.clear_a;
+
+    // Dummy 1×1 white texture for untextured BlinnPhong draws.
+    {
+        unsigned char white_pixel[4] = {255, 255, 255, 255};
+        sg_image_desc img_desc = {};
+        img_desc.width          = 1;
+        img_desc.height         = 1;
+        img_desc.pixel_format   = SG_PIXELFORMAT_RGBA8;
+        img_desc.data.mip_levels[0] = SG_RANGE(white_pixel);
+        img_desc.label = "dummy-blinnphong-white";
+        state.dummy_blinnphong_tex = sg_make_image(&img_desc);
+
+        sg_view_desc vd = {};
+        vd.texture.image  = state.dummy_blinnphong_tex;
+        state.dummy_blinnphong_view = sg_make_view(&vd);
+
+        sg_sampler_desc smp_desc = {};
+        smp_desc.min_filter      = SG_FILTER_LINEAR;
+        smp_desc.mag_filter      = SG_FILTER_LINEAR;
+        smp_desc.wrap_u          = SG_WRAP_CLAMP_TO_EDGE;
+        smp_desc.wrap_v          = SG_WRAP_CLAMP_TO_EDGE;
+        smp_desc.label           = "dummy-blinnphong-sampler";
+        state.dummy_blinnphong_smp = sg_make_sampler(&smp_desc);
+    }
 
     make_magenta_pipeline();
     state.pipeline_unlit       = create_pipeline_unlit(state.pipeline_magenta);
@@ -504,18 +533,15 @@ void renderer_end_frame() {
             bind.index_buffer      = mesh_ibuf_get(cmd.mesh.id);
 
             if (cmd.material.texture.id != 0) {
-                sg_image tex_img = texture_get(cmd.material.texture.id);
-                if (sg_query_image_state(tex_img) == SG_RESOURCESTATE_VALID) {
-                    sg_view_desc vdesc   = {};
-                    vdesc.texture.image  = tex_img;
-                    sg_view tex_view     = sg_make_view(&vdesc);
-                    bind.views[VIEW_albedo_tex] = tex_view;
-                    sg_destroy_view(tex_view);
-                }
+                bind.views[VIEW_albedo_tex] = texture_get_view(cmd.material.texture.id);
                 sg_sampler tex_smp = texture_get_sampler(cmd.material.texture.id);
                 if (tex_smp.id != 0) {
                     bind.samplers[SMP_smp] = tex_smp;
                 }
+            } else {
+                // No texture — bind dummy white texture so sokol validation passes.
+                bind.views[VIEW_albedo_tex]   = state.dummy_blinnphong_view;
+                bind.samplers[SMP_smp]        = state.dummy_blinnphong_smp;
             }
 
             sg_apply_bindings(&bind);

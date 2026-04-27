@@ -13,6 +13,7 @@ struct sg_image { uint32_t id; };
 // Not part of the public renderer API.
 // ---------------------------------------------------------------------------
 
+sg_view               texture_get_view(uint32_t id);
 sg_image              texture_get(uint32_t id);
 sg_sampler            texture_get_sampler(uint32_t id);
 RendererTextureHandle texture_store_insert(sg_image img);
