@@ -30,6 +30,7 @@ struct AppState {
     RendererMeshHandle transparent_sphere;
     RendererMeshHandle blinnphong_sphere_textured;
     RendererMeshHandle blinnphong_sphere_untextured;
+    RendererMeshHandle shininess_compare_sphere;
     RendererTextureHandle skybox_tex;
     RendererTextureHandle asteroid_tex;
 };
@@ -100,6 +101,7 @@ static void on_frame(float dt, void*) {
 
         g_app.blinnphong_sphere_textured = renderer_make_sphere_mesh(1.0f, 16);
         g_app.blinnphong_sphere_untextured = renderer_make_sphere_mesh(1.0f, 16);
+        g_app.shininess_compare_sphere   = renderer_make_sphere_mesh(1.2f, 16);
 
         const char* tex_path = ASSET_ROOT "/textures/asteroid.png";
         printf("[info] loading texture: %s\n", tex_path);
@@ -220,6 +222,42 @@ static void on_frame(float dt, void*) {
         float top_left[3]    = {-9.0f, 2.5f, -6.0f};
         float top_right[3]   = { 9.0f, 2.5f, -6.0f};
         renderer_enqueue_line_quad(top_left, top_right, 0.03f, label_color);
+    }
+
+    // ---- Shininess comparison: rough → medium → very shiny (solid grey spheres) ----
+    {
+        const float shininess_values[] = {50.0f, 128.0f, 256.0f};
+        const char* shininess_labels[] = {"ROUGH(50)", "MEDIUM(128)", "SHINY(256)"};
+        glm::vec3   positions[]        = { glm::vec3(-7.0f, 0.0f, 5.0f),
+                                            glm::vec3( 0.0f, 0.0f, 4.0f),
+                                            glm::vec3( 7.0f, 0.0f, 5.0f) };
+
+        for (int i = 0; i < 3; ++i) {
+            glm::mat4 model = glm::scale(glm::translate(glm::mat4(1.0f), positions[i]),
+                                          glm::vec3(1.2f));
+            float tr[16];
+            std::memcpy(tr, glm::value_ptr(model), sizeof(tr));
+
+            float grey[3]  = {0.65f, 0.65f, 0.65f};
+            Material mat   = renderer_make_blinnphong_material(grey, shininess_values[i], {});
+
+            printf("[info] R-M4: shininess=%.0f at (%.1f, %.1f, %.1f) [%s]\n",
+                   shininess_values[i], positions[i].x, positions[i].y, positions[i].z, shininess_labels[i]);
+
+            renderer_enqueue_draw(g_app.shininess_compare_sphere, tr, mat);
+
+            // Vertical marker line above each sphere
+            float label_color[4] = {1.0f, 1.0f, 1.0f, 0.85f};
+            float lbl_top[3]     = { positions[i].x, positions[i].y + 2.0f, positions[i].z };
+            float lbl_bot[3]     = { positions[i].x, positions[i].y + 1.4f, positions[i].z };
+            renderer_enqueue_line_quad(lbl_top, lbl_bot, 0.03f, label_color);
+
+            // Horizontal bar as text proxy above marker
+            float text_color[4] = {1.0f, 0.9f, 0.2f, 0.9f};
+            float center[3]     = { positions[i].x, positions[i].y + 2.7f, positions[i].z };
+            float right_end[3]  = { center[0] + 1.6f, center[1], center[2] };
+            renderer_enqueue_line_quad(center, right_end, 0.04f, text_color);
+        }
     }
 
     // ---- Transparent geometry (small spheres with alpha < 1.0) ----

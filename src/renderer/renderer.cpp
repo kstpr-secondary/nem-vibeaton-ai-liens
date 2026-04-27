@@ -553,17 +553,20 @@ void renderer_end_frame() {
             sg_range vs_range = SG_RANGE(vs_p);
             sg_apply_uniforms(UB_blinnphong_vs_params, &vs_range);
 
-            float light_dir_norm[3] = { state.light.direction[0], state.light.direction[1], state.light.direction[2] };
-            glm::vec3 light_dir_from = glm::vec3(-light_dir_norm[0], -light_dir_norm[1], -light_dir_norm[2]);
+           float light_dir_norm[3] = { state.light.direction[0], state.light.direction[1], state.light.direction[2] };
+             glm::vec3 light_dir_from = glm::vec3(-light_dir_norm[0], -light_dir_norm[1], -light_dir_norm[2]);
 
-            glm::mat4 cam_view  = glm::make_mat4(state.camera.view);
-            glm::vec3 cam_world = glm::vec3(cam_view[3][0], cam_view[3][1], cam_view[3][2]);
+             glm::mat4 cam_view = glm::make_mat4(state.camera.view);
+             // Extract camera world position: view = inverse(camera_world), so
+             // camera_world = inverse(view). Translation is at [3][0..2] in GLM.
+             glm::mat4 cam_world = glm::inverse(cam_view);
+             glm::vec3 cam_pos = glm::vec3(cam_world[3][0], cam_world[3][1], cam_world[3][2]);
 
-            BlinnPhongFSParams fs_p;
+             BlinnPhongFSParams fs_p;
             fs_p.base_color         = glm::vec4(cmd.material.base_color[0], cmd.material.base_color[1], cmd.material.base_color[2], cmd.material.base_color[3]);
             fs_p.light_dir_ws       = glm::vec4(light_dir_from.x, light_dir_from.y, light_dir_from.z, 0.0f);
             fs_p.light_color_inten  = glm::vec4(state.light.color[0], state.light.color[1], state.light.color[2], state.light.intensity);
-            fs_p.view_pos_w         = glm::vec4(cam_world.x, cam_world.y, cam_world.z, 0.0f);
+            fs_p.view_pos_w         = glm::vec4(cam_pos.x, cam_pos.y, cam_pos.z, 0.0f);
             fs_p.spec_shin          = glm::vec4(1.0f, 1.0f, 1.0f, cmd.material.shininess);
             fs_p.flags              = glm::vec4(cmd.material.texture.id != 0 ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f);
             sg_range fs_range = SG_RANGE(fs_p);
@@ -696,8 +699,8 @@ void renderer_set_skybox(RendererTextureHandle cubemap) {
 }
 
 void renderer_enqueue_draw(RendererMeshHandle mesh,
-                           const float        world_transform[16],
-                           const Material&    material) {
+                            const float        world_transform[16],
+                            const Material&    material) {
     if (!state.frame_active) return;
     if (!renderer_handle_valid(mesh)) return;
     if (state.draw_count >= 1024) {
