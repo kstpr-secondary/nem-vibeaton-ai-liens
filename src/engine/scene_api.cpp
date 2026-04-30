@@ -78,10 +78,14 @@ entt::entity engine_spawn_cube(const glm::vec3& position, float half_extent, con
 static std::unordered_map<std::string, RendererMeshHandle> s_gltf_cache;
 static std::unordered_map<std::string, RendererMeshHandle> s_obj_cache;
 
-RendererMeshHandle engine_load_gltf(const char* relative_path) {
+RendererMeshHandle engine_load_gltf(const char* relative_path,
+                                     RendererTextureHandle* out_texture) {
     auto it = s_gltf_cache.find(relative_path);
-    if (it != s_gltf_cache.end())
+    if (it != s_gltf_cache.end()) {
+        if (out_texture)
+            *out_texture = {};  // cached meshes don't store texture handles
         return it->second;
+    }
 
     ImportedMesh mesh = asset_import_gltf(relative_path);
     if (mesh.empty()) {
@@ -90,6 +94,10 @@ RendererMeshHandle engine_load_gltf(const char* relative_path) {
     }
     RendererMeshHandle handle = asset_bridge_upload(mesh);
     s_gltf_cache[relative_path] = handle;
+
+    if (out_texture)
+        *out_texture = mesh.texture;
+
     return handle;
 }
 

@@ -105,7 +105,8 @@ entt::entity engine_spawn_cube(
 // Asset Loading
 // =========================================================================
 
-RendererMeshHandle engine_load_gltf(const char* relative_path);
+RendererMeshHandle engine_load_gltf(const char* relative_path,
+                                     RendererTextureHandle* out_texture = nullptr);
 RendererMeshHandle engine_load_obj(const char* relative_path);
 
 entt::entity engine_spawn_from_asset(

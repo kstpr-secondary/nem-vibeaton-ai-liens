@@ -5,6 +5,8 @@
 #include <renderer.h>
 #include <glm/gtc/quaternion.hpp>
 
+#include <cstring>
+
 // Model paths (relative to ASSET_ROOT).
 static constexpr const char* k_player_model    = "spaceship1.glb";
 static constexpr const char* k_enemy_model     = "spaceship1.glb";
@@ -56,11 +58,42 @@ static entt::entity spawn_from_model(const char* model_path,
     t.rotation = glm::quat(1.f, 0.f, 0.f, 0.f);  // identity — caller may override
     reg.emplace<Transform>(e, t);
 
-    const float default_color[3] = {0.7f, 0.7f, 0.7f};
-    const Material mat = renderer_make_lambertian_material(default_color);
+    RendererTextureHandle texture_handle = {};
+    RendererMeshHandle handle = engine_load_gltf(model_path, &texture_handle);
+
+    const float* base_color;
+    float shininess;
+
+    if (texture_handle.id != 0) {
+        if (strcmp(model_path, k_asteroid_model) == 0) {
+            base_color = nullptr;  // use texture directly
+            shininess  = 64.0f;
+        } else {
+            base_color = nullptr;  // use texture directly
+            shininess  = 128.0f;
+        }
+    } else {
+        if (strcmp(model_path, k_asteroid_model) == 0) {
+            base_color = nullptr;  // fallback handled below
+            shininess  = 64.0f;
+        } else {
+            static const float s_player_fallback[3] = {0.5f, 0.55f, 0.6f};
+            static const float s_enemy_fallback[3]  = {0.55f, 0.3f, 0.3f};
+            base_color = (strcmp(model_path, k_player_model) == 0) ? s_player_fallback : s_enemy_fallback;
+            shininess  = 128.0f;
+        }
+    }
+
+    Material mat;
+    if (texture_handle.id != 0) {
+        mat = renderer_make_blinnphong_material(nullptr, shininess, texture_handle);
+    } else {
+        static const float s_fallback_gray[3] = {0.7f, 0.7f, 0.7f};
+        const float* color_ptr = (base_color != nullptr) ? base_color : s_fallback_gray;
+        mat = renderer_make_blinnphong_material(color_ptr, shininess, {});
+    }
     reg.emplace<EntityMaterial>(e, EntityMaterial{mat});
 
-    RendererMeshHandle handle = engine_load_gltf(model_path);
     reg.emplace<Mesh>(e, Mesh{handle});
 
     return e;

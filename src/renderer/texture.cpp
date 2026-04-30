@@ -90,6 +90,13 @@ void texture_store_shutdown() {
 // Public API — texture upload
 // ---------------------------------------------------------------------------
 
+RendererTextureHandle renderer_upload_texture_from_memory(
+    const void* pixels, int width, int height, int channels)
+{
+    // Thin wrapper — same as renderer_upload_texture_2d, no file loading.
+    return renderer_upload_texture_2d(pixels, width, height, channels);
+}
+
 RendererTextureHandle renderer_upload_texture_2d(
     const void* pixels, int width, int height, int channels)
 {

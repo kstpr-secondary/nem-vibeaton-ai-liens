@@ -55,7 +55,7 @@ entt::entity engine_spawn_cube(const glm::vec3&, float, const Material&)    { re
 // Asset loading
 // ---------------------------------------------------------------------------
 
-RendererMeshHandle engine_load_gltf(const char*) { return {1}; }
+RendererMeshHandle engine_load_gltf(const char*, RendererTextureHandle*) { return {1}; }
 RendererMeshHandle engine_load_obj(const char*)  { return {1}; }
 
 entt::entity engine_spawn_from_asset(const char*, const glm::vec3&, const glm::quat&, const Material&) {

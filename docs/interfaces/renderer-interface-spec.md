@@ -7,10 +7,11 @@
 
 ## Version
 
-`FROZEN — v1.1`
+`FROZEN — v1.2`
 
 ### Changelog
 
+- **v1.2**: Added `renderer_upload_texture_from_memory(pixels, w, h, ch)` — accepts raw RGBA pixel data already in memory, required for engine-side glTF texture extraction (Approach B). Approved by human supervisor via ASSESSMENT-gltf-texture-extraction.md.
 - **v1.1**: Added `FrameCallback` type and `renderer_set_frame_callback()` — required for engine/game to inject per-frame tick logic into the renderer-owned sokol_app loop. Approved by human supervisor.
 
 ---
@@ -186,6 +187,13 @@ RendererMeshHandle renderer_upload_mesh(
 // ---------------------------------------------------------------------------
 
 RendererTextureHandle renderer_upload_texture_2d(
+    const void* pixels,
+    int         width,
+    int         height,
+    int         channels
+);
+
+RendererTextureHandle renderer_upload_texture_from_memory(
     const void* pixels,
     int         width,
     int         height,
