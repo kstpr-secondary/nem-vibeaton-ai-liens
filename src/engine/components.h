@@ -64,3 +64,5 @@ struct CollisionFlash {
     glm::vec3          flash_color = {1.f, 0.15f, 0.15f};
     glm::vec3          base_color  = {1.f, 1.f, 1.f};
 };
+
+struct OutOfBounds {}; // Debug flag — entity found outside arena bounds after physics tick

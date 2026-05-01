@@ -71,45 +71,48 @@ static void frame_cb(float dt, void* /*user_data*/) {
     }
 
    renderer_begin_frame();
-    update_camera(dt);
-    engine_tick(dt);
+     update_camera(dt);
+     engine_tick(dt);
 
-    // --- Containment: push any dynamic entity outside the arena box back inside ---
-    {
-        constexpr float kHalfX = 75.f, kHalfY = 30.f, kHalfZ = 60.f;
-        auto& reg = engine_registry();
-        auto view = reg.view<Transform, Collider, Dynamic>();
-        for (auto e : view) {
-            auto& tr = view.get<Transform>(e);
-            const auto& col = view.get<Collider>(e);
-            float hx = col.half_extents.x;
-            float hy = col.half_extents.y;
-            float hz = col.half_extents.z;
+  // --- Debug: detect entities outside arena bounds ---
+     {
+         constexpr float kHalfX = 75.f, kHalfY = 30.f, kHalfZ = 60.f;
+         auto& reg = engine_registry();
 
-            bool clamped_x = false, clamped_y = false, clamped_z = false;
+         std::vector<entt::entity> to_add, to_remove;
 
-            if (tr.position.x + hx > kHalfX) { tr.position.x = kHalfX - hx; clamped_x = true; }
-            if (tr.position.x - hx < -kHalfX) { tr.position.x = -kHalfX + hx; clamped_x = true; }
-            if (tr.position.y + hy > kHalfY) { tr.position.y = kHalfY - hy; clamped_y = true; }
-            if (tr.position.y - hy < -kHalfY) { tr.position.y = -kHalfY + hy; clamped_y = true; }
-            if (tr.position.z + hz > kHalfZ) { tr.position.z = kHalfZ - hz; clamped_z = true; }
-            if (tr.position.z - hz < -kHalfZ) { tr.position.z = -kHalfZ + hz; clamped_z = true; }
+         // Pass 1: collect OOB IDs without modifying registry
+         reg.view<Transform, Collider, Dynamic>().each([&](auto e, const Transform& tr, const Collider& col) {
+             float hx = col.half_extents.x * tr.scale.x;
+             float hy = col.half_extents.y * tr.scale.y;
+             float hz = col.half_extents.z * tr.scale.z;
 
-            if (clamped_x || clamped_y || clamped_z) {
-                auto* rb = reg.try_get<RigidBody>(e);
-                if (rb) {
-                    if (clamped_x) rb->linear_velocity.x = std::copysignf(
-                        std::abs(rb->linear_velocity.x) < 0.5f ? 0.f : rb->linear_velocity.x, -rb->linear_velocity.x);
-                    if (clamped_y) rb->linear_velocity.y = std::copysignf(
-                        std::abs(rb->linear_velocity.y) < 0.5f ? 0.f : rb->linear_velocity.y, -rb->linear_velocity.y);
-                    if (clamped_z) rb->linear_velocity.z = std::copysignf(
-                        std::abs(rb->linear_velocity.z) < 0.5f ? 0.f : rb->linear_velocity.z, -rb->linear_velocity.z);
-                }
-            }
-        }
-    }
+             bool out = (tr.position.x + hx > kHalfX) || (tr.position.x - hx < -kHalfX) ||
+                        (tr.position.y + hy > kHalfY) || (tr.position.y - hy < -kHalfY) ||
+                        (tr.position.z + hz > kHalfZ) || (tr.position.z - hz < -kHalfZ);
 
-    // Submit draw calls for all entities with Transform + Mesh + EntityMaterial.
+             if (out) {
+                 to_add.push_back(e);
+             } else if (reg.all_of<OutOfBounds>(e)) {
+                 to_remove.push_back(e);
+             }
+         });
+
+         // Pass 2: apply structural changes after iteration
+         for (auto e : to_add)
+             reg.emplace_or_replace<OutOfBounds>(e);
+         for (auto e : to_remove)
+             reg.remove<OutOfBounds>(e);
+
+         if (!to_add.empty()) {
+             static int log_counter = 0;
+             ++log_counter;
+             if (log_counter % 30 == 0)
+                 fprintf(stderr, "[ENGINE] DEBUG: %d entity(ies) outside arena bounds\n", (int)to_add.size());
+         }
+     }
+
+     // Submit draw calls for all entities with Transform + Mesh + EntityMaterial.
     // CollisionFlash timers decay; entity is drawn with blended color if timer > 0.
     {
         auto& reg = engine_registry();
@@ -132,7 +135,7 @@ static void frame_cb(float dt, void* /*user_data*/) {
                 }
             }
 
-            Material mat = em.mat;
+           Material mat = em.mat;
             if (cf && cf->timer > 0.f) {
                 float t_norm = std::min(cf->timer, 1.0f);
                 // Timer 1.0→0.5: flash→mid-blend; 0.5→0.0: mid-blend→base
@@ -141,6 +144,11 @@ static void frame_cb(float dt, void* /*user_data*/) {
                 for (int c = 0; c < 3; ++c) {
                     mat.base_color[c] = cf->flash_color[c] + blend * (cf->base_color[c] - cf->flash_color[c]);
                 }
+            } else if (reg.all_of<OutOfBounds>(e)) {
+                // OOB override — bright green (collision red already takes priority above)
+                mat.base_color[0] = 0.f;
+                mat.base_color[1] = 1.f;
+                mat.base_color[2] = 0.f;
             }
 
             const glm::mat4 world =
@@ -174,9 +182,9 @@ static void frame_cb(float dt, void* /*user_data*/) {
         ImGui::End();
     }
 
-    renderer_end_frame();
+   renderer_end_frame();
 
-   // ---- Stress-test spawner ----
+    // ---- Stress-test spawner ----
     {
         static float spawn_timer = 0.f;
         static float spawn_interval = 2.0f;
@@ -184,7 +192,7 @@ static void frame_cb(float dt, void* /*user_data*/) {
         constexpr int max_entities = 200;
 
         static std::mt19937 spawner_gen(12345u);
-        std::uniform_real_distribution<float> spawner_pos(-35.f, 35.f);
+       std::uniform_real_distribution<float> spawner_pos(-25.f, 25.f);
         std::uniform_int_distribution<int> spawner_tier(0, 2);
 
         int dyn_count = 0;
@@ -302,7 +310,7 @@ static void setup_scene() {
 
     // Random number generator — fixed seed for reproducibility
     std::mt19937 gen(42);
-    std::uniform_real_distribution<float> pos_dist(-40.f, 40.f);
+    std::uniform_real_distribution<float> pos_dist(-25.f, 25.f);
     std::uniform_real_distribution<float> vel_dist(-12.f, 12.f);
 
     // --- Dynamic cubes: 40 entities ---
@@ -464,11 +472,13 @@ static void setup_scene() {
 
     int total = kNumCubes + asteroid_count + static_count;
 
-    // --- Boundary walls: 6-sided closed box, 3x larger arena ---
+  // --- Boundary walls: 6-sided closed box, 3x larger arena ---
     constexpr float half_x = 75.f;
     constexpr float half_z = 60.f;
     constexpr float half_y = 30.f;
-    constexpr float wall_thick = 1.f;
+    // Wall thickness must exceed max_velocity * substep_time to prevent tunneling.
+    // Max velocity ~12 units/s, substep 8.3ms => 0.1 units minimum. Using 4 for margin.
+    constexpr float wall_thick = 4.f;
 
     struct WallDef {
         glm::vec3 pos;
@@ -476,17 +486,17 @@ static void setup_scene() {
         bool transparent;
     };
     const WallDef wall_defs[6] = {
-        // Front wall (Z+) — inner face at z=+60, x=[-75,+75], y=[-30,+30]
+        // Front wall (Z+) — transparent, inner face at z=+60
         {{0.f, 0.f, half_z - wall_thick / 2.f}, {half_x * 2.f, half_y * 2.f, wall_thick}, true},
-        // Back wall (Z-) — inner face at z=-60, x=[-75,+75], y=[-30,+30]
+        // Back wall (Z-) — transparent, inner face at z=-60
         {{0.f, 0.f, -(half_z - wall_thick / 2.f)}, {half_x * 2.f, half_y * 2.f, wall_thick}, true},
-        // Left wall (X-) — inner face at x=-75, y=[-30,+30], z=[-60,+60]
+        // Left wall (X-) — opaque, inner face at x=-75
         {{-(half_x - wall_thick / 2.f), 0.f, 0.f}, {wall_thick, half_y * 2.f, half_z * 2.f}, false},
-        // Right wall (X+) — inner face at x=+75, y=[-30,+30], z=[-60,+60]
+        // Right wall (X+) — opaque, inner face at x=+75
         {{half_x - wall_thick / 2.f, 0.f, 0.f}, {wall_thick, half_y * 2.f, half_z * 2.f}, false},
-        // Top wall (Y+) — inner face at y=+30, x=[-75,+75], z=[-60,+60]
+        // Top wall (Y+) — opaque, inner face at y=+30
         {{0.f, half_y - wall_thick / 2.f, 0.f}, {half_x * 2.f, wall_thick, half_z * 2.f}, false},
-        // Bottom floor (Y-) — inner face at y=-30, x=[-75,+75], z=[-60,+60]
+        // Bottom floor (Y-) — opaque, inner face at y=-30
         {{0.f, -(half_y - wall_thick / 2.f), 0.f}, {half_x * 2.f, wall_thick, half_z * 2.f}, false},
     };
 
