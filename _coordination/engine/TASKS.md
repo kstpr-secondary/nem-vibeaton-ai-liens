@@ -116,6 +116,24 @@
 
 ---
 
+## Milestone: DEMO-SCENE — Stress Test + Collision Visualization
+
+**Expected outcome**: `engine_app` shows 10 static objects (different asteroid meshes, cyan/blue base color), dynamic objects glow red for 0.5s on collision then fade back to base color over another 0.5s, ImGui stats HUD displays FPS + draw calls + triangle count, and a spawner that increases total object count over time for stress testing.
+
+> **Context**: Engine MVP is complete (E-M1–E-M4 DONE, POST-MVP TODO). This is a post-MVP demo-scene extension — no new engine APIs are needed beyond what already exists. All work is in `engine_app` (the driver) plus one renderer API extension (`renderer_get_triangle_count`). The existing Lambertian/unlit materials, ECS entity lifecycle, physics tick loop, and ImGui infrastructure (already linked via sokol_imgui in the renderer) are reused directly.
+
+| ID | Task | Tier | Status | Owner | Depends_on | Milestone | Parallel_Group | Validation | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| E-036 | Extend renderer API: add `renderer_get_triangle_count()` to `renderer.h`, implement in `renderer.cpp` by summing `mesh_index_count_get(cmd.mesh.id) / 3` for each entry in `draw_queue[0..draw_count-1]` during `end_frame()`, store as `triangle_count` in `RendererState`, reset to 0 at `begin_frame()` | MED | TODO | — | E-035 | DEMO-SCENE | SEQUENTIAL | SELF-CHECK | files: src/renderer/renderer.h, src/renderer/renderer.cpp. Exposes total index_count/3 accumulated per frame from draw_queue. |
+| E-037 | Add `CollisionFlash` component to `src/engine/components.h`: fields `float timer = 0.f`, `glm::vec3 flash_color = {1.f, 0.15f, 0.15f}` (red), `glm::vec3 base_color[3]` (saved from EntityMaterial at collision time). Add `engine_on_collision(entt::entity e)` API in `engine.h`/`engine.cpp` that creates CollisionFlash on an entity with current Material base_color as the saved base. | MED | TODO | — | E-036 | DEMO-SCENE | SEQUENTIAL | SPEC-VALIDATE | files: src/engine/components.h, src/engine/engine.h, src/engine/engine.cpp. Thin wrapper: reads EntityMaterial, stores base_color[3], resets timer=1.0f. |
+| E-038 | Hook collision event tracking into physics loop in `collision_response.cpp`: after `resolve_collision()` fires (non-zero impulse), call `engine_on_collision(pair.a)` and `engine_on_collision(pair.b)` for any entity that has both `Dynamic` tag and `EntityMaterial`. Uses entt `reg.has<EntityMaterial>()` check. No new engine API needed — just call through to `engine_on_collision`. | MED | TODO | — | E-037 | DEMO-SCENE | SEQUENTIAL | SELF-CHECK | files: src/engine/collision_response.cpp. Guard: only Dynamic entities with EntityMaterial get flash. Static walls and central asteroid are tagged Static → no flash. |
+| E-039 | Update render enqueue loop in `engine_app/main.cpp`: for each entity drawn, check `CollisionFlash` component; if `timer > 0.f`, blend between flash_color and saved base_color based on `timer / 1.0f` (linear interpolation: `lerp(flash, base, 1.0f - timer/1.0f)` with clamp at timer=0.5s transition point); modify EntityMaterial.mat.base_color per draw call via a temporary Material copy. | MED | TODO | — | E-037, E-038 | DEMO-SCENE | SEQUENTIAL | SPEC-VALIDATE | files: src/engine/app/main.cpp. Blend curve: timer 1.0→0.5 = flash to mid-blend; timer 0.5→0.0 = mid-blend to base_color. |
+| E-040 | Update `setup_scene()` in `engine_app/main.cpp`: replace the single static arena wall + central asteroid with 10 static objects at varied positions using 4 different glTF asteroid models (`Asteroid_1a.glb`, `Asteroid_1e.glb`, `Asteroid_2a.glb`, `Asteroid_2b.glb`), each with cyan/blue Lambertian base color (`{0.2f, 0.7f, 0.9f}` or `{0.15f, 0.6f, 0.85f}`). Vary scales: small (1.0–1.5), medium (2.0–2.5), large (3.0–4.0). Keep collider half_extents proportional to scale. | MED | TODO | — | E-039 | DEMO-SCENE | SEQUENTIAL | SPEC-VALIDATE | files: src/engine/app/main.cpp. Scene layout: 10 static asteroids spread across arena at different positions. Models from game's `k_asteroid_models[]` array. |
+| E-041 | Add ImGui stats HUD to `engine_app/main.cpp`: include `<imgui.h>`, call `simgui_new_frame()` in frame callback (renderer already links sokol_imgui), render a small window in top-left showing: `FPS: %.1f`, `Draws: %d`, `Triangles: %d`, `Entities: %d` (dynamic count from view). Use `ImGuiCond_Once | ImGuiWindowFlags_NoDecoration`. Reuse the renderer app's HUD pattern (lines 311-321 of renderer/app/main.cpp) as reference. | LOW | TODO | — | E-040 | DEMO-SCENE | SEQUENTIAL | SELF-CHECK | files: src/engine/app/main.cpp. Depends on: ImGui already linked in CMake via renderer's SIMGUI_IMPL + sokol_imgui dependency chain. |
+| E-042 | Add stress-test spawner to `engine_app/main.cpp`: static state tracking `spawn_timer`, `spawn_interval` (starts at 2.0s, decreases to 0.3s), `max_entities` (capped at 200). Each interval: pick random position within arena bounds, random velocity, pick random asteroid model or cube, assign random mass tier (small=1.0, medium=3.0, large=5.0), spawn with Dynamic tag + RigidBody + Collider. At `max_entities`, stop spawning until count drops below 150 (destroy oldest N entities tagged SpawnTarget with DestroyPending). | MED | TODO | — | E-041 | DEMO-SCENE | SEQUENTIAL | SPEC-VALIDATE | files: src/engine/app/main.cpp. Spawner loop runs in frame_cb, not in engine_tick. Uses existing `engine_create_entity()`, `engine_add_component<>`, `engine_load_gltf()`. |
+
+---
+
 ## Parallel Group Summary
 
 | Group | Milestone | Tasks | File Sets (disjoint) |
@@ -132,6 +150,9 @@
 | PG-EM4-B | E-M4 | E-025 | `physics.h, physics.cpp` |
 | PG-POST-A | POST-MVP | E-029, E-030 | `engine.h` / `mocks/engine_mock.cpp` |
 | PG-POST-B | POST-MVP | E-032, E-033, E-035 | (verification / PROGRESS.md) |
+| PG-DEMO-A | DEMO-SCENE | E-036 | `renderer.h, renderer.cpp` |
+| PG-DEMO-B | DEMO-SCENE | E-037 | `components.h, engine.h, engine.cpp` |
+| PG-DEMO-C | DEMO-SCENE | E-040, E-041 | (both modify `main.cpp` — SEQUENTIAL, not parallel) |
 
 ---
 
@@ -142,10 +163,12 @@ SETUP (E-001..E-003) → FOUNDATION (E-004..E-005)
     → E-M1 (E-006..E-012)
         → E-M2 (E-013..E-017)  ─────────────┐
         → E-M3 (E-018..E-023)  ─────────────┤
-                                              ├→ E-M4 (E-024..E-028) → POST-MVP (E-029..E-035)
+                                                ├→ E-M4 (E-024..E-028) → POST-MVP (E-029..E-035)
+                                                                     → DEMO-SCENE (E-036..E-042)
 ```
 
-E-M2 and E-M3 are **independent** after E-M1; both must complete before E-M4.
+E-M2 and E-M3 are **independent** after E-M1; both must complete before E-M4.  
+DEMO-SCENE is entirely sequential: E-036 (renderer extension) → E-037 (engine component) → E-038..E-042 (app driver work).
 
 ---
 
@@ -158,3 +181,4 @@ E-M2 and E-M3 are **independent** after E-M1; both must complete before E-M4.
 | E-M3 | R-M1 (for input bridge) | Game G-M3 (raycast + colliders) |
 | E-M4 | R-M1 | Game G-M2 (physics + collision response) |
 | POST-MVP | R-M1 | Game workstream fully unblocked (frozen engine API) |
+| DEMO-SCENE | E-036 touches frozen `renderer.h` — **requires human approval** for interface extension | Extended `engine_app` for stress testing / collision viz demo |

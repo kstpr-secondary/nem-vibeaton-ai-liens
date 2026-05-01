@@ -13,6 +13,7 @@
 | E-M5 Enemy Steering AI | TODO | — | Desirable |
 | E-M6 Multiple Point Lights | TODO | — | Desirable |
 | E-M7 Capsule Mesh Integration | TODO | — | Desirable; depends on renderer R-M5 |
+| DEMO-SCENE Stress Test + Collision Viz | TODO | — | Post-MVP demo extension: stats HUD, collision flash, stress spawner |
 
 ## Recent Changes
 
