@@ -146,3 +146,20 @@ void engine_apply_impulse_at_point(
     glm::vec3 r = world_point - tr.position;
     rb.angular_velocity += rb.inv_inertia * glm::cross(r, impulse);
 }
+
+// ---------------------------------------------------------------------------
+// Collision Flash — demo-scene visual feedback
+// ---------------------------------------------------------------------------
+
+void engine_on_collision(entt::entity e) {
+    if (!g_registry.valid(e)) return;
+    if (!g_registry.all_of<EntityMaterial>(e)) return;
+
+    // Don't overwrite existing flash — only set on first collision per frame
+    if (g_registry.all_of<CollisionFlash>(e)) return;
+
+    auto& em = g_registry.get<EntityMaterial>(e);
+    auto& cf = g_registry.emplace<CollisionFlash>(e);
+    cf.timer = 1.0f;
+    cf.base_color = glm::vec3(em.mat.base_color[0], em.mat.base_color[1], em.mat.base_color[2]);
+}

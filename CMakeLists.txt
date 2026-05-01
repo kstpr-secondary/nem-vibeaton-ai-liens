@@ -430,7 +430,7 @@ target_link_libraries(engine
 # ====================================================================
 
 add_executable(engine_app ${engine_app_sources})
-target_link_libraries(engine_app PRIVATE engine)
+target_link_libraries(engine_app PRIVATE engine vibeaton::imgui_backend)
 
 # ====================================================================
 # Engine tests (Catch2 when present)

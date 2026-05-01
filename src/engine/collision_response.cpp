@@ -102,7 +102,26 @@ void resolve_all_collisions(entt::registry& reg) {
         auto& rb_b = b_has_rb ? reg.get<RigidBody>(pair.b) : zero_rb;
 
         // Resolve collision with impulse response
+        // v_rel_n < 0 means approaching → non-zero impulse will be applied
+        bool impulse_applied = false;
+        {
+            glm::vec3 r_a_local = pair.point - tr_a.position;
+            glm::vec3 r_b_local = pair.point - tr_b.position;
+            glm::vec3 vel_a_at_cp = rb_a.linear_velocity + glm::cross(rb_a.angular_velocity, r_a_local);
+            glm::vec3 vel_b_at_cp = rb_b.linear_velocity + glm::cross(rb_b.angular_velocity, r_b_local);
+            float v_rel_n = glm::dot(vel_a_at_cp - vel_b_at_cp, pair.normal);
+            impulse_applied = (v_rel_n < 0.0f);
+        }
+
         resolve_collision(tr_a, rb_a, tr_b, rb_b, pair);
+
+        // Fire collision flash on Dynamic entities with EntityMaterial
+        if (impulse_applied) {
+            if (reg.all_of<Dynamic>(pair.a) && reg.all_of<EntityMaterial>(pair.a))
+                engine_on_collision(pair.a);
+            if (reg.all_of<Dynamic>(pair.b) && reg.all_of<EntityMaterial>(pair.b))
+                engine_on_collision(pair.b);
+        }
 
         // Apply positional correction to prevent sinking
         positional_correction(tr_a, rb_a, tr_b, rb_b, pair);

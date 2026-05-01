@@ -68,6 +68,9 @@ struct RendererState {
     LineQuadCommand line_quad_queue[256];
     int             line_quad_count  = 0;
 
+    // Triangle count (sum of index_count/3 per draw call) — reset each frame
+    int triangle_count = 0;
+
     // Scene state (set per-frame via public API)
     RendererCamera        camera        = {};
     glm::mat4             vp            = glm::mat4(1.0f); // projection × view; identity until set_camera is called
@@ -368,6 +371,7 @@ void renderer_begin_frame() {
     state.frame_active    = true;
     state.draw_count      = 0;
     state.line_quad_count = 0;
+    state.triangle_count  = 0;
     state.camera_set      = false;
     state.light_set       = false;
 
@@ -658,9 +662,17 @@ void renderer_end_frame() {
 
           for (int i = 0; i < state.line_quad_count; ++i) {
                sg_draw(i * 4, 4, 1);
-           }
-       }
+          }
+        }
 
+    // Compute total triangle count for the frame (from draw_queue only, not line quads).
+    {
+        int total = 0;
+        for (int i = 0; i < state.draw_count; ++i) {
+            total += static_cast<int>(mesh_index_count_get(state.draw_queue[i].mesh.id)) / 3;
+        }
+        state.triangle_count = total;
+    }
 
     simgui_render();
     sg_end_pass();
@@ -670,6 +682,10 @@ void renderer_end_frame() {
 
 int renderer_get_draw_count() {
     return state.draw_count;
+}
+
+int renderer_get_triangle_count() {
+    return state.triangle_count;
 }
 
 void renderer_set_camera(const RendererCamera& camera) {

@@ -1,6 +1,7 @@
 #include <engine.h>
 #include <paths.h>
 #include <sokol_app.h>          // SAPP_KEYCODE_* constants
+#include <imgui.h>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <cstdio>
@@ -57,19 +58,23 @@ static void setup_scene();        // forward declaration — defined below
 static void update_highlight(float dt);
 
 static bool g_scene_setup_done = false;
+static float rgb_cyan[3]    = {0.2f, 0.7f, 0.9f};
+static float rgb_blue[3]    = {0.15f, 0.6f, 0.85f};
+static float rgb_orange[3]  = {0.9f, 0.45f, 0.15f};
+constexpr int kNumCubes    = 40;
 
 static void frame_cb(float dt, void* /*user_data*/) {
     if (!g_scene_setup_done) {
         setup_scene();
         g_scene_setup_done = true;
     }
+
     renderer_begin_frame();
     update_camera(dt);
     engine_tick(dt);
 
-    // Submit draw calls for all entities with Transform + Mesh + EntityMaterial.
-    // This was previously done inside engine_tick() but was removed to avoid
-    // duplicate draws when the game called render_submit() on top of it.
+   // Submit draw calls for all entities with Transform + Mesh + EntityMaterial.
+    // CollisionFlash timers decay; entity is drawn with blended color if timer > 0.
     {
         auto& reg = engine_registry();
         auto view = reg.view<Transform, Mesh, EntityMaterial>();
@@ -81,17 +86,155 @@ static void frame_cb(float dt, void* /*user_data*/) {
             if (!renderer_handle_valid(m.handle))
                 continue;
 
+            // Decay CollisionFlash timer (optional component — not in view)
+            auto* cf = engine_try_get_component<CollisionFlash>(e);
+            if (cf) {
+                cf->timer -= dt;
+                if (cf->timer <= 0.f) {
+                    reg.remove<CollisionFlash>(e);
+                    cf = nullptr;
+                }
+            }
+
+            Material mat = em.mat;
+            if (cf && cf->timer > 0.f) {
+                float t_norm = std::min(cf->timer, 1.0f);
+                // Timer 1.0→0.5: flash→mid-blend; 0.5→0.0: mid-blend→base
+                float blend = (t_norm > 0.5f) ? (t_norm - 0.5f) * 2.0f : t_norm * 2.0f;
+                blend = std::clamp(blend, 0.0f, 1.0f);
+                for (int c = 0; c < 3; ++c) {
+                    mat.base_color[c] = cf->flash_color[c] + blend * (cf->base_color[c] - cf->flash_color[c]);
+                }
+            }
+
             const glm::mat4 world =
                 glm::translate(glm::mat4(1.f), t.position)
                 * glm::mat4_cast(t.rotation)
                 * glm::scale(glm::mat4(1.f), t.scale);
 
-            renderer_enqueue_draw(m.handle, glm::value_ptr(world), em.mat);
+            renderer_enqueue_draw(m.handle, glm::value_ptr(world), mat);
         }
     }
 
     update_highlight(dt);
+
+    // ---- ImGui HUD: FPS + draw count + triangle count + entities ----
+    // Must be called before renderer_end_frame() (which calls simgui_render())
+    {
+        float fps = ImGui::GetIO().Framerate;
+        int   draw_count = renderer_get_draw_count();
+        int   tri_count  = renderer_get_triangle_count();
+        int   entity_count = 0;
+        engine_registry().view<Dynamic>().each([&](auto) { ++entity_count; });
+
+        ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_Once);
+        ImGui::Begin("HUD", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs);
+        {
+            char buf[256];
+            snprintf(buf, sizeof(buf), "FPS: %.1f\nDraws: %d\nTriangles: %d\nEntities: %d",
+                     fps, draw_count, tri_count, entity_count);
+            ImGui::TextUnformatted(buf);
+        }
+        ImGui::End();
+    }
+
     renderer_end_frame();
+
+   // ---- Stress-test spawner ----
+    {
+        static float spawn_timer = 0.f;
+        static float spawn_interval = 2.0f;
+        constexpr float spawn_interval_min = 0.3f;
+        constexpr int max_entities = 200;
+        constexpr int destroy_threshold = 150;
+
+        static std::mt19937 spawner_gen(12345u);
+        std::uniform_real_distribution<float> spawner_pos(-35.f, 35.f);
+        std::uniform_int_distribution<int> spawner_tier(0, 2);
+
+        int dyn_count = 0;
+        engine_registry().view<SpawnTarget>().each([&](auto) { ++dyn_count; });
+
+        if (dyn_count < max_entities) {
+            spawn_timer += dt;
+            if (spawn_timer >= spawn_interval) {
+                spawn_timer -= spawn_interval;
+
+                glm::vec3 pos = {spawner_pos(spawner_gen), spawner_pos(spawner_gen), spawner_pos(spawner_gen) * 0.5f};
+                int tier = spawner_tier(spawner_gen);
+                float mass = (tier == 0) ? 1.0f : (tier == 1) ? 3.0f : 5.0f;
+
+                constexpr int k_num_models = 4;
+                const char* model_names[k_num_models] = {
+                    "Asteroid_1a.glb", "Asteroid_1e.glb", "Asteroid_2a.glb", "Asteroid_2b.glb"
+                };
+
+                auto h = engine_load_gltf(model_names[spawner_gen() % k_num_models]);
+                bool is_asset = renderer_handle_valid(h);
+
+                float* spawn_colors[] = { rgb_cyan, rgb_blue, rgb_orange };
+                float* mat_color = spawn_colors[tier];
+
+                entt::entity e;
+                if (is_asset) {
+                    float scale = (tier == 0) ? 1.2f : (tier == 1) ? 2.0f : 3.0f;
+                    e = engine_create_entity();
+                    auto& t = engine_add_component<Transform>(e);
+                    t.position = pos;
+                    t.scale = {scale, scale, scale};
+                    engine_add_component<Mesh>(e).handle = h;
+
+                    engine_add_component<EntityMaterial>(e).mat = renderer_make_lambertian_material(mat_color);
+
+                    engine_add_component<Collider>(e).half_extents = {scale, scale * 0.8f, scale};
+                } else {
+                    float half = (tier == 0) ? 0.3f : (tier == 1) ? 0.5f : 0.7f;
+                    e = engine_spawn_cube(pos, half, renderer_make_lambertian_material(mat_color));
+                }
+
+                auto& rb = engine_add_component<RigidBody>(e);
+                rb.mass = mass;
+                rb.inv_mass = 1.0f / mass;
+                rb.restitution = 1.0f;
+                float vel_min = (tier == 0) ? -5.f : (tier == 1) ? -8.f : -12.f;
+                float vel_max = (tier == 0) ? 5.f : (tier == 1) ? 8.f : 12.f;
+                std::uniform_real_distribution<float> vel(vel_min, vel_max);
+                rb.linear_velocity = {vel(spawner_gen), vel(spawner_gen), vel(spawner_gen)};
+                float ang_min = (tier == 0) ? -1.5f : (tier == 1) ? -2.5f : -4.f;
+                float ang_max = (tier == 0) ? 1.5f : (tier == 1) ? 2.5f : 4.f;
+                std::uniform_real_distribution<float> ang_vel(ang_min, ang_max);
+                rb.angular_velocity = {ang_vel(spawner_gen), ang_vel(spawner_gen), ang_vel(spawner_gen)};
+
+                if (is_asset) {
+                    float scale = (tier == 0) ? 1.2f : (tier == 1) ? 2.0f : 3.0f;
+                    rb.inv_inertia_body = make_box_inv_inertia_body(mass, {scale, scale * 0.8f, scale});
+                } else {
+                    float half = (tier == 0) ? 0.3f : (tier == 1) ? 0.5f : 0.7f;
+                    rb.inv_inertia_body = make_box_inv_inertia_body(mass, {half, half, half});
+                }
+                rb.inv_inertia = rb.inv_inertia_body;
+
+                engine_add_component<Dynamic>(e);
+                engine_add_component<ForceAccum>(e);
+                engine_add_component<SpawnTarget>(e);
+                engine_add_component<Interactable>(e);
+
+                spawn_interval = std::max(spawn_interval_min, spawn_interval - 0.15f);
+            }
+        }
+
+        // Destroy oldest SpawnTarget entities if count drops below threshold
+        if (dyn_count < destroy_threshold) {
+            int to_destroy = dyn_count - (destroy_threshold - kNumCubes - 20);
+            if (to_destroy > 0) {
+                int destroyed = 0;
+                engine_registry().view<entt::entity, SpawnTarget>().each([&](auto e) {
+                    engine_destroy_entity(e);
+                    if (++destroyed >= to_destroy) return;
+                });
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -102,9 +245,9 @@ static bool g_highlight_active = false;
 static RaycastHit g_last_hit   = {};
 
 static void setup_scene() {
-    // Camera — FPS-style controller position
+    // Camera — FPS-style controller position (back from arena for overview)
     g_cam_entity = engine_create_entity();
-    engine_add_component<Transform>(g_cam_entity).position = {0.f, 2.f, 35.f};
+    engine_add_component<Transform>(g_cam_entity).position = {0.f, 8.f, 180.f};
     engine_add_component<Camera>(g_cam_entity);
     engine_set_active_camera(g_cam_entity);
 
@@ -122,18 +265,14 @@ static void setup_scene() {
     Material cube_mat     = renderer_make_lambertian_material(rgb_cube);
     Material asteroid_mat = renderer_make_lambertian_material(rgb_asteroid);
 
-    // Unlit transparent material for front/back walls (alpha < 1.0 triggers
-    // the transparent pipeline with alpha blending and depth-write OFF)
-    float rgba_wall[4]    = {0.55f, 0.40f, 0.30f, 0.30f};
-    Material wall_mat     = renderer_make_unlit_material(rgba_wall);
+    // Unlit transparent material for front/back walls (reserved for future use)
 
     // Random number generator — fixed seed for reproducibility
     std::mt19937 gen(42);
-    std::uniform_real_distribution<float> pos_dist(-8.f, 8.f);
-    std::uniform_real_distribution<float> vel_dist(-9.f, 9.f);
+    std::uniform_real_distribution<float> pos_dist(-40.f, 40.f);
+    std::uniform_real_distribution<float> vel_dist(-12.f, 12.f);
 
     // --- Dynamic cubes: 40 entities ---
-    constexpr int kNumCubes = 40;
     for (int i = 0; i < kNumCubes; ++i) {
         auto e = engine_create_entity();
 
@@ -218,57 +357,135 @@ static void setup_scene() {
         engine_add_component<Interactable>(e);
     }
 
-    // --- Static arena walls: 6 (box ~70 units across) ---
-    struct WallDef {
-        glm::vec3 position;
-        glm::vec3 half_extents;
+    // --- Static asteroids: 10 spatially separated in a ring pattern ---
+    constexpr int kNumStaticAsteroids = 10;
+    const char* k_asteroid_models[4] = {
+        "Asteroid_1a.glb",
+        "Asteroid_1e.glb",
+        "Asteroid_2a.glb",
+        "Asteroid_2b.glb",
     };
+    RendererMeshHandle static_mesh_handles[4] = {};
+    int static_mesh_count = 0;
 
-    WallDef walls[] = {
-        {{0.f, 35.f, 0.f},   {35.f, 1.f, 35.f}},   // Top
-        {{0.f, -35.f, 0.f},  {35.f, 1.f, 35.f}},   // Bottom
-        {{-35.f, 0.f, 0.f},  {1.f, 35.f, 35.f}},   // Left
-        {{35.f, 0.f, 0.f},   {1.f, 35.f, 35.f}},   // Right
-        {{0.f, 0.f, 35.f},   {35.f, 35.f, 1.f}},   // Front (transparent)
-        {{0.f, 0.f, -35.f},  {35.f, 35.f, 1.f}},   // Back (transparent)
-    };
+    for (int m = 0; m < 4; ++m) {
+        auto h = engine_load_gltf(k_asteroid_models[m]);
+        if (renderer_handle_valid(h)) {
+            static_mesh_handles[static_mesh_count++] = h;
+        } else {
+            static_mesh_handles[static_mesh_count++] = renderer_make_cube_mesh(1.0f);
+        }
+    }
 
-    for (int i = 0; i < 6; ++i) {
+    std::uniform_int_distribution<int> model_dist(0, static_mesh_count - 1);
+    std::uniform_int_distribution<int> tier_dist(0, 2);  // 0=small, 1=medium, 2=large
+
+    const float k_scales[] = {1.0f, 1.5f};       // small
+    const float k_scales_m[] = {2.0f, 2.5f};     // medium
+    const float k_scales_l[] = {3.0f, 4.0f};     // large
+    const float* all_scales[] = {k_scales, k_scales_m, k_scales_l};
+
+    // Place static asteroids widely spaced across the larger arena
+    // Outer ring (radius 45), inner ring (radius 20), plus scattered mid-zone
+    int static_count = 0;
+    for (int i = 0; i < kNumStaticAsteroids; ++i) {
         auto e = engine_create_entity();
         auto& t = engine_add_component<Transform>(e);
-        t.position = walls[i].position;
 
-        engine_add_component<Mesh>(e).handle = renderer_make_cube_mesh(1.0f);
-        engine_add_component<EntityMaterial>(e).mat = (i < 4) ? asteroid_mat : wall_mat;
-        t.scale = walls[i].half_extents;
+        float radius, angle, y_val;
+        if (i < 6) {
+            // Outer ring — 6 asteroids widely spaced
+            radius = 45.f + std::uniform_real_distribution<float>(-3.f, 3.f)(gen);
+            angle = (2.f * 3.14159265f / 6.f) * static_cast<float>(i);
+            y_val = -8.f + 16.f * (static_cast<float>(i % 3)) / 2.f;
+        } else if (i < 9) {
+            // Inner ring — 3 asteroids
+            radius = 20.f + std::uniform_real_distribution<float>(-2.f, 2.f)(gen);
+            angle = (2.f * 3.14159265f / 3.f) * static_cast<float>(i - 6) + 0.5f;
+            y_val = -12.f + 12.f * (static_cast<float>((i - 6) % 2)) / 1.f;
+        } else {
+            // Mid-zone scattered — 1 asteroid
+            radius = 30.f + std::uniform_real_distribution<float>(-5.f, 5.f)(gen);
+            angle = std::uniform_real_distribution<float>(0.f, 6.2831853f)(gen);
+            y_val = std::uniform_real_distribution<float>(-15.f, 15.f)(gen);
+        }
 
-        engine_add_component<Collider>(e).half_extents = walls[i].half_extents;
+        t.position = {radius * cosf(angle), y_val, radius * sinf(angle)};
+
+        int model_idx = model_dist(gen);
+        int tier = tier_dist(gen);
+        float scale = all_scales[tier][std::uniform_int_distribution<int>(0, 1)(gen)];
+
+        t.scale = {scale, scale, scale};
+        engine_add_component<Mesh>(e).handle = static_mesh_handles[model_idx];
+
+        float* rgb = ((i % 3) == 0) ? rgb_orange : (((i % 3) == 1) ? rgb_blue : rgb_cyan);
+        engine_add_component<EntityMaterial>(e).mat = renderer_make_lambertian_material(rgb);
+
+        engine_add_component<Collider>(e).half_extents = {scale, scale * 0.8f, scale};
         engine_add_component<Interactable>(e);
         engine_add_component<Static>(e);
+
+        static_count++;
     }
 
-    // --- Central feature: one large asteroid at origin ---
-    if (renderer_handle_valid(asteroid_handle)) {
-        auto central = engine_create_entity();
-        Transform ct{};
-        ct.position   = {0.f, 0.f, 0.f};
-        ct.scale      = {3.5f, 3.5f, 3.5f};
-        engine_add_component<Transform>(central, ct);
-        auto& c_mesh   = engine_add_component<Mesh>(central);
-        c_mesh.handle  = asteroid_handle;
-        engine_add_component<EntityMaterial>(central).mat = asteroid_mat;
-        engine_add_component<Collider>(central).half_extents = {7.f, 5.5f, 5.5f};
-        engine_add_component<Interactable>(central);
-        engine_add_component<Static>(central);
+    int total = kNumCubes + asteroid_count + static_count;
+
+    // --- Boundary walls: 6-sided closed box, 3x larger arena ---
+    constexpr float half_x = 75.f;
+    constexpr float half_z = 60.f;
+    constexpr float half_y = 30.f;
+    constexpr float wall_thick = 1.f;
+
+    struct WallDef {
+        glm::vec3 pos;
+        glm::vec3 dim;
+        bool transparent;
+    };
+    const WallDef wall_defs[6] = {
+        // Front wall (Z+) — inner face at z=+60, x=[-75,+75], y=[-30,+30]
+        {{0.f, 0.f, half_z - wall_thick / 2.f}, {half_x * 2.f, half_y * 2.f, wall_thick}, true},
+        // Back wall (Z-) — inner face at z=-60, x=[-75,+75], y=[-30,+30]
+        {{0.f, 0.f, -(half_z - wall_thick / 2.f)}, {half_x * 2.f, half_y * 2.f, wall_thick}, true},
+        // Left wall (X-) — inner face at x=-75, y=[-30,+30], z=[-60,+60]
+        {{-(half_x - wall_thick / 2.f), 0.f, 0.f}, {wall_thick, half_y * 2.f, half_z * 2.f}, false},
+        // Right wall (X+) — inner face at x=+75, y=[-30,+30], z=[-60,+60]
+        {{half_x - wall_thick / 2.f, 0.f, 0.f}, {wall_thick, half_y * 2.f, half_z * 2.f}, false},
+        // Top wall (Y+) — inner face at y=+30, x=[-75,+75], z=[-60,+60]
+        {{0.f, half_y - wall_thick / 2.f, 0.f}, {half_x * 2.f, wall_thick, half_z * 2.f}, false},
+        // Bottom floor (Y-) — inner face at y=-30, x=[-75,+75], z=[-60,+60]
+        {{0.f, -(half_y - wall_thick / 2.f), 0.f}, {half_x * 2.f, wall_thick, half_z * 2.f}, false},
+    };
+
+    float rgb_wall[3] = {0.4f, 0.35f, 0.32f};
+    float rgba_fog[4] = {0.75f, 0.8f, 0.85f, 0.18f};
+
+    for (int w = 0; w < 6; ++w) {
+        auto we = engine_create_entity();
+        auto& wt = engine_add_component<Transform>(we);
+        wt.position = wall_defs[w].pos;
+        // cube_mesh(1) spans [-1,+1] → size 2, so scale by dim/2 to get exact dimensions
+        wt.scale = {0.5f * wall_defs[w].dim.x, 0.5f * wall_defs[w].dim.y, 0.5f * wall_defs[w].dim.z};
+
+        engine_add_component<Mesh>(we).handle = renderer_make_cube_mesh(1.f);
+
+        if (wall_defs[w].transparent) {
+            float rgba[4] = {rgba_fog[0], rgba_fog[1], rgba_fog[2], rgba_fog[3]};
+            engine_add_component<EntityMaterial>(we).mat = renderer_make_unlit_material(rgba);
+        } else {
+            engine_add_component<EntityMaterial>(we).mat = renderer_make_lambertian_material(rgb_wall);
+        }
+
+        engine_add_component<Collider>(we).half_extents = {
+            0.5f * wall_defs[w].dim.x, 0.5f * wall_defs[w].dim.y, 0.5f * wall_defs[w].dim.z};
+        engine_add_component<Interactable>(we);
+        engine_add_component<Static>(we);
     }
 
-    int total = kNumCubes + asteroid_count + 6;
-    if (renderer_handle_valid(asteroid_handle))
-        total += 1;  // central asteroid
     fprintf(stderr,
-            "[ENGINE] E-M3 scene ready: 1 camera, 1 light, "
-            "%d dynamic entities (%d cubes, %d asteroids), static walls + central feature\n",
-            total, kNumCubes, asteroid_count);
+            "[ENGINE] DEMO-SCENE ready: 1 camera, 1 light, "
+            "%d dynamic entities (%d cubes, %d asteroids), %d static obstacles\n",
+            total + 4, kNumCubes, asteroid_count, static_count);
     fprintf(stderr, "[ENGINE] Controls: WASD move, QE up/down, mouse look\n");
     fprintf(stderr, "[ENGINE] Crosshair raycasts nearest Interactable entity\n");
 }

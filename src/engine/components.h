@@ -57,3 +57,10 @@ struct Dynamic {};        // Under physics simulation (expects RigidBody + Colli
 struct Interactable {};   // Visible to raycast() and overlap_aabb() queries
 struct CameraActive {};   // Marks the one active camera entity per scene
 struct DestroyPending {}; // Queued for end-of-tick registry.destroy() sweep
+struct SpawnTarget {};    // Spawner-created entity (for stress-test cleanup)
+
+struct CollisionFlash {
+    float              timer       = 0.f;
+    glm::vec3          flash_color = {1.f, 0.15f, 0.15f};
+    glm::vec3          base_color  = {1.f, 1.f, 1.f};
+};

@@ -173,3 +173,9 @@ std::vector<entt::entity> engine_overlap_aabb(
 // =========================================================================
 
 void engine_set_active_camera(entt::entity e);
+
+// =========================================================================
+// Collision Flash — demo-scene visual feedback (DEMO-SCENE)
+// =========================================================================
+
+void engine_on_collision(entt::entity e);
