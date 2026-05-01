@@ -1,5 +1,6 @@
 #include <engine.h>
 #include <paths.h>
+#include <mesh_builders.h>
 #include <sokol_app.h>          // SAPP_KEYCODE_* constants
 #include <imgui.h>
 #include <glm/gtc/quaternion.hpp>
@@ -69,11 +70,46 @@ static void frame_cb(float dt, void* /*user_data*/) {
         g_scene_setup_done = true;
     }
 
-    renderer_begin_frame();
+   renderer_begin_frame();
     update_camera(dt);
     engine_tick(dt);
 
-   // Submit draw calls for all entities with Transform + Mesh + EntityMaterial.
+    // --- Containment: push any dynamic entity outside the arena box back inside ---
+    {
+        constexpr float kHalfX = 75.f, kHalfY = 30.f, kHalfZ = 60.f;
+        auto& reg = engine_registry();
+        auto view = reg.view<Transform, Collider, Dynamic>();
+        for (auto e : view) {
+            auto& tr = view.get<Transform>(e);
+            const auto& col = view.get<Collider>(e);
+            float hx = col.half_extents.x;
+            float hy = col.half_extents.y;
+            float hz = col.half_extents.z;
+
+            bool clamped_x = false, clamped_y = false, clamped_z = false;
+
+            if (tr.position.x + hx > kHalfX) { tr.position.x = kHalfX - hx; clamped_x = true; }
+            if (tr.position.x - hx < -kHalfX) { tr.position.x = -kHalfX + hx; clamped_x = true; }
+            if (tr.position.y + hy > kHalfY) { tr.position.y = kHalfY - hy; clamped_y = true; }
+            if (tr.position.y - hy < -kHalfY) { tr.position.y = -kHalfY + hy; clamped_y = true; }
+            if (tr.position.z + hz > kHalfZ) { tr.position.z = kHalfZ - hz; clamped_z = true; }
+            if (tr.position.z - hz < -kHalfZ) { tr.position.z = -kHalfZ + hz; clamped_z = true; }
+
+            if (clamped_x || clamped_y || clamped_z) {
+                auto* rb = reg.try_get<RigidBody>(e);
+                if (rb) {
+                    if (clamped_x) rb->linear_velocity.x = std::copysignf(
+                        std::abs(rb->linear_velocity.x) < 0.5f ? 0.f : rb->linear_velocity.x, -rb->linear_velocity.x);
+                    if (clamped_y) rb->linear_velocity.y = std::copysignf(
+                        std::abs(rb->linear_velocity.y) < 0.5f ? 0.f : rb->linear_velocity.y, -rb->linear_velocity.y);
+                    if (clamped_z) rb->linear_velocity.z = std::copysignf(
+                        std::abs(rb->linear_velocity.z) < 0.5f ? 0.f : rb->linear_velocity.z, -rb->linear_velocity.z);
+                }
+            }
+        }
+    }
+
+    // Submit draw calls for all entities with Transform + Mesh + EntityMaterial.
     // CollisionFlash timers decay; entity is drawn with blended color if timer > 0.
     {
         auto& reg = engine_registry();
@@ -146,7 +182,6 @@ static void frame_cb(float dt, void* /*user_data*/) {
         static float spawn_interval = 2.0f;
         constexpr float spawn_interval_min = 0.3f;
         constexpr int max_entities = 200;
-        constexpr int destroy_threshold = 150;
 
         static std::mt19937 spawner_gen(12345u);
         std::uniform_real_distribution<float> spawner_pos(-35.f, 35.f);
@@ -179,7 +214,9 @@ static void frame_cb(float dt, void* /*user_data*/) {
                     auto& t = engine_add_component<Transform>(e);
                     t.position = pos;
                     t.scale = {scale, scale, scale};
-                    engine_add_component<Mesh>(e).handle = h;
+                    auto& mesh_comp = engine_add_component<Mesh>(e);
+                    mesh_comp.handle = h;
+                    mesh_store_ref_inc(h.id);
 
                     engine_add_component<EntityMaterial>(e).mat = renderer_make_lambertian_material(rgb_gray);
 
@@ -220,10 +257,11 @@ static void frame_cb(float dt, void* /*user_data*/) {
             }
         }
 
-        // Destroy oldest SpawnTarget entities if count drops below threshold
-        if (dyn_count < destroy_threshold) {
-            int to_destroy = dyn_count - (destroy_threshold - kNumCubes - 20);
-            if (to_destroy > 0) {
+        // Destroy oldest SpawnTarget entities if count exceeds max
+        if (dyn_count > max_entities) {
+            constexpr int target_count = 150;
+            int to_destroy = dyn_count - target_count;
+            if (to_destroy > 0 && to_destroy < dyn_count) {
                 int destroyed = 0;
                 engine_registry().view<entt::entity, SpawnTarget>().each([&](auto e) {
                     engine_destroy_entity(e);
