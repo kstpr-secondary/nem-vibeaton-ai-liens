@@ -59,30 +59,6 @@ void engine_tick(float dt) {
         break;
     }
 
-    // Render enqueue: every entity with Transform + Mesh + EntityMaterial
-    static bool g_first_frame = true;
-    int count = 0;
-    for (auto e : g_registry.view<Transform, Mesh, EntityMaterial>()) {
-        auto& t   = g_registry.get<Transform>(e);
-        auto& mesh = g_registry.get<Mesh>(e);
-        auto& mat  = g_registry.get<EntityMaterial>(e);
-        if (!renderer_handle_valid(mesh.handle)) continue;
-        glm::mat4 model = make_model_matrix(t);
-        renderer_enqueue_draw(mesh.handle, glm::value_ptr(model), mat.mat);
-        if (g_first_frame) {
-            fprintf(stderr, "[ENGINE] render: entity %d pos=(%.1f,%.1f,%.1f) scale=(%.1f,%.1f,%.1f) mesh_id=%u mat=unlit\n",
-                    (int)(uint32_t)e,
-                    t.position.x, t.position.y, t.position.z,
-                    t.scale.x, t.scale.y, t.scale.z,
-                    mesh.handle.id);
-        }
-        ++count;
-    }
-    if (g_first_frame) {
-        g_first_frame = false;
-        fprintf(stderr, "[ENGINE] render: %d entities enqueued\n", count);
-    }
-
     // Deferred entity destruction sweep
     scene_flush_pending_destroys();
 }

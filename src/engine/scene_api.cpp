@@ -75,16 +75,21 @@ entt::entity engine_spawn_cube(const glm::vec3& position, float half_extent, con
 // Asset loading (T016) — path-cached to avoid duplicate uploads
 // ---------------------------------------------------------------------------
 
-static std::unordered_map<std::string, RendererMeshHandle> s_gltf_cache;
-static std::unordered_map<std::string, RendererMeshHandle> s_obj_cache;
+struct AssetEntry {
+    RendererMeshHandle  mesh_handle = {};
+    RendererTextureHandle texture_handle = {};
+};
+
+static std::unordered_map<std::string, AssetEntry> s_gltf_cache;
+static std::unordered_map<std::string, AssetEntry> s_obj_cache;
 
 RendererMeshHandle engine_load_gltf(const char* relative_path,
                                      RendererTextureHandle* out_texture) {
     auto it = s_gltf_cache.find(relative_path);
     if (it != s_gltf_cache.end()) {
         if (out_texture)
-            *out_texture = {};  // cached meshes don't store texture handles
-        return it->second;
+            *out_texture = it->second.texture_handle;
+        return it->second.mesh_handle;
     }
 
     ImportedMesh mesh = asset_import_gltf(relative_path);
@@ -93,7 +98,10 @@ RendererMeshHandle engine_load_gltf(const char* relative_path,
         return {};
     }
     RendererMeshHandle handle = asset_bridge_upload(mesh);
-    s_gltf_cache[relative_path] = handle;
+    AssetEntry entry;
+    entry.mesh_handle = handle;
+    entry.texture_handle = mesh.texture;
+    s_gltf_cache[relative_path] = entry;
 
     if (out_texture)
         *out_texture = mesh.texture;
@@ -104,7 +112,7 @@ RendererMeshHandle engine_load_gltf(const char* relative_path,
 RendererMeshHandle engine_load_obj(const char* relative_path) {
     auto it = s_obj_cache.find(relative_path);
     if (it != s_obj_cache.end())
-        return it->second;
+        return it->second.mesh_handle;
 
     ImportedMesh mesh = asset_import_obj(relative_path);
     if (mesh.empty()) {
@@ -112,7 +120,9 @@ RendererMeshHandle engine_load_obj(const char* relative_path) {
         return {};
     }
     RendererMeshHandle handle = asset_bridge_upload(mesh);
-    s_obj_cache[relative_path] = handle;
+    AssetEntry entry;
+    entry.mesh_handle = handle;
+    s_obj_cache[relative_path] = entry;
     return handle;
 }
 

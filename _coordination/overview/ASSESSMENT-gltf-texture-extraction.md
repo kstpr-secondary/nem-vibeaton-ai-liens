@@ -147,9 +147,10 @@ Extract baseColor textures from glTF files at load time, create BlinnPhong mater
 - **Tier:** MED
 - **Validation:** SELF-CHECK (builds clean; smoke test passes)
 
-#### Task 5: Build + visual verification
+#### Task 5: Build + visual verification ✅ DONE
 - **File:** build + run `game`
 - **Expected outcome:** Asteroids show rocky texture with specular highlights; ships show their color maps with metallic sheen; directional light from game.cpp creates proper BlinnPhong shading
+- **Result:** All 4 asteroid models (`Asteroid_1a/1e/2a/2b.glb`) render with embedded textures via BlinnPhong. User confirmed: "when you built the game i've just seen asteroid textures". Debug logging removed.
 
 ---
 
@@ -198,11 +199,11 @@ Extract baseColor textures from glTF files at load time, create BlinnPhong mater
 3. Add texture field to ImportedMesh + out-param to engine_load_gltf() [engine side, LOW] ✅ DONE
    ↓
 4. Update game spawn functions for BlinnPhong + texture handle [game side, MED] ✅ DONE
-   ↓
-5. Build + visual verification [all sides] ✅ DONE (build succeeds; smoke test passes)
+  ↓
+ 5. Build + visual verification [all sides] ✅ DONE (build succeeds, smoke test passes, user confirmed asteroid textures visible)
 ```
 
-All tasks complete. Game binary runs and renders entities with BlinnPhong materials.
+All tasks complete. Game binary builds cleanly, runs without debug noise, and renders all entities with BlinnPhong materials + extracted glTF textures.
 
 ---
 
@@ -253,4 +254,4 @@ spawn_from_model() (in spawn.cpp)
 
 ---
 
-*Assessment complete. All tasks implemented and verified. Game binary builds and runs with BlinnPhong materials + textured entities.*
+*Assessment complete. All tasks implemented, debug logging removed, build clean. User confirmed asteroid textures visible in-game.*

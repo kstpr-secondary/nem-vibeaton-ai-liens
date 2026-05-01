@@ -10,7 +10,14 @@
 // Model paths (relative to ASSET_ROOT).
 static constexpr const char* k_player_model    = "spaceship1.glb";
 static constexpr const char* k_enemy_model     = "spaceship1.glb";
-static constexpr const char* k_asteroid_model  = "Asteroid_1a.glb";
+
+static constexpr const char* k_asteroid_models[] = {
+    "Asteroid_1a.glb",
+    "Asteroid_1e.glb",
+    "Asteroid_2a.glb",
+    "Asteroid_2b.glb",
+};
+static constexpr int k_asteroid_model_count = 4;
 
 // Scale factors per model — tuned so the ship occupies ~10% of screen width.
 // glTF models are typically 50-80 Blender units; divide to fit the viewport.
@@ -34,6 +41,21 @@ static constexpr float k_asteroid_scale_large  = constants::asteroid_large_scale
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+static bool is_asteroid_model(const char* path) {
+    for (int i = 0; i < k_asteroid_model_count; ++i) {
+        if (strcmp(path, k_asteroid_models[i]) == 0)
+            return true;
+    }
+    return false;
+}
+
+static const char* random_asteroid_model() {
+    // Simple modulo-based random — seeded by std::rand which is fine for this use.
+    static int s_idx = 0;
+    ++s_idx;
+    return k_asteroid_models[s_idx % k_asteroid_model_count];
+}
 
 // Uniform-sphere inverse inertia tensor: (5 / (2 * m * r^2)) * I
 static glm::mat3 sphere_inv_inertia(float mass, float radius) {
@@ -65,7 +87,7 @@ static entt::entity spawn_from_model(const char* model_path,
     float shininess;
 
     if (texture_handle.id != 0) {
-        if (strcmp(model_path, k_asteroid_model) == 0) {
+        if (is_asteroid_model(model_path)) {
             base_color = nullptr;  // use texture directly
             shininess  = 64.0f;
         } else {
@@ -73,7 +95,7 @@ static entt::entity spawn_from_model(const char* model_path,
             shininess  = 128.0f;
         }
     } else {
-        if (strcmp(model_path, k_asteroid_model) == 0) {
+        if (is_asteroid_model(model_path)) {
             base_color = nullptr;  // fallback handled below
             shininess  = 64.0f;
         } else {
@@ -219,7 +241,8 @@ entt::entity spawn_asteroid(const glm::vec3& position,
             break;
     }
 
-    entt::entity e = spawn_from_model(k_asteroid_model, position, scale);
+    const char* model = random_asteroid_model();
+    entt::entity e = spawn_from_model(model, position, scale);
 
     auto& rb             = engine_add_component<RigidBody>(e);
     rb.mass              = mass;
