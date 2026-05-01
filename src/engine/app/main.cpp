@@ -2,6 +2,7 @@
 #include <paths.h>
 #include <sokol_app.h>          // SAPP_KEYCODE_* constants
 #include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <cstdio>
 #include <cmath>
 #include <random>
@@ -65,6 +66,30 @@ static void frame_cb(float dt, void* /*user_data*/) {
     renderer_begin_frame();
     update_camera(dt);
     engine_tick(dt);
+
+    // Submit draw calls for all entities with Transform + Mesh + EntityMaterial.
+    // This was previously done inside engine_tick() but was removed to avoid
+    // duplicate draws when the game called render_submit() on top of it.
+    {
+        auto& reg = engine_registry();
+        auto view = reg.view<Transform, Mesh, EntityMaterial>();
+        for (auto e : view) {
+            const auto& t   = view.get<Transform>(e);
+            const auto& m   = view.get<Mesh>(e);
+            const auto& em  = view.get<EntityMaterial>(e);
+
+            if (!renderer_handle_valid(m.handle))
+                continue;
+
+            const glm::mat4 world =
+                glm::translate(glm::mat4(1.f), t.position)
+                * glm::mat4_cast(t.rotation)
+                * glm::scale(glm::mat4(1.f), t.scale);
+
+            renderer_enqueue_draw(m.handle, glm::value_ptr(world), em.mat);
+        }
+    }
+
     update_highlight(dt);
     renderer_end_frame();
 }
