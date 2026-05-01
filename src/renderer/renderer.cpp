@@ -31,6 +31,8 @@
 #include <cassert>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
+#include <algorithm>
 
 // Generated shader headers — must come AFTER glm (some use @ctype glm mappings).
 #include "shaders/magenta.glsl.h"
@@ -394,6 +396,59 @@ void renderer_end_frame() {
         state.vp = glm::mat4(1.0f);
     }
 
+    // --- Frustum plane extraction (R-M6: Gribb-Hartmann) ---------------------
+    struct FrustumPlane { glm::vec4 xyzw; };
+    FrustumPlane frustum_planes[6];
+    {
+        const auto& c = state.vp;
+        frustum_planes[0] = {{ c[0].w + c[0].x, c[1].w + c[1].x, c[2].w + c[2].x, c[3].w + c[3].x }}; // left
+        frustum_planes[1] = {{ c[0].w - c[0].x, c[1].w - c[1].x, c[2].w - c[2].x, c[3].w - c[3].x }}; // right
+        frustum_planes[2] = {{ c[0].w + c[0].y, c[1].w + c[1].y, c[2].w + c[2].y, c[3].w + c[3].y }}; // bottom
+        frustum_planes[3] = {{ c[0].w - c[0].y, c[1].w - c[1].y, c[2].w - c[2].y, c[3].w - c[3].y }}; // top
+        frustum_planes[4] = {{ c[0].w + c[0].z, c[1].w + c[1].z, c[2].w + c[2].z, c[3].w + c[3].z }}; // near
+        frustum_planes[5] = {{ c[0].w - c[0].z, c[1].w - c[1].z, c[2].w - c[2].z, c[3].w - c[3].z }}; // far
+        for (int i = 0; i < 6; ++i) {
+            float len = sqrtf(frustum_planes[i].xyzw.x * frustum_planes[i].xyzw.x +
+                              frustum_planes[i].xyzw.y * frustum_planes[i].xyzw.y +
+                              frustum_planes[i].xyzw.z * frustum_planes[i].xyzw.z);
+            if (len > 1e-6f) {
+                frustum_planes[i].xyzw.x /= len;
+                frustum_planes[i].xyzw.y /= len;
+                frustum_planes[i].xyzw.z /= len;
+                frustum_planes[i].xyzw.w /= len;
+            }
+        }
+    }
+
+    // --- AABB-frustum culling + front-to-back sort (R-M6) --------------------
+    int cull_count = 0;
+    int opaque_total = 0;
+
+    // Collect opaque indices and compute view-space Z for sorting
+    int opaque_indices[1024];
+    float view_z[1024];
+    {
+        glm::vec3 cam_pos(glm::make_mat4(state.camera.view)[3][0],
+                          glm::make_mat4(state.camera.view)[3][1],
+                          glm::make_mat4(state.camera.view)[3][2]);
+
+        for (int i = 0; i < state.draw_count; ++i) {
+            const DrawCommand& cmd = state.draw_queue[i];
+            if (cmd.material.alpha >= 1.0f) {
+                opaque_indices[opaque_total] = i;
+
+                glm::mat4 model = glm::make_mat4(cmd.world_transform);
+                glm::vec3 world_pos(model[3][0], model[3][1], model[3][2]);
+                view_z[opaque_total] = static_cast<float>(glm::distance(cam_pos, world_pos));
+                ++opaque_total;
+            }
+        }
+    }
+
+    // Front-to-back sort (nearest first) for cache efficiency
+    std::sort(opaque_indices, opaque_indices + opaque_total,
+              [&view_z](int a, int b) { return view_z[a] < view_z[b]; });
+
     // Uniform structs matching unlit.glsl layout (std140, @ctype glm types).
     struct UnlitVSParams { glm::mat4 mvp; };
     struct UnlitFSParams { glm::vec4 base_color; };
@@ -422,94 +477,110 @@ void renderer_end_frame() {
         }
     }
 
-    // --- (1) Opaque draws (Unlit + Lambertian) ------------------------------
-    if (state.draw_count > 0) {
-        // Unlit pass
-        bool bound = false;
-        for (int i = 0; i < state.draw_count; ++i) {
-            const DrawCommand& cmd = state.draw_queue[i];
-            if (cmd.material.shading_model != ShadingModel::Unlit) continue;
-            if (cmd.material.alpha < 1.0f) continue; // transparent → pass 3
+   // --- (1) Opaque draws — sorted + AABB-frustum-culled (R-M6) --------------
+    if (opaque_total > 0) {
+        sg_pipeline bound_pipeline = {};
+        for (int oi = 0; oi < opaque_total; ++oi) {
+            const DrawCommand& cmd = state.draw_queue[opaque_indices[oi]];
 
-            fprintf(stderr, "[RENDERER] unlit draw: mesh_id=%u idx_count=%u\n",
-                    cmd.mesh.id, mesh_index_count_get(cmd.mesh.id));
-            if (!bound) { sg_apply_pipeline(state.pipeline_unlit); bound = true; }
+            // AABB-frustum cull
+            MeshAABB aabb = mesh_aabb_get(cmd.mesh.id);
+            float half = aabb.half;
+            if (half > 0.0f) {
+                glm::mat4 world(glm::make_mat4(cmd.world_transform));
+                float corners[8][3];
+                for (int c = 0; c < 8; ++c) {
+                    corners[c][0] = aabb.center[0] + ((c & 1) ?  half : -half);
+                    corners[c][1] = aabb.center[1] + ((c & 2) ?  half : -half);
+                    corners[c][2] = aabb.center[2] + ((c & 4) ?  half : -half);
+                }
+                float wc[8][4];
+                for (int c = 0; c < 8; ++c) {
+                    wc[c][0] = world[0][0]*corners[c][0] + world[1][0]*corners[c][1] + world[2][0]*corners[c][2] + world[3][0];
+                    wc[c][1] = world[0][1]*corners[c][0] + world[1][1]*corners[c][1] + world[2][1]*corners[c][2] + world[3][1];
+                    wc[c][2] = world[0][2]*corners[c][0] + world[1][2]*corners[c][1] + world[2][2]*corners[c][2] + world[3][2];
+                    wc[c][3] = world[0][3]*corners[c][0] + world[1][3]*corners[c][1] + world[2][3]*corners[c][2] + world[3][3];
+                }
+                bool outside = true;
+                for (int p = 0; p < 6; ++p) {
+                    bool all_behind = true;
+                    for (int c = 0; c < 8; ++c) {
+                        float d = frustum_planes[p].xyzw.x*wc[c][0] + frustum_planes[p].xyzw.y*wc[c][1] +
+                                  frustum_planes[p].xyzw.z*wc[c][2] + frustum_planes[p].xyzw.w*wc[c][3];
+                        if (d >= 0.0f) { all_behind = false; break; }
+                    }
+                    if (!all_behind) { outside = false; break; }
+                }
+                if (outside) { ++cull_count; continue; }
+            }
 
-            glm::mat4 model = glm::make_mat4(cmd.world_transform);
-            glm::mat4 mvp   = state.vp * model;
-
-            sg_bindings bind       = {};
-            bind.vertex_buffers[0] = mesh_vbuf_get(cmd.mesh.id);
-            bind.index_buffer      = mesh_ibuf_get(cmd.mesh.id);
-            sg_apply_bindings(&bind);
-
-            UnlitVSParams vs_p = { mvp };
-            sg_range vs_range  = SG_RANGE(vs_p);
-            sg_apply_uniforms(0, &vs_range);
-
-            UnlitFSParams fs_p = { glm::vec4(cmd.material.base_color[0],
-                                             cmd.material.base_color[1],
-                                             cmd.material.base_color[2],
-                                             cmd.material.base_color[3]) };
-            sg_range fs_range  = SG_RANGE(fs_p);
-            sg_apply_uniforms(1, &fs_range);
-
-            sg_draw(0, static_cast<int>(mesh_index_count_get(cmd.mesh.id)), 1);
-        }
-
-        // Lambertian pass
-        if (!state.light_set) {
-            int lam_count = 0;
-            for (int i = 0; i < state.draw_count; ++i)
-                if (state.draw_queue[i].material.shading_model == ShadingModel::Lambertian) ++lam_count;
-            if (lam_count > 0)
-                printf("[renderer] WARNING: %d Lambertian draw(s) queued but no directional light set\n", lam_count);
-        }
-
-        bound = false;
-        for (int i = 0; i < state.draw_count; ++i) {
-            const DrawCommand& cmd = state.draw_queue[i];
-            if (cmd.material.shading_model != ShadingModel::Lambertian) continue;
-            if (cmd.material.alpha < 1.0f) continue; // transparent → pass 3
-
-            if (!bound) { sg_apply_pipeline(state.pipeline_lambertian); bound = true; }
-
-            glm::mat4 model = glm::make_mat4(cmd.world_transform);
-            glm::mat4 mvp   = state.vp * model;
-
-            sg_bindings bind       = {};
-            bind.vertex_buffers[0] = mesh_vbuf_get(cmd.mesh.id);
-            bind.index_buffer      = mesh_ibuf_get(cmd.mesh.id);
-            sg_apply_bindings(&bind);
-
-            LambertianVSParams vs_p;
-            vs_p.mvp   = mvp;
-            vs_p.model = model;
-            sg_range vs_range = SG_RANGE(vs_p);
-            sg_apply_uniforms(0, &vs_range);
-
-            LambertianFSParams fs_p;
-            fs_p.light_dir[0]    = state.light.direction[0];
-            fs_p.light_dir[1]    = state.light.direction[1];
-            fs_p.light_dir[2]    = state.light.direction[2];
-            fs_p._pad0           = 0.0f;
-            fs_p.light_color[0]  = state.light.color[0];
-            fs_p.light_color[1]  = state.light.color[1];
-            fs_p.light_color[2]  = state.light.color[2];
-            fs_p.light_intensity = state.light.intensity;
-            fs_p.base_color[0]   = cmd.material.base_color[0];
-            fs_p.base_color[1]   = cmd.material.base_color[1];
-            fs_p.base_color[2]   = cmd.material.base_color[2];
-            fs_p.base_color[3]   = cmd.material.base_color[3];
-            sg_range fs_range    = SG_RANGE(fs_p);
-            sg_apply_uniforms(1, &fs_range);
-
-            sg_draw(0, static_cast<int>(mesh_index_count_get(cmd.mesh.id)), 1);
+            // Dispatch by shading model
+            switch (cmd.material.shading_model) {
+             case ShadingModel::Unlit: {
+                sg_pipeline cur_pip = state.pipeline_unlit;
+                if (sg_query_pipeline_state(cur_pip) != SG_RESOURCESTATE_VALID || bound_pipeline.id != cur_pip.id) {
+                    sg_apply_pipeline(cur_pip); bound_pipeline = cur_pip;
+                }
+                glm::mat4 model = glm::make_mat4(cmd.world_transform);
+                glm::mat4 mvp   = state.vp * model;
+                sg_bindings bind       = {};
+                bind.vertex_buffers[0] = mesh_vbuf_get(cmd.mesh.id);
+                bind.index_buffer      = mesh_ibuf_get(cmd.mesh.id);
+                sg_apply_bindings(&bind);
+                UnlitVSParams vs_p = { mvp };
+                sg_range vs_r = SG_RANGE(vs_p);
+                sg_apply_uniforms(0, &vs_r);
+                UnlitFSParams fs_p = { glm::vec4(cmd.material.base_color[0],
+                                                 cmd.material.base_color[1],
+                                                 cmd.material.base_color[2],
+                                                 cmd.material.base_color[3]) };
+                sg_range fs_r = SG_RANGE(fs_p);
+                sg_apply_uniforms(1, &fs_r);
+                sg_draw(0, static_cast<int>(mesh_index_count_get(cmd.mesh.id)), 1);
+                break;
+            }
+            case ShadingModel::Lambertian: {
+                if (!state.light_set) {
+                    printf("[renderer] WARNING: Lambertian draw but no directional light set\n");
+                }
+                if (sg_query_pipeline_state(state.pipeline_lambertian) != SG_RESOURCESTATE_VALID || bound_pipeline.id != state.pipeline_lambertian.id) {
+                    sg_apply_pipeline(state.pipeline_lambertian); bound_pipeline = state.pipeline_lambertian;
+                }
+                glm::mat4 model = glm::make_mat4(cmd.world_transform);
+                glm::mat4 mvp   = state.vp * model;
+                sg_bindings bind       = {};
+                bind.vertex_buffers[0] = mesh_vbuf_get(cmd.mesh.id);
+                bind.index_buffer      = mesh_ibuf_get(cmd.mesh.id);
+              sg_apply_bindings(&bind);
+                LambertianVSParams vs_p = { mvp, model };
+                sg_range vs_r = SG_RANGE(vs_p);
+                sg_apply_uniforms(0, &vs_r);
+                LambertianFSParams fs_p;
+                fs_p.light_dir[0]    = state.light.direction[0];
+                fs_p.light_dir[1]    = state.light.direction[1];
+                fs_p.light_dir[2]    = state.light.direction[2];
+                fs_p._pad0           = 0.0f;
+                fs_p.light_color[0]  = state.light.color[0];
+                fs_p.light_color[1]  = state.light.color[1];
+                fs_p.light_color[2]  = state.light.color[2];
+                fs_p.light_intensity = state.light.intensity;
+                fs_p.base_color[0]   = cmd.material.base_color[0];
+                fs_p.base_color[1]   = cmd.material.base_color[1];
+                fs_p.base_color[2]   = cmd.material.base_color[2];
+                fs_p.base_color[3]   = cmd.material.base_color[3];
+                sg_range fs_r = SG_RANGE(fs_p);
+                sg_apply_uniforms(1, &fs_r);
+                sg_draw(0, static_cast<int>(mesh_index_count_get(cmd.mesh.id)), 1);
+                break;
+            }
+            default: break; // BlinnPhong handled below
+            }
         }
     }
 
-    // --- (2b) Opaque Blinn-Phong draws --------------------------------------
-    {
+    // --- (2) Opaque BlinnPhong — sorted + AABB-frustum-culled (R-M6) ---------
+    if (opaque_total > 0) {
+        sg_pipeline bound_bp = {};
         struct BlinnPhongVSParams { glm::mat4 mvp; glm::mat4 model; glm::mat4 normal_mat; };
         struct BlinnPhongFSParams {
             glm::vec4 base_color;
@@ -520,13 +591,44 @@ void renderer_end_frame() {
             glm::vec4 flags;
         };
 
-        bool bound = false;
-        for (int i = 0; i < state.draw_count; ++i) {
-            const DrawCommand& cmd = state.draw_queue[i];
+        for (int oi = 0; oi < opaque_total; ++oi) {
+            const DrawCommand& cmd = state.draw_queue[opaque_indices[oi]];
             if (cmd.material.shading_model != ShadingModel::BlinnPhong) continue;
-            if (cmd.material.alpha < 1.0f) continue;
 
-            if (!bound) { sg_apply_pipeline(state.pipeline_blinnphong); bound = true; }
+            // AABB-frustum cull
+            MeshAABB aabb = mesh_aabb_get(cmd.mesh.id);
+            float half = aabb.half;
+            if (half > 0.0f) {
+                glm::mat4 world(glm::make_mat4(cmd.world_transform));
+                float corners[8][3];
+                for (int c = 0; c < 8; ++c) {
+                    corners[c][0] = aabb.center[0] + ((c & 1) ?  half : -half);
+                    corners[c][1] = aabb.center[1] + ((c & 2) ?  half : -half);
+                    corners[c][2] = aabb.center[2] + ((c & 4) ?  half : -half);
+                }
+                float wc[8][4];
+                for (int c = 0; c < 8; ++c) {
+                    wc[c][0] = world[0][0]*corners[c][0] + world[1][0]*corners[c][1] + world[2][0]*corners[c][2] + world[3][0];
+                    wc[c][1] = world[0][1]*corners[c][0] + world[1][1]*corners[c][1] + world[2][1]*corners[c][2] + world[3][1];
+                    wc[c][2] = world[0][2]*corners[c][0] + world[1][2]*corners[c][1] + world[2][2]*corners[c][2] + world[3][2];
+                    wc[c][3] = world[0][3]*corners[c][0] + world[1][3]*corners[c][1] + world[2][3]*corners[c][2] + world[3][3];
+                }
+                bool outside = true;
+                for (int p = 0; p < 6; ++p) {
+                    bool all_behind = true;
+                    for (int c = 0; c < 8; ++c) {
+                        float d = frustum_planes[p].xyzw.x*wc[c][0] + frustum_planes[p].xyzw.y*wc[c][1] +
+                                  frustum_planes[p].xyzw.z*wc[c][2] + frustum_planes[p].xyzw.w*wc[c][3];
+                        if (d >= 0.0f) { all_behind = false; break; }
+                    }
+                    if (!all_behind) { outside = false; break; }
+                }
+                if (outside) { ++cull_count; continue; }
+            }
+
+          if (sg_query_pipeline_state(state.pipeline_blinnphong) != SG_RESOURCESTATE_VALID || bound_bp.id != state.pipeline_blinnphong.id) {
+                sg_apply_pipeline(state.pipeline_blinnphong); bound_bp = state.pipeline_blinnphong;
+            }
 
             glm::mat4 model = glm::make_mat4(cmd.world_transform);
             glm::mat4 mvp   = state.vp * model;
@@ -557,16 +659,14 @@ void renderer_end_frame() {
             sg_range vs_range = SG_RANGE(vs_p);
             sg_apply_uniforms(UB_blinnphong_vs_params, &vs_range);
 
-           float light_dir_norm[3] = { state.light.direction[0], state.light.direction[1], state.light.direction[2] };
-             glm::vec3 light_dir_from = glm::vec3(-light_dir_norm[0], -light_dir_norm[1], -light_dir_norm[2]);
+            float light_dir_norm[3] = { state.light.direction[0], state.light.direction[1], state.light.direction[2] };
+            glm::vec3 light_dir_from = glm::vec3(-light_dir_norm[0], -light_dir_norm[1], -light_dir_norm[2]);
 
-             glm::mat4 cam_view = glm::make_mat4(state.camera.view);
-             // Extract camera world position: view = inverse(camera_world), so
-             // camera_world = inverse(view). Translation is at [3][0..2] in GLM.
-             glm::mat4 cam_world = glm::inverse(cam_view);
-             glm::vec3 cam_pos = glm::vec3(cam_world[3][0], cam_world[3][1], cam_world[3][2]);
+            glm::mat4 cam_view = glm::make_mat4(state.camera.view);
+            glm::mat4 cam_world = glm::inverse(cam_view);
+            glm::vec3 cam_pos = glm::vec3(cam_world[3][0], cam_world[3][1], cam_world[3][2]);
 
-             BlinnPhongFSParams fs_p;
+            BlinnPhongFSParams fs_p;
             fs_p.base_color         = glm::vec4(cmd.material.base_color[0], cmd.material.base_color[1], cmd.material.base_color[2], cmd.material.base_color[3]);
             fs_p.light_dir_ws       = glm::vec4(light_dir_from.x, light_dir_from.y, light_dir_from.z, 0.0f);
             fs_p.light_color_inten  = glm::vec4(state.light.color[0], state.light.color[1], state.light.color[2], state.light.intensity);
@@ -675,6 +775,16 @@ void renderer_end_frame() {
     }
 
     simgui_render();
+
+    // Log cull count once per 60 frames (R-M6)
+    {
+        static int log_frame = 0;
+        if (cull_count > 0 && ++log_frame >= 60) {
+            printf("[renderer] frustum cull: %d/%d objects culled\n", cull_count, state.draw_count);
+            log_frame = 0;
+        }
+    }
+
     sg_end_pass();
     sg_commit();
     state.frame_active = false;

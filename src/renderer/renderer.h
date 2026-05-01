@@ -150,7 +150,8 @@ RendererMeshHandle renderer_upload_mesh(
     const Vertex*   vertices,
     uint32_t        vertex_count,
     const uint32_t* indices,
-    uint32_t        index_count
+    uint32_t        index_count,
+    float           radius = 1.0f
 );
 
 // ---------------------------------------------------------------------------

@@ -20,6 +20,8 @@ static uint32_t   s_free_list[512]    = {};
 static uint32_t   s_free_top          = 0;
 static uint32_t   s_next_id           = 1;
 
+static MeshAABB   s_aabbs[512]        = {};
+
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -29,6 +31,7 @@ static uint32_t   s_next_id           = 1;
 sg_buffer mesh_vbuf_get(uint32_t id)        { return s_vbufs[id]; }
 sg_buffer mesh_ibuf_get(uint32_t id)        { return s_ibufs[id]; }
 uint32_t  mesh_index_count_get(uint32_t id) { return s_index_counts[id]; }
+MeshAABB  mesh_aabb_get(uint32_t id)        { return s_aabbs[id]; }
 
 void mesh_store_shutdown() {
     for (uint32_t i = 1; i < 512; ++i) {
@@ -39,6 +42,7 @@ void mesh_store_shutdown() {
             s_ibufs[i] = {};
             s_ref_counts[i] = 0;
         }
+        s_aabbs[i] = {};
     }
     s_free_top     = 0;
     s_next_id      = 1;
@@ -77,7 +81,8 @@ RendererMeshHandle renderer_upload_mesh(
     const Vertex*   vertices,
     uint32_t        vertex_count,
     const uint32_t* indices,
-    uint32_t        index_count)
+    uint32_t        index_count,
+    float           radius)
 {
     uint32_t id;
     if (s_free_top > 0) {
@@ -119,6 +124,7 @@ RendererMeshHandle renderer_upload_mesh(
     s_ibufs[id]        = ibuf;
     s_index_counts[id] = index_count;
     s_ref_counts[id]   = 1;
+    s_aabbs[id]        = {{0.0f, 0.0f, 0.0f}, radius};
 
     return { id };
 }
@@ -204,7 +210,7 @@ RendererMeshHandle renderer_make_sphere_mesh(float radius, int subdivisions) {
     return renderer_upload_mesh(verts.data(),
                                 static_cast<uint32_t>(vert_count),
                                 indices.data(),
-                                static_cast<uint32_t>(index_count));
+                                static_cast<uint32_t>(index_count), radius);
 }
 
 RendererMeshHandle renderer_make_cube_mesh(float half_extent) {
@@ -260,5 +266,5 @@ RendererMeshHandle renderer_make_cube_mesh(float half_extent) {
         idx[3] = base;     idx[4] = base + 3; idx[5] = base + 2; // tri 1 (CCW)
     }
 
-    return renderer_upload_mesh(verts, 24, indices, 36);
+    return renderer_upload_mesh(verts, 24, indices, 36, half_extent);
 }
