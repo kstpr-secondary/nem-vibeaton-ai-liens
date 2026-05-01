@@ -60,7 +60,7 @@ static void update_highlight(float dt);
 static bool g_scene_setup_done = false;
 static float rgb_cyan[3]    = {0.2f, 0.7f, 0.9f};
 static float rgb_blue[3]    = {0.15f, 0.6f, 0.85f};
-static float rgb_orange[3]  = {0.9f, 0.45f, 0.15f};
+static float rgb_gray[3]    = {0.55f, 0.55f, 0.55f};
 constexpr int kNumCubes    = 40;
 
 static void frame_cb(float dt, void* /*user_data*/) {
@@ -172,9 +172,6 @@ static void frame_cb(float dt, void* /*user_data*/) {
                 auto h = engine_load_gltf(model_names[spawner_gen() % k_num_models]);
                 bool is_asset = renderer_handle_valid(h);
 
-                float* spawn_colors[] = { rgb_cyan, rgb_blue, rgb_orange };
-                float* mat_color = spawn_colors[tier];
-
                 entt::entity e;
                 if (is_asset) {
                     float scale = (tier == 0) ? 1.2f : (tier == 1) ? 2.0f : 3.0f;
@@ -184,12 +181,12 @@ static void frame_cb(float dt, void* /*user_data*/) {
                     t.scale = {scale, scale, scale};
                     engine_add_component<Mesh>(e).handle = h;
 
-                    engine_add_component<EntityMaterial>(e).mat = renderer_make_lambertian_material(mat_color);
+                    engine_add_component<EntityMaterial>(e).mat = renderer_make_lambertian_material(rgb_gray);
 
                     engine_add_component<Collider>(e).half_extents = {scale, scale * 0.8f, scale};
                 } else {
                     float half = (tier == 0) ? 0.3f : (tier == 1) ? 0.5f : 0.7f;
-                    e = engine_spawn_cube(pos, half, renderer_make_lambertian_material(mat_color));
+                    e = engine_spawn_cube(pos, half, renderer_make_lambertian_material(rgb_gray));
                 }
 
                 auto& rb = engine_add_component<RigidBody>(e);
@@ -258,12 +255,10 @@ static void setup_scene() {
     l.color     = {1.f, 1.f, 1.f};
     l.intensity = 2.0f;
 
-    // Lambertian materials — earthy / rocky tones for cubes and asteroids
-    float rgb_cube[3]   = {0.55f, 0.40f, 0.30f};
-    float rgb_asteroid[3] = {0.35f, 0.30f, 0.28f};
+    // Dynamic objects — standard gray
+    float rgb_dynamic[3]  = {0.55f, 0.55f, 0.55f};
 
-    Material cube_mat     = renderer_make_lambertian_material(rgb_cube);
-    Material asteroid_mat = renderer_make_lambertian_material(rgb_asteroid);
+    Material dynamic_mat  = renderer_make_lambertian_material(rgb_dynamic);
 
     // Unlit transparent material for front/back walls (reserved for future use)
 
@@ -281,7 +276,7 @@ static void setup_scene() {
 
         float half = 0.3f + 0.2f * (static_cast<float>(i % 5)) / 5.0f;
         engine_add_component<Mesh>(e).handle = renderer_make_cube_mesh(half);
-        engine_add_component<EntityMaterial>(e).mat = cube_mat;
+        engine_add_component<EntityMaterial>(e).mat = dynamic_mat;
 
         engine_add_component<Collider>(e).half_extents = {half, half, half};
 
@@ -319,7 +314,7 @@ static void setup_scene() {
             float scale = 1.5f + 0.8f * (static_cast<float>(i % 4)) / 4.0f;
             t.scale = {scale, scale, scale};
             engine_add_component<Mesh>(e).handle = asteroid_handle;
-            engine_add_component<EntityMaterial>(e).mat = asteroid_mat;
+            engine_add_component<EntityMaterial>(e).mat = dynamic_mat;
 
             // Approximate AABB for scaled asteroid
             engine_add_component<Collider>(e).half_extents = {2.0f * scale, 1.5f * scale, 1.5f * scale};
@@ -339,7 +334,7 @@ static void setup_scene() {
             float half = 0.6f + 0.2f * (static_cast<float>(i % 3)) / 3.0f;
             t.scale = {half, half, half};
             engine_add_component<Mesh>(e).handle = renderer_make_cube_mesh(1.0f);
-            engine_add_component<EntityMaterial>(e).mat = asteroid_mat;
+            engine_add_component<EntityMaterial>(e).mat = dynamic_mat;
             engine_add_component<Collider>(e).half_extents = {half, half, half};
 
             auto& rb = engine_add_component<RigidBody>(e);
@@ -419,7 +414,7 @@ static void setup_scene() {
         t.scale = {scale, scale, scale};
         engine_add_component<Mesh>(e).handle = static_mesh_handles[model_idx];
 
-        float* rgb = ((i % 3) == 0) ? rgb_orange : (((i % 3) == 1) ? rgb_blue : rgb_cyan);
+        float* rgb = ((i % 2) == 0) ? rgb_cyan : rgb_blue;
         engine_add_component<EntityMaterial>(e).mat = renderer_make_lambertian_material(rgb);
 
         engine_add_component<Collider>(e).half_extents = {scale, scale * 0.8f, scale};
