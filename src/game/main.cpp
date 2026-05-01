@@ -29,7 +29,7 @@ static void frame_callback(float dt, void* /*user_data*/) {
         int w = 0, h = 0, ch = 0;
         for (int i = 0; i < 6; ++i) {
             char path[512];
-            snprintf(path, sizeof(path), "%s/assets/skybox/%s", ASSET_ROOT, skybox_faces[i]);
+            snprintf(path, sizeof(path), "%s/skybox/%s", ASSET_ROOT, skybox_faces[i]);
             unsigned char* data = stbi_load(path, &w, &h, &ch, 4);
             if (data) {
                 raw_faces[i] = data;
