@@ -4,6 +4,7 @@
 #include <engine.h>
 #include <glm/gtc/quaternion.hpp>
 #include <sokol_app.h>
+#include <cmath>
 
 void player_update(float dt) {
     auto& reg = engine_registry();
@@ -22,14 +23,33 @@ void player_update(float dt) {
         if (engine_mouse_button(0)) {
             const glm::vec2 delta = engine_mouse_delta();
             if (delta.x != 0.0f || delta.y != 0.0f) {
-                const glm::vec3 local_right = t.rotation * glm::vec3(1.f, 0.f, 0.f);
-                const glm::quat yaw   = glm::angleAxis(
-                    -delta.x * constants::player_turn_speed,
-                    glm::vec3(0.f, 1.f, 0.f));          // world Y — keeps horizon stable
+                // Extract yaw from current rotation and strip roll, then apply
+                // fresh pitch around the level right vector of the yaw-only
+                // orientation.  This removes any accumulated roll while
+                // preserving pitch and yaw — the cockpit stays pointing up in
+                // screen space.
+                const float qw = t.rotation.w;
+                const float qy = t.rotation.y;
+                const float yaw_angle = 2.0f * atan2(qy, qw);
+
+                const glm::quat yaw_only(
+                    cosf(yaw_angle * 0.5f),
+                    0.0f, sinf(yaw_angle * 0.5f), 0.0f);
+
+                // Remove yaw to isolate pitch (and any roll — which we discard).
+                const glm::quat yaw_inv = glm::conjugate(yaw_only);
+                const glm::quat q_clean = yaw_inv * t.rotation;
+
+                // For a pure X-axis rotation, q.x = sin(angle/2).
+                const float pitch_accumulated = 2.0f * asin(glm::clamp(q_clean.x, -1.0f, 1.0f));
+
+                // Apply new delta on top of accumulated pitch.
+                const float pitch_new = pitch_accumulated
+                    - delta.y * constants::player_turn_speed;
                 const glm::quat pitch = glm::angleAxis(
-                    -delta.y * constants::player_turn_speed,
-                    local_right);
-                t.rotation = glm::normalize(yaw * t.rotation * pitch);
+                    pitch_new, glm::vec3(1.f, 0.f, 0.f));
+
+                t.rotation = glm::normalize(yaw_only * pitch);
             }
         }
 
