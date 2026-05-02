@@ -10,6 +10,58 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <map>
+
+// ---------------------------------------------------------------------------
+// Shared procedural mesh cache — prevents O(n) per-entity mesh allocations
+// for frequently-spawned entities (plasma projectiles, explosions, etc.).
+// ---------------------------------------------------------------------------
+
+struct MeshCacheKey {
+    float  radius     = 0.f;
+    int    subdivisions = 16;
+    uint32_t handle_id = 0;
+    bool operator<(const MeshCacheKey& o) const {
+        if (radius != o.radius) return radius < o.radius;
+        return subdivisions < o.subdivisions;
+    }
+};
+
+static std::map<MeshCacheKey, uint32_t> s_shared_meshes;  // key → mesh store id
+static int                              s_shared_ref_count = 0;
+
+static uint32_t engine_find_or_create_shared_mesh(float radius, int subdivisions) {
+    MeshCacheKey key{radius, subdivisions};
+    auto it = s_shared_meshes.find(key);
+    if (it != s_shared_meshes.end()) {
+        return it->second;
+    }
+
+    RendererMeshHandle h = renderer_make_sphere_mesh(radius, subdivisions);
+    if (!renderer_handle_valid(h)) {
+        fprintf(stderr, "[ENGINE] failed to create shared sphere mesh (r=%.2f, s=%d)\n",
+                radius, subdivisions);
+        return 0;
+    }
+
+    uint32_t id = h.id;
+    mesh_store_ref_inc(id);
+    ++s_shared_ref_count;
+    s_shared_meshes[key] = id;
+    return id;
+}
+
+void engine_init_shared_meshes() {
+    if (!s_shared_meshes.empty()) return;  // already initialized
+}
+
+void engine_shutdown_shared_meshes() {
+    for (auto& [key, id] : s_shared_meshes) {
+        mesh_store_ref_dec(id);
+    }
+    s_shared_meshes.clear();
+    s_shared_ref_count = 0;
+}
 
 // ---------------------------------------------------------------------------
 // Entity lifecycle (T008)
@@ -48,13 +100,17 @@ entt::entity engine_spawn_sphere(const glm::vec3& position, float radius, const 
     Transform t{};
     t.position = position;
     reg.emplace<Transform>(e, t);
-    Mesh m{renderer_make_sphere_mesh(radius, 16)};
-    mesh_store_ref_inc(m.handle.id);
+
+    uint32_t mesh_id = engine_find_or_create_shared_mesh(radius, 16);
+    mesh_store_ref_inc(mesh_id);
+    Mesh m{RendererMeshHandle{mesh_id}};
     reg.emplace<Mesh>(e, m);
     reg.emplace<EntityMaterial>(e, EntityMaterial{material});
 
     return e;
 }
+
+static std::map<float, uint32_t> s_cube_cache;
 
 entt::entity engine_spawn_cube(const glm::vec3& position, float half_extent, const Material& material) {
     auto& reg = engine_registry();
@@ -63,9 +119,19 @@ entt::entity engine_spawn_cube(const glm::vec3& position, float half_extent, con
     Transform t{};
     t.position = position;
     reg.emplace<Transform>(e, t);
-    Mesh m{renderer_make_cube_mesh(half_extent)};
-    mesh_store_ref_inc(m.handle.id);
-    reg.emplace<Mesh>(e, m);
+
+    auto cit = s_cube_cache.find(half_extent);
+    uint32_t mesh_id;
+    if (cit != s_cube_cache.end()) {
+        mesh_id = cit->second;
+    } else {
+        Mesh m{renderer_make_cube_mesh(half_extent)};
+        mesh_id = m.handle.id;
+        mesh_store_ref_inc(mesh_id);
+        s_cube_cache[half_extent] = mesh_id;
+    }
+    mesh_store_ref_inc(mesh_id);
+    reg.emplace<Mesh>(e, Mesh{RendererMeshHandle{mesh_id}});
     reg.emplace<EntityMaterial>(e, EntityMaterial{material});
 
     return e;

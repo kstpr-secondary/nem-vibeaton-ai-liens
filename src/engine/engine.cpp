@@ -25,6 +25,7 @@ void engine_init(const EngineConfig& config) {
     g_registry = entt::registry{};
     time_init();
     input_init();  // registers the input callback with the renderer (T022)
+    engine_init_shared_meshes();
 }
 
 void engine_tick(float dt) {
@@ -64,6 +65,7 @@ void engine_tick(float dt) {
 }
 
 void engine_shutdown() {
+    engine_shutdown_shared_meshes();
     g_registry.clear();
 }
 

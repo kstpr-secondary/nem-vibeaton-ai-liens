@@ -41,6 +41,11 @@ void engine_init(const EngineConfig& config);
 void engine_tick(float dt);
 void engine_shutdown();
 
+// Shared procedural mesh cache — prevents per-entity mesh allocations for
+// frequently-spawned entities (plasma projectiles, explosions, etc.).
+void engine_init_shared_meshes();
+void engine_shutdown_shared_meshes();
+
 // =========================================================================
 // Registry access — direct entt::registry& for game-layer view<> iteration
 // =========================================================================
