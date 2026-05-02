@@ -75,7 +75,7 @@ static void plasma_fire(entt::entity player_e,
     camera_rig_cursor_ray(ray_origin, ray_dir);
 
     // Spawn position: slightly in front of ship nose along ship forward axis.
-    const glm::vec3 rig_forward = t.rotation * glm::vec3(0.f, 1.f, 0.f);
+    const glm::vec3 rig_forward = t.rotation * glm::vec3(0.f, 0.f, -1.f);
     const glm::vec3 spawn_pos   = t.position
         + rig_forward * (k_ship_half + constants::plasma_sphere_radius + 0.1f);
     // Projectile velocity follows the cursor ray direction.

@@ -10,6 +10,11 @@
 
 // ── Static file-scope state ──────────────────────────────────────────────────
 
+// Base orientation to map glTF model (+Y up, nose along +Y) to game space (-Z forward, +Y up).
+static const glm::quat k_ship_base_orientation = 
+    glm::angleAxis(glm::half_pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f)) * 
+    glm::angleAxis(glm::pi<float>(), glm::vec3(0.0f, 0.0f, 1.0f));
+
 static entt::entity s_camera       = entt::null;
 static entt::entity s_player       = entt::null;
 static glm::vec3    s_cam_position = {0.f, 0.f, 0.f};
@@ -60,12 +65,12 @@ void camera_rig_input(float dt) {
     if (engine_mouse_button(0)) {
         glm::vec2 delta = engine_mouse_delta();
 
-        // Yaw: rotate rig around rig_up axis (model -Z = cockpit-up).
-        glm::vec3 rig_up = crs.rig_rotation * glm::vec3(0.f, 0.f, -1.f);
+        // Yaw: rotate rig around rig_up axis (+Y = up).
+        glm::vec3 rig_up = crs.rig_rotation * glm::vec3(0.f, 1.f, 0.f);
         glm::quat q_yaw = glm::angleAxis(-delta.x * constants::cam_turn_rate * dt, rig_up);
 
-        // Pitch: rotate rig around rig_right axis (model -X = right).
-        glm::vec3 rig_right = crs.rig_rotation * glm::vec3(-1.f, 0.f, 0.f);
+        // Pitch: rotate rig around rig_right axis (+X = right).
+        glm::vec3 rig_right = crs.rig_rotation * glm::vec3(1.f, 0.f, 0.f);
         glm::quat q_pitch = glm::angleAxis(-delta.y * constants::cam_turn_rate * dt, rig_right);
 
         // Apply yaw first, then pitch; both in world space (pre-multiply).
@@ -73,7 +78,7 @@ void camera_rig_input(float dt) {
     }
 
     // Write ship Transform — no roll yet, just rig orientation.
-    t.rotation = crs.rig_rotation;
+    t.rotation = crs.rig_rotation * k_ship_base_orientation;
 
     // ── Cache VP and cursor ray for this frame ───────────────────────────
     {
@@ -153,12 +158,12 @@ void camera_rig_finalize(float dt) {
 
     // ── Step C: overwrite t.rotation (undoes any physics-baked rotation) ─
     float total_roll = crs.visual_bank + crs.collision_roll;
-    glm::quat roll_quat = glm::angleAxis(total_roll, glm::vec3(0.f, 1.f, 0.f));
-    t.rotation = crs.rig_rotation * roll_quat;
+    glm::quat roll_quat = glm::angleAxis(total_roll, glm::vec3(0.f, 0.f, -1.f));
+    t.rotation = crs.rig_rotation * roll_quat * k_ship_base_orientation;
 
     // ── Step D: compute camera position (smoothed) ───────────────────────
-    glm::vec3 rig_fwd = crs.rig_rotation * glm::vec3(0.f, 1.f, 0.f);
-    glm::vec3 rig_up  = crs.rig_rotation * glm::vec3(0.f, 0.f, -1.f);
+    glm::vec3 rig_fwd = crs.rig_rotation * glm::vec3(0.f, 0.f, -1.f);
+    glm::vec3 rig_up  = crs.rig_rotation * glm::vec3(0.f, 1.f, 0.f);
 
     glm::vec3 desired_cam_pos = t.position
         - rig_fwd * constants::cam_offset_back
@@ -183,7 +188,7 @@ void camera_rig_finalize(float dt) {
         // because rig_up is derived from rig_rotation, not from world-Y.
         glm::vec3 cam_up = rig_up;
         if (glm::abs(glm::dot(glm::normalize(to_target), rig_up)) > 0.99f) {
-            cam_up = crs.rig_rotation * glm::vec3(-1.f, 0.f, 0.f); // rig_right fallback
+            cam_up = crs.rig_rotation * glm::vec3(1.f, 0.f, 0.f); // rig_right fallback
         }
         glm::mat4 view = glm::lookAt(s_cam_position, look_target, cam_up);
         cam_t.rotation = glm::quat_cast(glm::transpose(glm::mat3(view)));

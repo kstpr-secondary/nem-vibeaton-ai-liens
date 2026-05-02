@@ -19,8 +19,8 @@ void player_update(float dt) {
         // ----------------------------------------------------------------
         // Thrust and strafe — use rig_rotation (no visual bank).
         // ----------------------------------------------------------------
-        const glm::vec3 forward = crs.rig_rotation * glm::vec3(0.f, 1.f, 0.f);
-        const glm::vec3 right   = crs.rig_rotation * glm::vec3(-1.f, 0.f, 0.f);
+        const glm::vec3 forward = crs.rig_rotation * glm::vec3(0.f, 0.f, -1.f);
+        const glm::vec3 right   = crs.rig_rotation * glm::vec3(1.f, 0.f, 0.f);
 
         const float thrust_accel = constants::player_thrust
             * (boost.active && boost.current > 0.f ? constants::boost_multiplier : 1.f);

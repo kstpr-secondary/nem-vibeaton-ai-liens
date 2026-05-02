@@ -10,10 +10,10 @@
 // so the projectile starts outside the enemy's own collider.
 static constexpr float k_ship_half   = 1.5f;
 
-// Ry(180) first: X→-X, Z→-Z. Then Rx(+90): Y→-Z (nose fwd), -Z→+Y (up).
-static const glm::quat k_ship_base_orientation = glm::quat(1.f, 0.f, 0.f, 0.f) *
-    glm::angleAxis(glm::half_pi<float>(), glm::vec3(1.f, 0.f, 0.f)) *
-    glm::angleAxis(glm::pi<float>(), glm::vec3(0.f, 0.f, 1.f));
+// Base orientation to map glTF model (+Y up, nose along +Y) to game space (-Z forward, +Y up).
+static const glm::quat k_ship_base_orientation = 
+    glm::angleAxis(glm::half_pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f)) * 
+    glm::angleAxis(glm::pi<float>(), glm::vec3(0.0f, 0.0f, 1.0f));
 
 void enemy_ai_update(float /*dt*/) {
     auto& reg = engine_registry();
@@ -56,8 +56,8 @@ void enemy_ai_update(float /*dt*/) {
             rb.linear_velocity *= 0.9f;  // damp when stopped
 
         // Face the player so the visual nose points along the seek direction.
-        // Compose with model base orientation (Y-up glTF → -Z-forward game).
-        t.rotation = k_ship_base_orientation * glm::quatLookAtRH(dir, glm::vec3(0.f, 1.f, 0.f));
+        // Compose with model base orientation: WorldLookAt * ModelBase.
+        t.rotation = glm::quatLookAtRH(dir, glm::vec3(0.f, 1.f, 0.f)) * k_ship_base_orientation;
 
         // Kill angular velocity — enemy rotation is AI-controlled only.
         rb.angular_velocity = glm::vec3(0.f);
@@ -72,19 +72,20 @@ void enemy_ai_update(float /*dt*/) {
         if ((now - ai.last_fire_time) < static_cast<double>(ai.fire_cooldown))
             continue;
 
-        // Line-of-sight via engine_raycast.  The stub returns nullopt; treat
-        // that as clear (fires normally until real physics lands).  When real
-        // physics is active, only fire if the first hit is the player entity.
-        const auto hit = engine_raycast(t.position, dir, dist);
+        // Calculate actual forward direction for spawning and velocity.
+        const glm::vec3 ship_forward = t.rotation * glm::vec3(0.0f, 0.0f, -1.0f);
+
+        // Line-of-sight via engine_raycast.
+        const auto hit = engine_raycast(t.position, ship_forward, dist);
         if (hit.has_value() && hit->entity != player_e)
             continue;  // something blocks the shot
 
         // Spawn projectile from just outside the enemy's own collider.
         const glm::vec3 spawn_pos = t.position
-            + dir * (k_ship_half + constants::plasma_sphere_radius + 0.1f);
+            + ship_forward * (k_ship_half + constants::plasma_sphere_radius + 0.1f);
         // Inherit enemy velocity so the shot respects relative motion.
         const glm::vec3 proj_vel = rb.linear_velocity
-            + dir * ws.plasma_speed;
+            + ship_forward * ws.plasma_speed;
 
         spawn_projectile(e, spawn_pos, proj_vel);
         ai.last_fire_time = now;

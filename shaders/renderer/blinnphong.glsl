@@ -57,8 +57,10 @@ void main() {
     float spec  = pow(NdotH, spec_shin.w) * step(0.0, NdotL);
 
     // Sample texture if use_texture flag is set; otherwise fall back to solid color
+    // When textured: blend between procedural color (base_color.rgb) and sampled texture.
+    // base_color.a = blend factor: 1.0 = fully procedural, 0.0 = fully textured.
     vec4 albedo = flags.x > 0.5
-        ? texture(sampler2D(albedo_tex, smp), v_uv)
+        ? mix(texture(sampler2D(albedo_tex, smp), v_uv), vec4(base_color.rgb, 1.0), base_color.a)
         : base_color;
 
     vec3 diffuse   = albedo.rgb * light_color_inten.rgb * light_color_inten.w * NdotL;

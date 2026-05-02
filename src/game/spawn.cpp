@@ -5,6 +5,7 @@
 #include <renderer.h>
 #include <glm/gtc/quaternion.hpp>
 
+#include <cstdlib>
 #include <cstring>
 
 // Model paths (relative to ASSET_ROOT).
@@ -29,14 +30,42 @@ static constexpr float k_enemy_scale           = 0.0125f;
 static constexpr float k_player_half_extent  = 2.0f;
 static constexpr float k_enemy_half_extent   = 2.0f;
 
-static const glm::quat k_ship_base_orientation = glm::quat(1.f, 0.f, 0.f, 0.f) *
-    glm::angleAxis(glm::half_pi<float>(), glm::vec3(1.f, 0.f, 0.f)) *
-    glm::angleAxis(glm::pi<float>(), glm::vec3(0.f, 0.f, 1.f));
+// Base orientation to map glTF model (+Y up, nose along +Y) to game space (-Z forward, +Y up).
+// This converts model +Y to game -Z by flipping around Z (making it face backwards on Z) 
+// and then pitching 90 degrees down.
+static const glm::quat k_ship_base_orientation = 
+    glm::angleAxis(glm::half_pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f)) * 
+    glm::angleAxis(glm::pi<float>(), glm::vec3(0.0f, 0.0f, 1.0f));
 
 // Scale factors per asteroid tier to match the constants.
 static constexpr float k_asteroid_scale_small  = constants::asteroid_small_scale  / 2.0f;
 static constexpr float k_asteroid_scale_medium = constants::asteroid_medium_scale / 2.0f;
 static constexpr float k_asteroid_scale_large  = constants::asteroid_large_scale  / 2.0f;
+
+// Asteroid base color variations — applied to the sampled albedo texture so
+// lit faces are not uniformly white-gray. The grayscale asteroid textures
+// average ~0.31, and lighting pushes values toward white, so multipliers
+// must be aggressive enough to survive the full lighting pipeline.
+static const float* asteroid_color_variation() {
+    int r = std::rand() % 100;
+    if (r < 25) {
+        // Light warm gray — slight beige/brown tint
+        static const float c[3] = {0.88f, 0.82f, 0.76f};
+        return c;
+    } else if (r < 50) {
+        // Cool gray — slightly blue-ish
+        static const float c[3] = {0.72f, 0.74f, 0.78f};
+        return c;
+    } else if (r < 75) {
+        // Medium warm gray — brown/ochre tint
+        static const float c[3] = {0.84f, 0.76f, 0.68f};
+        return c;
+    } else {
+        // Neutral medium gray
+        static const float c[3] = {0.70f, 0.70f, 0.70f};
+        return c;
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -88,7 +117,7 @@ static entt::entity spawn_from_model(const char* model_path,
 
     if (texture_handle.id != 0) {
         if (is_asteroid_model(model_path)) {
-            base_color = nullptr;  // use texture directly
+            base_color = asteroid_color_variation(); // tint sampled albedo
             shininess  = 64.0f;
         } else {
             base_color = nullptr;  // use texture directly
@@ -106,9 +135,18 @@ static entt::entity spawn_from_model(const char* model_path,
         }
     }
 
-    Material mat;
+  Material mat;
     if (texture_handle.id != 0) {
-        mat = renderer_make_blinnphong_material(nullptr, shininess, texture_handle);
+        const float* rgb = (base_color != nullptr) ? base_color : nullptr;
+        mat = renderer_make_blinnphong_material(rgb, shininess, texture_handle);
+        // For textured asteroids: blend 50% procedural color with 50% sampled texture.
+        // base_color.a encodes the blend factor (1.0 = fully procedural, 0.0 = fully textured).
+        if (is_asteroid_model(model_path)) {
+            mat.base_color[3] = 0.5f;
+            mat.shininess    = ((float)std::rand() / (float)RAND_MAX) * 64.0f;
+        } else {
+            mat.base_color[3] = 0.0f;
+        }
     } else {
         static const float s_fallback_gray[3] = {0.7f, 0.7f, 0.7f};
         const float* color_ptr = (base_color != nullptr) ? base_color : s_fallback_gray;
