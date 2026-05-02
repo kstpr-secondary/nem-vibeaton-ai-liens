@@ -503,6 +503,7 @@ void renderer_end_frame() {
     struct LambertianVSParams {
         glm::mat4 mvp;
         glm::mat4 model;
+        glm::mat4 normal_mat;
     };
     struct LambertianFSParams {
         float light_dir[3];
@@ -569,7 +570,8 @@ void renderer_end_frame() {
                 bind.vertex_buffers[0] = mesh_vbuf_get(cmd.mesh.id);
                 bind.index_buffer      = mesh_ibuf_get(cmd.mesh.id);
               sg_apply_bindings(&bind);
-                LambertianVSParams vs_p = { mvp, model };
+
+                LambertianVSParams vs_p = { mvp, model, glm::transpose(glm::inverse(model)) };
                 sg_range vs_r = SG_RANGE(vs_p);
                 sg_apply_uniforms(0, &vs_r);
                 LambertianFSParams fs_p;
@@ -620,7 +622,7 @@ void renderer_end_frame() {
 
             glm::mat4 model = glm::make_mat4(cmd.world_transform);
             glm::mat4 mvp   = state.vp * model;
-            glm::mat3 normal_mat = glm::inverse(glm::mat3(model));
+            glm::mat4 normal_mat = glm::transpose(glm::inverse(model));
 
             sg_bindings bind       = {};
             bind.vertex_buffers[0] = mesh_vbuf_get(cmd.mesh.id);
@@ -647,16 +649,13 @@ void renderer_end_frame() {
             sg_range vs_range = SG_RANGE(vs_p);
             sg_apply_uniforms(UB_blinnphong_vs_params, &vs_range);
 
-            float light_dir_norm[3] = { state.light.direction[0], state.light.direction[1], state.light.direction[2] };
-            glm::vec3 light_dir_from = glm::vec3(-light_dir_norm[0], -light_dir_norm[1], -light_dir_norm[2]);
-
             glm::mat4 cam_view = glm::make_mat4(state.camera.view);
             glm::mat4 cam_world = glm::inverse(cam_view);
             glm::vec3 cam_pos = glm::vec3(cam_world[3][0], cam_world[3][1], cam_world[3][2]);
 
             BlinnPhongFSParams fs_p;
             fs_p.base_color         = glm::vec4(cmd.material.base_color[0], cmd.material.base_color[1], cmd.material.base_color[2], cmd.material.base_color[3]);
-            fs_p.light_dir_ws       = glm::vec4(light_dir_from.x, light_dir_from.y, light_dir_from.z, 0.0f);
+            fs_p.light_dir_ws       = glm::vec4(state.light.direction[0], state.light.direction[1], state.light.direction[2], 0.0f);
             fs_p.light_color_inten  = glm::vec4(state.light.color[0], state.light.color[1], state.light.color[2], state.light.intensity);
             fs_p.view_pos_w         = glm::vec4(cam_pos.x, cam_pos.y, cam_pos.z, 0.0f);
             fs_p.spec_shin          = glm::vec4(1.0f, 1.0f, 1.0f, cmd.material.shininess);

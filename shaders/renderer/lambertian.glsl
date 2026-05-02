@@ -6,6 +6,7 @@
 layout(binding=0) uniform lambertian_vs_params {
     mat4 mvp;
     mat4 model;
+    mat4 normal_mat;
 };
 
 in vec3 position;
@@ -15,9 +16,8 @@ out vec3 v_normal;
 
 void main() {
     gl_Position = mvp * vec4(position, 1.0);
-    // Standard normal transform: transpose(inverse(model)) * normal
-    // For uniform scaling, mat3(model) is sufficient.
-    v_normal = normalize(mat3(model) * normal);
+    // Use normal_mat for correct normal transform (handles non-uniform scaling)
+    v_normal = normalize(mat3(normal_mat) * normal);
 }
 @end
 

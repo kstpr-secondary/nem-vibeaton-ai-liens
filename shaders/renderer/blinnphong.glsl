@@ -48,7 +48,7 @@ out vec4 frag_color;
 
 void main() {
     vec3 N = normalize(v_normal);
-    vec3 L = normalize(-light_dir_ws.xyz);  // negate: FROM light → toward surface
+    vec3 L = normalize(light_dir_ws.xyz);   // direction FROM surface TO light
     vec3 V = normalize(view_pos_w.xyz - v_world_pos);
     vec3 H = normalize(L + V);              // half vector
 
