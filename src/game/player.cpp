@@ -17,58 +17,71 @@ void player_update(float dt) {
         auto& sh    = view.get<Shield>(e);
 
         // ----------------------------------------------------------------
-        // Mouse look — pitch (local X) and yaw (world Y)
-        // Mouse delta is already per-frame; no dt factor needed.
+        // Mouse look — yaw (world Y) and pitch (local X).
+        // Incremental: apply mouse delta to the current rotation.
         // ----------------------------------------------------------------
         if (engine_mouse_button(0)) {
             const glm::vec2 delta = engine_mouse_delta();
             if (delta.x != 0.0f || delta.y != 0.0f) {
-                // Extract yaw from current rotation and strip roll, then apply
-                // fresh pitch around the level right vector of the yaw-only
-                // orientation.  This removes any accumulated roll while
-                // preserving pitch and yaw — the cockpit stays pointing up in
-                // screen space.
-                const float qw = t.rotation.w;
-                const float qy = t.rotation.y;
-                const float yaw_angle = 2.0f * atan2(qy, qw);
+                // Yaw around world Y axis.
+                const glm::quat q_yaw = glm::angleAxis(
+                    -delta.x * constants::player_turn_speed,
+                    glm::vec3(0.f, 1.f, 0.f));
 
-                const glm::quat yaw_only(
-                    cosf(yaw_angle * 0.5f),
-                    0.0f, sinf(yaw_angle * 0.5f), 0.0f);
+                // Pitch around local right axis (extracted from current
+                // rotation).  Post-multiply so it applies in ship-local space.
+                const glm::vec3 local_right = t.rotation * glm::vec3(1.f, 0.f, 0.f);
+                const glm::quat q_pitch = glm::angleAxis(
+                    -delta.y * constants::player_turn_speed,
+                    local_right);
 
-                // Remove yaw to isolate pitch (and any roll — which we discard).
-                const glm::quat yaw_inv = glm::conjugate(yaw_only);
-                const glm::quat q_clean = yaw_inv * t.rotation;
-
-                // For a pure X-axis rotation, q.x = sin(angle/2).
-                const float pitch_accumulated = 2.0f * asin(glm::clamp(q_clean.x, -1.0f, 1.0f));
-
-                // Apply new delta on top of accumulated pitch.
-                const float pitch_new = pitch_accumulated
-                    - delta.y * constants::player_turn_speed;
-                const glm::quat pitch = glm::angleAxis(
-                    pitch_new, glm::vec3(1.f, 0.f, 0.f));
-
-                t.rotation = glm::normalize(yaw_only * pitch);
+                // Compose: yaw is applied in world space (pre-multiply),
+                // pitch in local space (post-multiply).  Normalize to keep
+                // the quaternion valid across many frames.
+                t.rotation = glm::normalize(q_yaw * t.rotation * q_pitch);
             }
         }
 
         // ----------------------------------------------------------------
-        // Thrust and strafe — apply acceleration in local ship space
-        // Player input is applied directly to velocity for immediate,
-        // per-frame responsiveness (standard game-control pattern).
+        // Velocity alignment — game-friendly turning feel.
+        //
+        // When LMB is held, sideways drift decays as the motion vector
+        // rotates toward the nose direction.  "Turn left" means the ship's
+        // travel direction adjusts to match its new facing.
+        // ----------------------------------------------------------------
+        const glm::vec3 facing = t.rotation * glm::vec3(0.f, 1.f, 0.f);
+        const float speed = glm::length(rb.linear_velocity);
+
+        if (speed > 0.1f) {
+            const glm::vec3 vel_dir = rb.linear_velocity / speed;
+            const float dot = glm::clamp(glm::dot(vel_dir, facing), -1.f, 1.f);
+            const float angle = std::acos(dot);
+
+            // Exponential decay toward nose-forward motion.
+            const float align_rate = 2.0f;
+            const float factor = 1.0f - std::exp(-align_rate * dt);
+            const float rot_angle = angle * factor;
+
+            if (rot_angle > 1e-6f) {
+                const glm::vec3 axis = glm::cross(vel_dir, facing);
+                const float axis_len = glm::length(axis);
+                if (axis_len > 1e-6f) {
+                    const glm::quat q_rot = glm::angleAxis(rot_angle, axis / axis_len);
+                    rb.linear_velocity = glm::normalize(q_rot * rb.linear_velocity);
+                    // Preserve speed magnitude — only direction changes.
+                    rb.linear_velocity *= speed;
+                }
+            }
+        }
+
+        // ----------------------------------------------------------------
+        // Thrust and strafe — apply acceleration in local ship space.
         // ----------------------------------------------------------------
         const glm::vec3 forward = t.rotation * glm::vec3(0.f, 1.f, 0.f);
         const glm::vec3 right   = t.rotation * glm::vec3(-1.f, 0.f, 0.f);
 
         const float thrust_accel = constants::player_thrust
             * (boost.active && boost.current > 0.f ? constants::boost_multiplier : 1.f);
-
-        const bool is_thrusting =
-            engine_key_down(SAPP_KEYCODE_W) ||
-            engine_key_down(SAPP_KEYCODE_S) ||
-            engine_key_down(SAPP_KEYCODE_A) ||
-            engine_key_down(SAPP_KEYCODE_D);
 
         if (engine_key_down(SAPP_KEYCODE_W))
             rb.linear_velocity += forward * thrust_accel * dt;
@@ -79,31 +92,15 @@ void player_update(float dt) {
         if (engine_key_down(SAPP_KEYCODE_D))
             rb.linear_velocity += right   * constants::player_strafe * dt;
 
-        // Drag force — only applied when not thrusting, so the player can
-        // accelerate freely.  Uses ForceAccum so Euler integration handles it
-        // correctly across fixed-timestep substeps.
-        if (!is_thrusting) {
-            auto* drag_fb = engine_try_get_component<ForceAccum>(e);
-            if (drag_fb) {
-                drag_fb->force -= constants::player_drag_coeff * rb.linear_velocity;
-            }
-        }
-
         // Kill all angular velocity — player rotation is mouse-controlled only.
         // Physics collisions must not affect the ship's facing direction.
         rb.angular_velocity = glm::vec3(0.f);
 
         // ----------------------------------------------------------------
-        // Boost — hold Space to activate; drain/regen handled in T013
+        // Boost — hold Space to activate; drain/regen handled below
         // ----------------------------------------------------------------
         boost.active = engine_key_down(SAPP_KEYCODE_SPACE);
 
-        // ----------------------------------------------------------------
-        // Boost drain / regen
-        // Drain while held and not empty; regen only when released.
-        // Holding Space with an empty boost bar neither drains nor regens
-        // — the player must release to start recovery.
-        // ----------------------------------------------------------------
         if (boost.active && boost.current > 0.f) {
             boost.current = std::max(0.f,
                 boost.current - constants::boost_drain_rate * dt);
@@ -114,7 +111,6 @@ void player_update(float dt) {
 
         // ----------------------------------------------------------------
         // Shield passive regen — gated by last_damage_time
-        // Regen starts only after shield_regen_delay seconds of no damage.
         // ----------------------------------------------------------------
         const double time_since_hit = engine_now() - sh.last_damage_time;
         if (sh.current < sh.max &&
