@@ -173,6 +173,7 @@ static void on_frame(float dt, void*) {
 
     renderer_begin_frame();
     renderer_set_camera(cam);
+    renderer_set_culling_enabled(g_app.culling_on);
 
     // Directional light
     DirectionalLight light;
@@ -457,6 +458,7 @@ static void on_frame(float dt, void*) {
     {
         int submitted = renderer_get_draw_count();
         int triangles = renderer_get_triangle_count();
+        int culled    = g_app.culling_on ? renderer_get_culled_count() : 0;
 
         ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_Once);
         ImGui::Begin("HUD", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs);
@@ -464,12 +466,13 @@ static void on_frame(float dt, void*) {
             float fps = ImGui::GetIO().Framerate;
             char buf[512];
             snprintf(buf, sizeof(buf),
-                "FPS: %.1f\n"
-                "Draws submitted: %d\n"
-                "Triangles:       %d\n"
-                "Frustum cull:    %s [C]\n"
-                "Shading mode:    %s [L]",
-                fps, submitted, triangles,
+                "FPS:          %.1f\n"
+                "Draws:        %d\n"
+                "Triangles:    %d\n"
+                "Culled:       %d\n"
+                "Frustum cull: %s [C]\n"
+                "Shading mode: %s [L]",
+                fps, submitted, triangles, culled,
                 g_app.culling_on ? "ON" : "OFF",
                 g_app.override == ShadingOverride::Mixed ? "Mixed" :
                 g_app.override == ShadingOverride::AllUnlit ? "AllUnlit" : "AllLambertian");

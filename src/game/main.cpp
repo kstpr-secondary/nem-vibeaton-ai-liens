@@ -2,6 +2,7 @@
 #include <engine.h>
 #include <renderer.h>
 #include <paths.h>
+#include <sokol_app.h>
 #include <cstdio>
 
 // stb_image implementation is already provided by librenderer.a (texture.cpp).
@@ -9,8 +10,15 @@
 #include "stb_image.h"
 
 static bool s_game_inited = false;
+static bool s_culling_on  = true;
 
 static void frame_callback(float dt, void* /*user_data*/) {
+    // Toggle frustum culling with C key (checked via engine's input state).
+    if (engine_key_down(SAPP_KEYCODE_C)) {
+        s_culling_on = !s_culling_on;
+        renderer_set_culling_enabled(s_culling_on);
+        printf("[game] frustum culling: %s\n", s_culling_on ? "ON" : "OFF");
+    }
     renderer_begin_frame();
 
     // game_init must run after sg_setup() (called by sapp_run's init_cb),

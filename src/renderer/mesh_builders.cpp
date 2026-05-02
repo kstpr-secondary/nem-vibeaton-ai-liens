@@ -120,11 +120,44 @@ RendererMeshHandle renderer_upload_mesh(
         return {0};
     }
 
+    // Compute bounding sphere from vertex positions if radius not provided.
+    float center[3] = {0.0f, 0.0f, 0.0f};
+    float max_r_sq  = 0.0f;
+    if (radius <= 0.0f) {
+        // Step 1: compute centroid
+        for (uint32_t i = 0; i < vertex_count; ++i) {
+            center[0] += vertices[i].position[0];
+            center[1] += vertices[i].position[1];
+            center[2] += vertices[i].position[2];
+        }
+        float inv_n = 1.0f / static_cast<float>(vertex_count);
+        center[0] *= inv_n;
+        center[1] *= inv_n;
+        center[2] *= inv_n;
+
+        // Step 2: find max distance from centroid
+        for (uint32_t i = 0; i < vertex_count; ++i) {
+            float dx = vertices[i].position[0] - center[0];
+            float dy = vertices[i].position[1] - center[1];
+            float dz = vertices[i].position[2] - center[2];
+            float d_sq = dx * dx + dy * dy + dz * dz;
+            if (d_sq > max_r_sq) max_r_sq = d_sq;
+        }
+    } else {
+        // Explicit radius given (procedural meshes) — center at origin.
+        s_aabbs[id] = {{0.0f, 0.0f, 0.0f}, radius};
+    }
+
     s_vbufs[id]        = vbuf;
     s_ibufs[id]        = ibuf;
     s_index_counts[id] = index_count;
     s_ref_counts[id]   = 1;
-    s_aabbs[id]        = {{0.0f, 0.0f, 0.0f}, radius};
+    if (radius <= 0.0f) {
+        s_aabbs[id].center[0] = center[0];
+        s_aabbs[id].center[1] = center[1];
+        s_aabbs[id].center[2] = center[2];
+        s_aabbs[id].half      = sqrtf(max_r_sq);
+    }
 
     return { id };
 }

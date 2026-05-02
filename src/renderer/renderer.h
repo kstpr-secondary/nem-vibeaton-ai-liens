@@ -110,9 +110,10 @@ void renderer_shutdown();
 void renderer_begin_frame();
 void renderer_end_frame();
 
-// Query submitted draw count and triangle count for ImGui HUD display.
+// Query submitted draw count, triangle count, and frustum cull count for ImGui HUD display.
 int renderer_get_draw_count();
 int renderer_get_triangle_count();
+int renderer_get_culled_count();
 
 // ---------------------------------------------------------------------------
 // Scene setup (between begin_frame / end_frame)
@@ -121,6 +122,7 @@ int renderer_get_triangle_count();
 void renderer_set_camera(const RendererCamera& camera);
 void renderer_set_directional_light(const DirectionalLight& light);
 void renderer_set_skybox(RendererTextureHandle cubemap);
+void renderer_set_culling_enabled(bool enabled);
 
 // ---------------------------------------------------------------------------
 // Draw submission (between begin_frame / end_frame)
@@ -151,7 +153,7 @@ RendererMeshHandle renderer_upload_mesh(
     uint32_t        vertex_count,
     const uint32_t* indices,
     uint32_t        index_count,
-    float           radius = 1.0f
+    float           radius = 0.0f      // 0.0f = auto-compute from vertex positions
 );
 
 // ---------------------------------------------------------------------------
