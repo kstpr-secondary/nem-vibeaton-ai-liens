@@ -1,6 +1,8 @@
 #pragma once
 
 #include <entt/entt.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <limits>
 
 // ---------------------------------------------------------------------------
@@ -57,6 +59,14 @@ struct Boost {
     float drain_rate = 20.0f;
     float regen_rate = 5.0f;
     bool  active     = false;
+};
+
+struct CameraRigState {
+    glm::quat rig_rotation           = glm::quat(1.f, 0.f, 0.f, 0.f);
+    float     visual_bank            = 0.f;
+    float     collision_roll         = 0.f;
+    float     collision_roll_vel     = 0.f;
+    float     collision_roll_impulse = 0.f;
 };
 
 struct WeaponState {

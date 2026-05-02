@@ -161,6 +161,7 @@ entt::entity spawn_player(const glm::vec3& position) {
     boost.regen_rate     = constants::boost_regen_rate;
 
     engine_add_component<WeaponState>(e);
+    engine_add_component<CameraRigState>(e);
 
     return e;
 }

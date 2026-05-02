@@ -14,9 +14,7 @@
 #include <renderer.h>
 #include <sokol_app.h>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <cmath>
 
 // ---------------------------------------------------------------------------
 // MatchState singleton
@@ -32,60 +30,6 @@ MatchState& get_match_state() {
 
 // Explosion VFX lifetime — how long the death sphere stays visible.
 static constexpr float k_explosion_lifetime = 0.6f;
-
-// ---------------------------------------------------------------------------
-// Roll-stripping — remove physics-induced roll from player Transform.
-//
-// The engine's Euler integration can accumulate roll on the player when
-// collision impulses apply torque (even though angular_velocity is zeroed
-// each frame by player_update, the rotation quaternion already baked in
-// the previous frame's integration).  This function strips roll so the
-// camera offset and model display stay upright.
-//
-// Strategy: rebuild the rotation from an orthonormal frame built from
-// forward (preserves yaw + pitch) and a level-up vector (strips roll).
-// ---------------------------------------------------------------------------
-
-static glm::vec3 strip_player_roll() {
-    auto& reg = engine_registry();
-    auto  view = reg.view<PlayerTag, Transform>();
-    if (view.begin() == view.end())
-        return glm::vec3(0.f, 1.f, 0.f);
-
-    auto& t = view.get<Transform>(*view.begin());
-
-    // Current forward direction — encodes both yaw and pitch.
-    glm::vec3 fwd = t.rotation * glm::vec3(0.f, 1.f, 0.f);
-    fwd = glm::normalize(fwd);
-
-    // Project world-up onto the plane perpendicular to forward.
-    // This gives a "level" up vector — perpendicular to forward, no roll.
-    const glm::vec3 world_up(0.f, 1.f, 0.f);
-    const float dot = glm::dot(world_up, fwd);
-
-    if (glm::abs(dot) > 0.999f) {
-        // Forward is nearly vertical — yaw undefined from forward alone.
-        // Use the existing rotation's Y/W components to estimate yaw.
-        const float yaw = 2.0f * std::atan2(t.rotation.y, t.rotation.w);
-        t.rotation = glm::angleAxis(yaw, glm::vec3(0.f, 1.f, 0.f));
-    } else {
-        // Level up: remove the component parallel to forward.
-        const glm::vec3 level_up = glm::normalize(world_up - fwd * dot);
-
-        // Right is perpendicular to both forward and level-up.
-        const glm::vec3 right = glm::normalize(glm::cross(fwd, level_up));
-
-        // Recompose rotation from orthonormal frame.
-        // Columns: right (model X), fwd (model Y = forward), level_up (model Z).
-        // This preserves yaw (from forward's XZ direction) and pitch
-        // (from forward's angle above/below horizontal), while removing roll.
-        const glm::mat3 R(right, fwd, level_up);
-        t.rotation = glm::normalize(glm::quat(R));
-    }
-
-    // Return roll-stripped forward for camera positioning.
-    return t.rotation * glm::vec3(0.f, 1.f, 0.f);
-}
 
 // ---------------------------------------------------------------------------
 // render_submit — called each frame from game_tick
@@ -290,26 +234,21 @@ void game_init() {
 }
 
 void game_tick(float dt) {
-    player_update(dt);          // 1. flight controls — mouse look, velocity align, thrust
-    engine_tick(dt);            // 2. physics, collision, entity cleanup
-    containment_update();       // 3. boundary reflection + speed cap
-    enemy_ai_update(dt);        // 4. seek player, fire plasma on cooldown
-    weapon_update(dt);          // 5. fire processing, cooldown advancement
-    projectile_update(dt);      // 6. lifetime check, despawn expired
-    damage_resolve();           // 7. collision + weapon damage → shield/HP
-    enemy_death_update();       // T021: detect dead enemies, spawn explosion
-    vfx_cleanup();              // expire short-lived VFX entities
-    match_state_update(dt);     // T024: phase transitions, win/loss, auto-restart
-    handle_restart_quit_input(); // T026: manual restart (Enter) and quit (Esc)
-
-    // Strip roll from player Transform — physics integration can bake in
-    // unwanted rotation from collision impulses.  Returns the clean forward
-    // vector for camera positioning.
-    const glm::vec3 clean_forward = strip_player_roll();
-
-    camera_rig_update(dt, clean_forward);   // 9. follow player with offset + lag
-    render_submit();            // 10. enqueue_draw for all visible entities
-    hud_render();               // 11. ImGui widgets + overlays
+    player_update(dt);          // 1. WASD thrust/strafe only — NO rotation code
+    camera_rig_input(dt);       // 2. mouse → rig_rotation; writes t.rotation = rig_rotation * roll_quat
+    engine_tick(dt);            // 3. physics integration + collision resolution
+    damage_resolve();           // 4. collision + weapon damage → shield/HP, writes collision_roll_impulse
+    containment_update();       // 5. boundary reflection + speed cap
+    enemy_ai_update(dt);        // 6. seek player, fire plasma on cooldown
+    weapon_update(dt);          // 7. fire processing, cooldown advancement
+    projectile_update(dt);      // 8. lifetime check, despawn expired
+    enemy_death_update();       // 9. detect dead enemies, spawn explosion
+    vfx_cleanup();              // 10. expire short-lived VFX entities
+    match_state_update(dt);     // 11. phase transitions, win/loss, auto-restart
+    handle_restart_quit_input();// 12. manual restart (Enter) and quit (Esc)
+    camera_rig_finalize(dt);    // 13. overwrite t.rotation, spring bank/roll, position camera
+    render_submit();            // 14. enqueue_draw for all visible entities
+    hud_render();               // 15. ImGui widgets + overlays
 }
 
 void game_shutdown() {

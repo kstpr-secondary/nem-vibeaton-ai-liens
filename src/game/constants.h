@@ -108,6 +108,20 @@ constexpr float  cam_offset_up         = 10.0f;    // units above player
 constexpr float  cam_lag_factor        = 8.0f;     // lerp rate (higher = tighter follow)
 
 // ---------------------------------------------------------------------------
+// Camera rig V2
+// ---------------------------------------------------------------------------
+
+constexpr float  cam_turn_rate          = 0.6f;    // rad/sec per unit of mouse delta
+constexpr float  cam_look_ahead         = 25.0f;   // units ahead of ship that camera aims at
+constexpr float  cam_look_up_bias       = 8.0f;    // units above look-ahead point (ships toward screen bottom)
+constexpr float  visual_bank_gain       = 0.35f;   // radians of bank per pixel/sec of lateral steering
+constexpr float  visual_bank_max        = 0.55f;   // radians (~31°) maximum bank angle
+constexpr float  visual_bank_spring     = 5.0f;    // spring rate for bank return (rad/sec²/rad)
+constexpr float  collision_roll_gain    = 0.008f;  // radians of roll per unit of KE impulse
+constexpr float  collision_roll_max     = 1.0f;    // radians max collision roll
+constexpr float  collision_roll_spring  = 3.5f;    // spring rate for collision roll return
+
+// ---------------------------------------------------------------------------
 // Match state / timers
 // ---------------------------------------------------------------------------
 

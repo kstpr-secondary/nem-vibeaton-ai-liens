@@ -59,13 +59,14 @@ void damage_resolve() {
     // ensures we fire once per contact: the next frame the bodies are separating
     // so the condition fails naturally.
 
-    auto player_view   = reg.view<PlayerTag,   Transform, RigidBody, Collider, Health>();
+    auto player_view   = reg.view<PlayerTag,   Transform, RigidBody, Collider, Health, CameraRigState>();
     auto asteroid_view = reg.view<AsteroidTag, Transform, RigidBody, Collider>();
 
     for (auto pe : player_view) {
         const auto& pt  = player_view.get<Transform>(pe);
         const auto& prb = player_view.get<RigidBody>(pe);
         const auto& pc  = player_view.get<Collider>(pe);
+        auto&       crs  = player_view.get<CameraRigState>(pe);
 
         for (auto ae : asteroid_view) {
             const auto& at  = asteroid_view.get<Transform>(ae);
@@ -95,6 +96,11 @@ void damage_resolve() {
             const float dmg  = ke * constants::kinetic_damage_scale;
 
             apply_damage(pe, dmg);
+
+            // Feed collision visual roll to camera rig.
+            glm::vec3 rig_right = crs.rig_rotation * glm::vec3(-1.f, 0.f, 0.f);
+            float roll_sign     = glm::dot(sep_dir, rig_right);
+            crs.collision_roll_impulse += roll_sign * ke;
         }
     }
 

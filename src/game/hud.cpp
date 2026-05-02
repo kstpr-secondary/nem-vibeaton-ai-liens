@@ -89,34 +89,17 @@ void hud_render() {
 
     ImGui::End();
 
-    // --- Centered crosshair ---
-    const float cx = static_cast<float>(sapp_width())  * 0.5f;
-    const float cy = static_cast<float>(sapp_height()) * 0.5f;
-    const float cross_size = 12.0f;
-    const float cross_gap  = 4.0f;
-
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImVec2(static_cast<float>(sapp_width()),
-                                     static_cast<float>(sapp_height())));
-    ImGui::Begin("##crosshair", nullptr,
-                 ImGuiWindowFlags_NoTitleBar |
-                 ImGuiWindowFlags_NoResize |
-                 ImGuiWindowFlags_NoMove |
-                 ImGuiWindowFlags_NoScrollbar |
-                 ImGuiWindowFlags_NoBackground |
-                 ImGuiWindowFlags_NoInputs);
-
-    ImDrawList* draw = ImGui::GetWindowDrawList();
-    const ImU32 col = IM_COL32(255, 255, 255, 200);
-    const float thickness = 2.0f;
-
-    // Four lines around center.
-    draw->AddLine(ImVec2(cx - cross_size, cy), ImVec2(cx - cross_gap, cy), col, thickness);
-    draw->AddLine(ImVec2(cx + cross_gap, cy), ImVec2(cx + cross_size, cy), col, thickness);
-    draw->AddLine(ImVec2(cx, cy - cross_size), ImVec2(cx, cy - cross_gap), col, thickness);
-    draw->AddLine(ImVec2(cx, cy + cross_gap), ImVec2(cx, cy + cross_size), col, thickness);
-
-    ImGui::End();
+   // --- Centered crosshair (foreground, always on top) ---
+    auto* dl = ImGui::GetForegroundDrawList();
+    const float cx = sapp_width()  * 0.5f;
+    const float cy = sapp_height() * 0.5f;
+    const float arm = 10.f;
+    const float gap = 3.f;
+    ImU32 col = IM_COL32(255, 255, 255, 200);
+    dl->AddLine({cx - arm - gap, cy}, {cx - gap, cy}, col, 1.5f);
+    dl->AddLine({cx + gap, cy}, {cx + arm + gap, cy}, col, 1.5f);
+    dl->AddLine({cx, cy - arm - gap}, {cx, cy - gap}, col, 1.5f);
+    dl->AddLine({cx, cy + gap}, {cx, cy + arm + gap}, col, 1.5f);
 
     // --- Terminal overlays (win / death) ---
     const MatchState& ms = get_match_state();
