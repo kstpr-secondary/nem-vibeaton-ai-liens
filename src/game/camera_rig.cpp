@@ -2,6 +2,9 @@
 #include "components.h"
 #include "constants.h"
 #include <engine.h>
+#include "math_utils.h"
+#include <sokol_app.h>
+
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
@@ -11,6 +14,12 @@ static entt::entity s_camera       = entt::null;
 static entt::entity s_player       = entt::null;
 static glm::vec3    s_cam_position = {0.f, 0.f, 0.f};
 static glm::vec3    s_aim_point    = {0.f, 0.f, 0.f};
+
+// Cached VP matrices and cursor ray for aiming (computed in camera_rig_input).
+static glm::mat4 s_view_mat  = glm::mat4(1.f);
+static glm::mat4 s_proj_mat  = glm::mat4(1.f);
+static glm::vec3 s_cursor_ray_origin = glm::vec3(0.f);
+static glm::vec3 s_cursor_ray_dir    = glm::vec3(0.f, 1.f, 0.f);
 
 // ── camera_rig_init ──────────────────────────────────────────────────────────
 
@@ -65,6 +74,35 @@ void camera_rig_input(float dt) {
 
     // Write ship Transform — no roll yet, just rig orientation.
     t.rotation = crs.rig_rotation;
+
+    // ── Cache VP and cursor ray for this frame ───────────────────────────
+    {
+        auto& reg = engine_registry();
+        const auto& cam_t  = reg.get<Transform>(s_camera);
+        const auto& cam_c  = reg.get<Camera>(s_camera);
+
+        const float w = sapp_widthf();
+        const float h = sapp_heightf();
+
+        s_view_mat = make_view_matrix(cam_t);
+        s_proj_mat = glm::perspective(glm::radians(cam_c.fov),
+                                      (h > 0.f ? w / h : 1.f),
+                                      cam_c.near_plane, cam_c.far_plane);
+
+        const glm::vec2 mouse = engine_mouse_position();
+
+        const float ndcX = (mouse.x / w) * 2.f - 1.f;
+        const float ndcY = 1.f - (mouse.y / h) * 2.f;
+
+        const glm::mat4 inv_vp = glm::inverse(s_proj_mat * s_view_mat);
+        const glm::vec4 near_h = inv_vp * glm::vec4(ndcX, ndcY, -1.f, 1.f);
+        const glm::vec4 far_h  = inv_vp * glm::vec4(ndcX, ndcY,  1.f, 1.f);
+        const glm::vec3 near_w = glm::vec3(near_h) / near_h.w;
+        const glm::vec3 far_w  = glm::vec3(far_h)  / far_h.w;
+
+        s_cursor_ray_origin = near_w;
+        s_cursor_ray_dir    = glm::normalize(far_w - near_w);
+    }
 }
 
 // ── camera_rig_finalize (step 13 of game_tick) ───────────────────────────────
@@ -158,4 +196,16 @@ void camera_rig_finalize(float dt) {
 
 glm::vec3 camera_rig_aim_point() {
     return s_aim_point;
+}
+
+// ── Cursor ray and VP accessors (public API) ─────────────────────────────────
+
+void camera_rig_cursor_ray(glm::vec3& out_origin, glm::vec3& out_dir) {
+    out_origin = s_cursor_ray_origin;
+    out_dir    = s_cursor_ray_dir;
+}
+
+void camera_rig_get_vp(glm::mat4& out_view, glm::mat4& out_proj) {
+    out_view = s_view_mat;
+    out_proj = s_proj_mat;
 }

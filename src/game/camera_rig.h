@@ -17,3 +17,12 @@ void camera_rig_finalize(float dt);
 // Used by weapons to fire toward the crosshair, not along the ship nose.
 // Returns player_pos + rig_fwd * cam_look_ahead if called before finalize() runs.
 glm::vec3 camera_rig_aim_point();
+
+// Returns the world-space ray origin and direction corresponding to the
+// current mouse cursor position. Computed in camera_rig_input(); valid
+// from step 2 onward (used by weapons at step 7).
+void camera_rig_cursor_ray(glm::vec3& out_origin, glm::vec3& out_dir);
+
+// Returns the cached view and projection matrices from this frame's
+// camera_rig_input() call. Used by hud.cpp for world-to-screen projection.
+void camera_rig_get_vp(glm::mat4& out_view, glm::mat4& out_proj);

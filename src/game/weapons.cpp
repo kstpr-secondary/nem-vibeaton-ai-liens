@@ -31,27 +31,28 @@ bool weapon_ready(const WeaponState& ws) {
 // ---------------------------------------------------------------------------
 
 static void laser_fire(entt::entity player_e,
-                         const Transform& t,
-                         WeaponState& ws) {
-    const glm::vec3 aim_point = camera_rig_aim_point();
-    const glm::vec3 forward   = glm::normalize(aim_point - t.position);
-    const glm::vec3 origin    = t.position;
+                          const Transform& t,
+                          WeaponState& ws) {
+    glm::vec3 ray_origin, ray_dir;
+    camera_rig_cursor_ray(ray_origin, ray_dir);
 
-    glm::vec3 end = origin + forward * constants::laser_max_range;
+    const glm::vec3 origin = t.position;
 
-    const auto hit = engine_raycast(origin, forward, constants::laser_max_range);
+    // Beam always renders to max range (pass-through visual), damage only
+    // applies to the first entity along the ray.
+    const glm::vec3 end = origin + ray_dir * constants::laser_max_range;
+
+    const auto hit = engine_raycast(origin, ray_dir, constants::laser_max_range);
     if (hit.has_value() && hit->entity != player_e) {
-        end = hit->point;
-
         // Damage target (shield → HP).
         apply_damage(hit->entity, ws.laser_damage);
 
         // Extra impulse for asteroid hits — kick them away from the laser.
         if (engine_has_component<AsteroidTag>(hit->entity))
-            engine_apply_impulse(hit->entity, forward * k_laser_impulse);
+            engine_apply_impulse(hit->entity, ray_dir * k_laser_impulse);
     }
 
-    // Render beam from muzzle to hit point (or max range on miss).
+    // Render beam from muzzle to max range.
     const float p0[3] = {origin.x, origin.y, origin.z};
     const float p1[3] = {end.x,    end.y,    end.z   };
     renderer_enqueue_line_quad(p0, p1, constants::laser_line_width, k_laser_color);
@@ -67,13 +68,17 @@ static void laser_fire(entt::entity player_e,
 static constexpr float k_ship_half = 1.5f;
 
 static void plasma_fire(entt::entity player_e,
-                            const Transform& t,
-                            WeaponState& ws) {
-    const glm::vec3 aim_point = camera_rig_aim_point();
-    const glm::vec3 forward   = glm::normalize(aim_point - t.position);
-    const glm::vec3 spawn_pos = t.position
-        + forward * (k_ship_half + constants::plasma_sphere_radius + 0.1f);
-    const glm::vec3 velocity  = forward * ws.plasma_speed;
+                             const Transform& t,
+                             WeaponState& ws) {
+    glm::vec3 ray_origin, ray_dir;
+    camera_rig_cursor_ray(ray_origin, ray_dir);
+
+    // Spawn position: slightly in front of ship nose along ship forward axis.
+    const glm::vec3 rig_forward = t.rotation * glm::vec3(0.f, 1.f, 0.f);
+    const glm::vec3 spawn_pos   = t.position
+        + rig_forward * (k_ship_half + constants::plasma_sphere_radius + 0.1f);
+    // Projectile velocity follows the cursor ray direction.
+    const glm::vec3 velocity    = ray_dir * ws.plasma_speed;
 
     spawn_projectile(player_e, spawn_pos, velocity);
     ws.plasma_last_fire = engine_now();

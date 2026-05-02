@@ -208,6 +208,8 @@ entt::entity spawn_enemy(const glm::vec3& position) {
     ai.fire_range        = constants::enemy_fire_range;
     ai.fire_cooldown     = constants::enemy_fire_cooldown;
 
+    engine_registry().emplace<Interactable>(e);
+
     return e;
 }
 
@@ -262,6 +264,8 @@ entt::entity spawn_asteroid(const glm::vec3& position,
     engine_registry().emplace<AsteroidTag>(e);
     auto& ad             = engine_add_component<AsteroidData>(e);
     ad.size_tier         = tier;
+
+    engine_registry().emplace<Interactable>(e);
 
     return e;
 }

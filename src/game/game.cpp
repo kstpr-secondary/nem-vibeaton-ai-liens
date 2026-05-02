@@ -231,6 +231,10 @@ void game_init() {
     engine_add_component<Camera>(cam_e);
 
     camera_rig_init(cam_e);
+
+    // Hide OS cursor — we draw our own crosshair at the cursor position.
+    sapp_show_mouse(false);
+    sapp_lock_mouse(false);
 }
 
 void game_tick(float dt) {

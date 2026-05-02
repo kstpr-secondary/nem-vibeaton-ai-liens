@@ -48,9 +48,9 @@ constexpr float  laser_line_width      = 0.15f;    // visual quad width (units)
 // Weapons — plasma
 // ---------------------------------------------------------------------------
 
-constexpr float  plasma_damage         = 0.5f;
+constexpr float  plasma_damage         = 1.0f;
 constexpr float  plasma_cooldown       = 0.1f;     // seconds (~10 shots/sec)
-constexpr float  plasma_speed          = 200.0f;   // units/sec
+constexpr float  plasma_speed          = 80.0f;    // units/sec
 constexpr float  plasma_lifetime       = 3.0f;     // seconds before auto-despawn
 constexpr float  plasma_sphere_radius  = 0.4f;     // projectile mesh radius (units)
 
