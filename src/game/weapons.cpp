@@ -31,12 +31,13 @@ bool weapon_ready(const WeaponState& ws) {
 // ---------------------------------------------------------------------------
 
 static void laser_fire(entt::entity player_e,
-                          const Transform& t,
-                          WeaponState& ws) {
+                           WeaponState& ws) {
     glm::vec3 ray_origin, ray_dir;
     camera_rig_cursor_ray(ray_origin, ray_dir);
 
-    const glm::vec3 origin = t.position;
+    // Use the cursor ray origin (camera near-plane) so damage volume matches
+    // what the crosshair shows.  One frame of latency is imperceptible at 60 fps.
+    const glm::vec3 origin = ray_origin;
 
     // Beam always renders to max range (pass-through visual), damage only
     // applies to the first entity along the ray.
@@ -125,7 +126,7 @@ void weapon_update(float dt) {
         // --- Fire -----------------------------------------------------------
         if (fire && weapon_ready(ws)) {
             if (ws.active_weapon == WeaponType::Laser)
-                laser_fire(e, t, ws);
+                laser_fire(e, ws);
             else if (ws.active_weapon == WeaponType::Plasma)
                 plasma_fire(e, t, ws);
         }

@@ -57,21 +57,24 @@ void hud_render() {
 
     // HP bar (red)
     const float hp_frac = hp.current / hp.max;
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.8f, 0.15f, 0.15f, 1.0f));
     ImGui::TextUnformatted("HP");
     ImGui::ProgressBar(hp_frac, ImVec2(k_bar_width, k_bar_height), "");
-    ImGui::GetStyle().Colors[ImGuiCol_PlotHistogram] = ImVec4(0.8f, 0.15f, 0.15f, 1.0f);
+    ImGui::PopStyleColor();
 
     // Shield bar (blue)
     const float sh_frac = sh.current / sh.max;
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.15f, 0.3f, 0.85f, 1.0f));
     ImGui::TextUnformatted("Shield");
     ImGui::ProgressBar(sh_frac, ImVec2(k_bar_width, k_bar_height), "");
-    ImGui::GetStyle().Colors[ImGuiCol_PlotHistogram] = ImVec4(0.15f, 0.3f, 0.85f, 1.0f);
+    ImGui::PopStyleColor();
 
     // Boost bar (yellow)
     const float boost_frac = boost.current / boost.max;
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.9f, 0.85f, 0.1f, 1.0f));
     ImGui::TextUnformatted("Boost");
     ImGui::ProgressBar(boost_frac, ImVec2(k_bar_width, k_bar_height), "");
-    ImGui::GetStyle().Colors[ImGuiCol_PlotHistogram] = ImVec4(0.9f, 0.85f, 0.1f, 1.0f);
+    ImGui::PopStyleColor();
 
     ImGui::End();
 

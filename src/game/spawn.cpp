@@ -8,8 +8,8 @@
 #include <cstring>
 
 // Model paths (relative to ASSET_ROOT).
-static constexpr const char* k_player_model    = "spaceship1.glb";
-static constexpr const char* k_enemy_model     = "spaceship1.glb";
+static constexpr const char* k_player_model    = "spaceship1_mod2.glb";
+static constexpr const char* k_enemy_model     = "spaceship1_mod2.glb";
 
 static constexpr const char* k_asteroid_models[] = {
     "Asteroid_1a.glb",
