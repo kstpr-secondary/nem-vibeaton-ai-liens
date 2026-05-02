@@ -70,11 +70,13 @@ struct RendererState {
     LineQuadCommand line_quad_queue[256];
     int             line_quad_count  = 0;
 
-    // Triangle count (sum of index_count/3 per draw call) — reset each frame
-    int triangle_count = 0;
-
-    // Frustum cull count — reset each frame
-    int cull_count = 0;
+    // Triangle count and cull count — updated at end of end_frame().
+    // Accessors return the PREVIOUS frame's value so the HUD (built before end_frame)
+    // shows meaningful numbers rather than 0.
+    int triangle_count      = 0;
+    int prev_triangle_count = 0;
+    int cull_count          = 0;
+    int prev_cull_count     = 0;
 
     // Frustum culling toggle
     bool culling_enabled = true;
@@ -376,12 +378,14 @@ void renderer_shutdown() {
 
 void renderer_begin_frame() {
     assert(!state.frame_active && "renderer_begin_frame called while frame already active");
-    state.frame_active    = true;
-    state.draw_count      = 0;
-    state.line_quad_count = 0;
-    state.triangle_count  = 0;
-    state.cull_count      = 0;
-    state.camera_set      = false;
+    state.frame_active          = true;
+    state.draw_count            = 0;
+    state.line_quad_count       = 0;
+    state.prev_triangle_count   = state.triangle_count;
+    state.prev_cull_count       = state.cull_count;
+    state.triangle_count        = 0;
+    state.cull_count            = 0;
+    state.camera_set            = false;
     state.light_set       = false;
 
     simgui_frame_desc_t simgui_fd = {};
@@ -423,29 +427,29 @@ void renderer_end_frame() {
     // --- AABB-frustum culling + front-to-back sort (R-M6) --------------------
     int opaque_total = 0;
 
-    // Collect opaque indices and compute view-space Z for sorting
+    // Collect opaque indices and compute view-space Z for sorting.
+    // draw_z[i] is keyed by DRAW-QUEUE index i so the sort lambda's a/b (draw-queue indices)
+    // look up the right values.  View-space Z is negative for objects in front of the
+    // camera (GL convention); ascending sort = nearest-first (front-to-back).
     int opaque_indices[1024];
-    float view_z[1024];
+    float draw_z[1024] = {};
     glm::mat4 view_mat = state.camera_set ? glm::make_mat4(state.camera.view) : glm::mat4(1.0f);
     {
-        glm::vec3 cam_pos(view_mat[3][0], view_mat[3][1], view_mat[3][2]);
-
         for (int i = 0; i < state.draw_count; ++i) {
             const DrawCommand& cmd = state.draw_queue[i];
             if (cmd.material.alpha >= 1.0f) {
                 opaque_indices[opaque_total] = i;
-
                 glm::mat4 model = glm::make_mat4(cmd.world_transform);
                 glm::vec3 world_pos(model[3][0], model[3][1], model[3][2]);
-                view_z[opaque_total] = static_cast<float>(glm::distance(cam_pos, world_pos));
+                draw_z[i] = (view_mat * glm::vec4(world_pos, 1.0f)).z;
                 ++opaque_total;
             }
         }
     }
 
-    // Front-to-back sort (nearest first) for cache efficiency
+    // Front-to-back sort (nearest first) for early-Z efficiency
     std::sort(opaque_indices, opaque_indices + opaque_total,
-              [&view_z](int a, int b) { return view_z[a] < view_z[b]; });
+              [&draw_z](int a, int b) { return draw_z[a] < draw_z[b]; });
 
     // --- Pre-compute cull status for EACH opaque entry ONCE --------------------
     // Both draw loops iterate the same sorted array; calling is_culled() twice
@@ -701,22 +705,32 @@ void renderer_end_frame() {
           sg_apply_pipeline(state.pipeline_line_quad);
 
           if (!line_quad_bufs_init) {
-              static uint32_t line_quad_indices[6] = { 0, 1, 2, 0, 2, 3 };
+              // Pre-build indices for all 256 quads: quad q uses vertices [4q, 4q+1, 4q+2, 4q+3].
+              uint32_t line_quad_indices[256 * 6];
+              for (int q = 0; q < 256; ++q) {
+                  uint32_t b = (uint32_t)q * 4;
+                  line_quad_indices[q*6+0] = b;
+                  line_quad_indices[q*6+1] = b+1;
+                  line_quad_indices[q*6+2] = b+2;
+                  line_quad_indices[q*6+3] = b;
+                  line_quad_indices[q*6+4] = b+2;
+                  line_quad_indices[q*6+5] = b+3;
+              }
 
               const int max_verts = 256 * 4;
               sg_buffer_desc vdesc = {};
-              vdesc.size           = sizeof(LineQuadVertex) * max_verts;
+              vdesc.size                = sizeof(LineQuadVertex) * max_verts;
               vdesc.usage.vertex_buffer = true;
-              vdesc.usage.stream_update   = true;
+              vdesc.usage.stream_update = true;
               vdesc.label               = "line-quad-vbuf";
               line_quad_vbuf = sg_make_buffer(&vdesc);
 
               sg_buffer_desc idesc = {};
-              idesc.size           = sizeof(line_quad_indices);
-              idesc.usage.index_buffer  = true;
-              idesc.usage.immutable     = true;
-              idesc.data                = SG_RANGE(line_quad_indices);
-              idesc.label               = "line-quad-ibuf";
+              idesc.size            = sizeof(line_quad_indices);
+              idesc.usage.index_buffer = true;
+              idesc.usage.immutable    = true;
+              idesc.data               = { line_quad_indices, sizeof(line_quad_indices) };
+              idesc.label              = "line-quad-ibuf";
               line_quad_ibuf = sg_make_buffer(&idesc);
 
               line_quad_bufs_init = true;
@@ -744,9 +758,7 @@ void renderer_end_frame() {
           bind.index_buffer      = line_quad_ibuf;
           sg_apply_bindings(&bind);
 
-          for (int i = 0; i < state.line_quad_count; ++i) {
-               sg_draw(i * 4, 4, 1);
-          }
+          sg_draw(0, state.line_quad_count * 6, 1);
         }
 
     // Compute total triangle count for the frame (from draw_queue only, not line quads).
@@ -779,11 +791,11 @@ int renderer_get_draw_count() {
 }
 
 int renderer_get_triangle_count() {
-    return state.triangle_count;
+    return state.prev_triangle_count;
 }
 
 int renderer_get_culled_count() {
-    return state.cull_count;
+    return state.prev_cull_count;
 }
 
 void renderer_set_camera(const RendererCamera& camera) {

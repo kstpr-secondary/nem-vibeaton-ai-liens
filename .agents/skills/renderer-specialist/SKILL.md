@@ -187,6 +187,8 @@ Sequenced summaries — consult domain skills for details.
 - **Input callbacks must be re-entrancy-safe** — `sokol_app` may deliver events across begin/end boundaries; keep dispatch thin.
 - **Mesh builders live here.** If the engine duplicates them, that is a cross-workstream bug — flag it.
 - **`renderer_app` is not the game.** Keep its scene minimal and procedural — it is a demo harness, not shipped code.
+- **Matrix algorithms from references assume row-major; GLM is column-major.** Any algorithm described with "row i" of a matrix must be translated to GLM's `M[col][row]` indexing: row k = `(M[0][k], M[1][k], M[2][k], M[3][k])`. When a matrix-based algorithm produces geometrically inverted or scrambled results and the formula looks right, the first hypothesis is a row/column transposition — check whether you are reading columns where the formula expects rows, or vice versa.
+- **Per-frame stats need previous-frame buffering.** Any counter reset in `begin_frame` and computed in `end_frame` reads as 0 if queried between the two (e.g., ImGui HUD built mid-frame). Pattern: save `prev_stat = stat` in `begin_frame` before resetting; accessors return `prev_stat`. Counters incremented during the frame (e.g., draw count via `enqueue_draw`) are safe to read live.
 
 ---
 
