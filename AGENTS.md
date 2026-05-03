@@ -8,13 +8,11 @@
 
 ## 1. What we are building
 
-Three C++17 projects, one repo, built from scratch in a 5–6 hour hackathon:
+Three C++17 projects, one repo, initial prototype built from scratch during a 4 hour hackathon, currently developing further:
 
 1. **Rendering engine** (`src/renderer/`) — forward, OpenGL 3.3 Core via `sokol_gfx`; owns `sokol_app` init and the main frame callback.
 2. **Game engine** (`src/engine/`) — ECS (`entt`), asset import (`cgltf`/`tinyobjloader`), Euler physics, AABB collision, raycast. Ticks from inside the renderer frame callback.
 3. **Game** (`src/game/`) — 3D space shooter. Consumes the game-engine public API.
-
-**Priorities, in order:** behavioral correctness → milestone predictability → integration discipline → speed. Elegance and extensibility are explicitly deprioritized. Speed over long-term maintainability. Every line of C++ is AI-generated under human supervision.
 
 ---
 
@@ -118,7 +116,6 @@ Workstream `TASKS.md` files are authoritative **on their feature branches**. Cro
 
 - **Frozen interfaces** (`docs/interfaces/*-interface-spec.md`) are contracts between workstreams. Never edit them to make your code compile; instead, flag a blocker and wait for human approval. Tasks that touch a frozen interface must set `Depends_on` to the interface spec version.
 - **Milestone-ready** means (all of): acceptance checklist met, required validation complete, human behavioral check done. Only then does the feature branch merge.
-- **Target cadence:** ~1 milestone merge per hour per workstream (~5 per workstream over the hackathon).
 
 ---
 
