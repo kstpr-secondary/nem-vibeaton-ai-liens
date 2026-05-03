@@ -448,25 +448,64 @@ the hard step between the two quad widths, which is visually acceptable and matc
 sci-fi laser aesthetics. If a smoother UV gradient is desired in future, a dedicated shader
 can be added later without changing the API.
 
-### 3.6 Laser Charging Mechanic Design
+### 3.6 Laser Mechanic Design
 
-**Chosen: hold-to-charge, auto-fire at charge completion.**
+**Hold-to-charge → continuous fire → depletion glow-down.**
 
-- Player holds right-mouse (press edge): if weapon is Laser and `weapon_ready()`: add
-  `LaserCharge { charge_start = engine_now(), charge_time = constants::laser_charge_time }`.
-- While charging (age < `laser_charge_time = 0.8s`):
-  - Submit dim aiming beam each frame (aiming beam opacity = `(age/charge_time) * 0.35`).
-  - No damage yet.
-  - If player releases right-mouse before charge completes: remove `LaserCharge`, no fire.
-- When age >= `laser_charge_time`:
-  - Execute `laser_fire_instant()`: raycast, apply damage, apply impulse.
-  - Remove `LaserCharge`. Add `LaserBeam` component. Update cooldown.
-- Every frame in `laser_update()` (unconditional, not input-gated):
-  - Entities with `LaserBeam`: age = `engine_now() - lb.fire_time`.  
-    If age >= `lb.duration`: remove component. Otherwise:  
-    `opacity = (1.0f - age / lb.duration) * (1.0f + 0.3f * sinf(age * 30.0f))`
-    — provides a warm flicker in the first ~0.3s.
-  - Submit full brightness beam (two additive line quads, per Section 3.5).
+The laser is a sustained-damage weapon that rewards steady aim on a maneuvering target, not
+a point-and-click sniper. The full cycle:
+
+```
+[ idle ] →(hold RMB, weapon ready)→ [ charging ] →(charge complete)→ [ firing ]
+                                          ↓(release RMB early)             ↓(release RMB early)
+                                       [ cancelled ]                   [ fading ]
+                                                                            ↑(fire_duration expired)
+                                                                         [ fading ]
+                                                                            ↓(fade complete)
+                                                                         [ cooldown ] → [ idle ]
+```
+
+#### States and transitions
+
+**Charging phase** (`LaserCharge` component present):
+- Triggered by right-mouse press-edge, only if `weapon_ready()` (no cooldown active).
+- Each frame: submit a dim, growing aiming beam.
+  ```
+  opacity = (age / laser_charge_time) * 0.40
+  core_width = laser_core_width * 0.5,  halo_width = laser_halo_width * 0.7
+  ```
+- If right-mouse released before `laser_charge_time (0.8s)` elapses: remove `LaserCharge`.
+  No beam, no cooldown — player just cancelled their charge.
+- When `age >= laser_charge_time`: remove `LaserCharge`, add `LaserBeam` (firing phase begins).
+  Start the cooldown timer now (`ws.laser_last_fire = engine_now()`).
+
+**Firing phase** (`LaserBeam` present, `fire_age < lb.fire_duration`):
+- Each frame: raycast from `muzzle_origin` along cursor ray direction.
+- If hit (not self):
+  - `apply_damage(hit_entity, constants::laser_dps * dt)` — damage per second, scaled by dt.
+  - If `AsteroidTag`: `engine_apply_impulse(hit_entity, ray_dir * constants::laser_impulse_per_second * dt)`.
+  - If hit entity changed since last frame (`hit->entity != lb.last_hit_entity`): spawn
+    appropriate impact VFX at the beam endpoint (Section 3.7 / 3.9). Update `lb.last_hit_entity`.
+  - Update `lb.end` to hit point each frame (player must actively track the target).
+- If no hit: `lb.end = muzzle_origin + ray_dir * laser_max_range`. Set `lb.last_hit_entity = entt::null`.
+- If right-mouse released early: clamp `lb.fire_duration = fire_age` to immediately begin fading.
+- Submit full-brightness beam:
+  ```
+  opacity = min(1.0f, fire_age * 8.0f)  // 0.125s ramp-up from zero
+           * (1.0f + 0.04f * sinf(fire_age * 25.0f))  // subtle flicker
+  ```
+
+**Fading phase** (`LaserBeam` present, `fire_age >= lb.fire_duration`):
+- No raycast, no damage. `lb.end` stays fixed at its last-frame position.
+- `lb.last_hit_entity` set to `entt::null`.
+- Compute `fade_t = (fire_age - lb.fire_duration) / lb.fade_duration`.
+- Submit fading beam: `opacity = 1.0f - fade_t`.
+- When `fade_t >= 1.0f`: remove `LaserBeam`. Cooldown is already running (was started at
+  the charge→fire transition). Weapon is "recharging" — player sees `weapon_ready() == false`.
+
+**Cooldown**: `ws.laser_cooldown` seconds. Unchanged from existing `weapon_ready()` logic.
+The cooldown starts at the moment firing begins (not at depletion), so the player waits the
+full cooldown period after each use even if they release early.
 
 ### 3.7 Shield Sphere System
 
@@ -485,15 +524,17 @@ The user requirement: *projectiles/laser must collide with the shield sphere, NO
   If overlap AND `sh.current > 0`: apply damage, `spawn_shield_impact(projectile_pos)`,
   mark projectile DestroyPending. Do NOT fall through to AABB-vs-mesh stage.  
   If `sh.current == 0`: fall through to original AABB overlap (hull hit).
-- Laser-vs-shielded-entity in `laser_fire_instant()`: after raycast hit, if target has
-  `Shield.current > 0`, compute hit point on shield surface:
+- Laser-vs-shielded-entity — handled per-frame inside `laser_update()` (firing phase):
+  after each raycast hit, if target has `Shield.current > 0`, compute hit point on shield
+  surface:
   ```cpp
   float shield_r = col.half_extents.x * constants::shield_sphere_scale;
   float t = sphere_intersect_t(muzzle_origin, ray_dir, target_pos, shield_r);
   glm::vec3 hit_point = (t > 0) ? muzzle_origin + ray_dir * t : target_pos;
-  spawn_shield_impact(hit_point);
+  lb.end = hit_point;
+  if (hit->entity != lb.last_hit_entity) spawn_shield_impact(hit_point);
   ```
-  Apply damage via `apply_damage()`. No extra AABB check needed.
+  `apply_damage(hit->entity, laser_dps * dt)` is called regardless. No extra AABB check.
 
 `sphere_intersect_t` helper (static function in `damage.cpp`):
 ```cpp
@@ -746,18 +787,51 @@ errors; existing line_quad VFX still renders.
 
 | ID | Task | Tier | Files | Depends | Parallel Group |
 |----|------|------|-------|---------|----------------|
-| T04 | **Add new components** to `components.h`: `LaserBeam`, `LaserCharge`, `ShieldSphere`, `VFXData` per Sections 3.6, 3.7, 3.9. | LOW | `src/game/components.h` | — | PG-3 |
+| T04 | **Add new components** to `components.h`: `LaserBeam`, `LaserCharge`, `ShieldSphere`, `VFXData` per Sections 3.6, 3.7, 3.9. Also rename `WeaponState::laser_damage` → `laser_dps` and update its default to `constants::laser_dps`. | LOW | `src/game/components.h` | — | PG-3 |
 | T05 | **Add new constants** to `constants.h`. See constants list below. | LOW | `src/game/constants.h` | — | PG-3 |
+
+**T04 new component definitions** (add to `components.h`):
+```cpp
+struct LaserCharge {
+    double charge_start = 0.0;
+    float  charge_time  = 0.8f;
+};
+
+struct LaserBeam {
+    double       fire_time         = 0.0;
+    float        fire_duration     = 3.0f;   // active damage window (seconds)
+    float        fade_duration     = 0.5f;   // glow-down duration after depletion/release
+    glm::vec3    origin            = {};
+    glm::vec3    end               = {};     // updated each frame during firing
+    entt::entity last_hit_entity   = entt::null;  // for VFX dedup (one VFX per new target)
+};
+
+struct ShieldSphere {
+    entt::entity owner  = entt::null;
+    float        radius = 0.0f;
+};
+
+struct VFXData {
+    float initial_scale = 1.0f;
+    float final_scale   = 5.0f;
+    float initial_alpha = 1.0f;
+    float final_alpha   = 0.0f;
+    float r = 1.0f, g = 0.5f, b = 0.1f;
+};
+```
 
 **T05 new constants:**
 ```cpp
 // Laser
-constexpr float  laser_charge_time     = 0.8f;
-constexpr float  laser_beam_duration   = 2.0f;
-constexpr float  laser_core_width      = 0.3f;
-constexpr float  laser_halo_width      = 2.5f;
-constexpr float  laser_core_color[4]   = {1.0f, 1.0f, 0.9f, 1.0f};
-constexpr float  laser_halo_color[4]   = {0.3f, 0.85f, 1.0f, 1.0f};
+constexpr float  laser_charge_time              = 0.8f;   // hold duration before firing
+constexpr float  laser_fire_duration            = 3.0f;   // active damage window
+constexpr float  laser_fade_duration            = 0.5f;   // glow-down after depletion
+constexpr float  laser_dps                      = 20.0f;  // damage per second while firing
+constexpr float  laser_impulse_per_second       = 30.0f;  // asteroid impulse per second
+constexpr float  laser_core_width               = 0.3f;
+constexpr float  laser_halo_width               = 2.5f;
+constexpr float  laser_core_color[4]            = {1.0f, 1.0f, 0.9f, 1.0f};
+constexpr float  laser_halo_color[4]            = {0.3f, 0.85f, 1.0f, 1.0f};
 
 // Shield
 constexpr float  shield_sphere_scale   = 1.45f;
@@ -781,13 +855,26 @@ constexpr float  shield_impact_duration  = 0.25f;
 | T09 | **VFX system**: write `vfx.cpp` and `vfx.h`. Implement `vfx_update()`, three spawn helpers per Section 3.9. | MED | `src/game/vfx.cpp` (new), `src/game/vfx.h` (new) | T03, T04, T05 | PG-4 |
 
 **T07 detailed steps:**
-1. Remove `k_laser_color`, old `renderer_enqueue_line_quad` call, and single-shot beam logic.
-2. Split `laser_fire()` into `laser_fire_instant(entity, ws)` (raycast + damage + return origin/end).
-3. Add `laser_update(dt)` scanning entities with `LaserCharge` and `LaserBeam` per Section 3.6.
-4. Modify `weapon_update()`: detect press-edge on right-mouse; start charge if weapon ready;
-   call `laser_update(dt)` unconditionally each frame.
-5. In `laser_fire_instant`: compute `muzzle_origin` from ship forward `(0,1,0)` + offset.
-   Store in `LaserBeam.origin`/`.end`.
+1. Remove `k_laser_color`, the old one-shot `renderer_enqueue_line_quad` call, and the
+   old `laser_fire()` function entirely.
+2. Add `laser_update(float dt)` — the new central laser function, called each frame from
+   `weapon_update()` unconditionally. It handles all three phases:
+   - **Charging phase**: scan entities with `LaserCharge`. Submit dim aiming beam. Detect
+     completion → remove `LaserCharge`, add `LaserBeam`, set `ws.laser_last_fire = engine_now()`.
+     Detect right-mouse release → remove `LaserCharge` (cancelled, no cooldown).
+   - **Firing phase**: scan entities with `LaserBeam` where `fire_age < lb.fire_duration`.
+     Compute `muzzle_origin` from ship forward + offset. Raycast. Apply
+     `laser_dps * dt` damage and `laser_impulse_per_second * dt` asteroid impulse.
+     Detect right-mouse release → `lb.fire_duration = fire_age` (start fade immediately).
+     Update `lb.end` to hit point. Spawn impact VFX on new target contact (see T11).
+     Submit full-brightness beam (two additive line quads) with opacity from Section 3.6.
+   - **Fading phase**: scan entities with `LaserBeam` where `fire_age >= lb.fire_duration`.
+     Submit beam with `opacity = 1.0f - fade_t`. Remove when `fade_t >= 1.0f`.
+3. Add `static float sphere_intersect_t(...)` helper (same as Section 3.7.1) to
+   `weapons.cpp` — used during firing phase to find shield surface hit point.
+4. Modify `weapon_update()`: detect right-mouse press-edge; if weapon is Laser and
+   `weapon_ready()`: add `LaserCharge`. Call `laser_update(dt)` unconditionally.
+   Remove the old `if (fire && weapon_ready())` laser branch (now handled inside `laser_update`).
 
 **T08 detailed steps:**
 1. Add `spawn_shield_sphere()` static function per Section 3.7.2.
@@ -805,7 +892,7 @@ constexpr float  shield_impact_duration  = 0.25f;
 | ID | Task | Tier | Files | Depends | Parallel Group |
 |----|------|------|-------|---------|----------------|
 | T10 | **Shield VFX update system**: write `shield_vfx.cpp` and `shield_vfx.h`. Declare `ShieldFSParams` struct (must match `shield_fs_params` in `shield.glsl`). Implement `shield_vfx_update()` per Section 3.7.3. | MED | `src/game/shield_vfx.cpp` (new), `src/game/shield_vfx.h` (new) | T08 | PG-4B |
-| T11 | **Impact VFX triggers**: modify `damage_resolve()` in `damage.cpp` to call `spawn_plasma_impact()` / `spawn_shield_impact()`. Modify `laser_fire_instant()` in `weapons.cpp` to call `spawn_laser_impact()` and `spawn_shield_impact()`. Add `sphere_intersect_t()` helper. Implement shield-as-collision-boundary logic per Section 3.7.1. | MED | `src/game/damage.cpp`, `src/game/weapons.cpp` | T07, T09 | PG-4B |
+| T11 | **Impact VFX triggers + shield boundary**: (a) In `damage.cpp`: replace AABB overlap with sphere-overlap for projectile-vs-shielded-entity per Section 3.7.1; call `spawn_plasma_impact()` on hull hit, `spawn_shield_impact()` on shield hit. (b) In `weapons.cpp`: in the firing-phase raycast of `laser_update()`, check if hit entity has active shield; compute shield surface hit point via `sphere_intersect_t()`; if `hit->entity != lb.last_hit_entity`: call `spawn_laser_impact()` (hull hit) or `spawn_shield_impact()` (shield hit); update `lb.last_hit_entity`. Note: `sphere_intersect_t` is already added to `weapons.cpp` in T07 — T11 just calls it. | MED | `src/game/damage.cpp`, `src/game/weapons.cpp` | T07, T09 | PG-4B |
 
 **Final integration:**
 
@@ -880,7 +967,7 @@ different phases (T11 depends on T07), no conflict.
 | T04 | `cmake --build build --target game` exits 0 (no compile errors from new components) |
 | T05 | Same |
 | T06 | `cmake --build build --target game` exits 0; shield and plasma shader handles are valid (non-zero id) after `game_shaders_init()` |
-| T07 | Hold right-mouse 0.8s → beam fires and persists ~2s with bright core + cyan halo; early release cancels; beam starts from ship nose |
+| T07 | Hold RMB 0.8s → beam fires continuously; enemy/asteroid takes damage over time (not instant kill); releasing RMB triggers glow-down; holding full 3s depletes the laser with glow-down; beam starts from ship nose; cooldown prevents immediate re-use |
 | T08 | Blue translucent sphere visible around player and enemy ships |
 | T09 | `cmake --build build --target game` exits 0; no linker errors |
 | T10 | Blue sphere tracks ship position; fades as shield depletes; disappears at 0 |
