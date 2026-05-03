@@ -26,24 +26,29 @@ bool weapon_ready(const WeaponState& ws) {
     return (now - ws.plasma_last_fire) >= static_cast<double>(ws.plasma_cooldown);
 }
 
-// ---------------------------------------------------------------------------
-// laser_fire — instant raycast hit, line visual, damage + asteroid impulse
-// ---------------------------------------------------------------------------
+// Must match k_enemy_half_extent in spawn.cpp (2.0f) plus a small buffer.
+static constexpr float k_ship_half = 2.1f;
 
 static void laser_fire(entt::entity player_e,
                            WeaponState& ws) {
     glm::vec3 ray_origin, ray_dir;
     camera_rig_cursor_ray(ray_origin, ray_dir);
 
-    // Use the cursor ray origin (camera near-plane) so damage volume matches
-    // what the crosshair shows.  One frame of latency is imperceptible at 60 fps.
-    const glm::vec3 origin = ray_origin;
+    // Use the player's current position and forward to offset the ray.
+    // We want the ray to start just ahead of the ship so it doesn't hit itself.
+    auto& reg = engine_registry();
+    const auto& t = reg.get<Transform>(player_e);
+    const glm::vec3 ship_forward = t.rotation * glm::vec3(0.0f, 1.0f, 0.0f);
+    const float offset = k_ship_half + 0.1f;
+    const glm::vec3 muzzle_origin = t.position + ship_forward * offset;
 
-    // Beam always renders to max range (pass-through visual), damage only
-    // applies to the first entity along the ray.
+    // Use the cursor ray origin (camera near-plane) for initial visual/math,
+    // but start the actual damage raycast from the muzzle to avoid self-hit.
+    const glm::vec3 origin = ray_origin;
     const glm::vec3 end = origin + ray_dir * constants::laser_max_range;
 
-    const auto hit = engine_raycast(origin, ray_dir, constants::laser_max_range);
+    // Raycast from muzzle along the cursor direction.
+    const auto hit = engine_raycast(muzzle_origin, ray_dir, constants::laser_max_range);
     if (hit.has_value() && hit->entity != player_e) {
         // Damage target (shield → HP).
         apply_damage(hit->entity, ws.laser_damage);
@@ -65,9 +70,6 @@ static void laser_fire(entt::entity player_e,
 // plasma_fire — spawn a projectile entity in front of the ship
 // ---------------------------------------------------------------------------
 
-// Must match k_ship_half_extent in spawn.cpp.
-static constexpr float k_ship_half = 1.5f;
-
 static void plasma_fire(entt::entity player_e,
                              const Transform& t,
                              WeaponState& ws) {
@@ -75,7 +77,7 @@ static void plasma_fire(entt::entity player_e,
     camera_rig_cursor_ray(ray_origin, ray_dir);
 
     // Spawn position: slightly in front of ship nose along ship forward axis.
-    const glm::vec3 rig_forward = t.rotation * glm::vec3(0.f, 0.f, -1.f);
+    const glm::vec3 rig_forward = t.rotation * glm::vec3(0.0f, 1.0f, 0.0f);
     const glm::vec3 spawn_pos   = t.position
         + rig_forward * (k_ship_half + constants::plasma_sphere_radius + 0.1f);
     // Projectile velocity follows the cursor ray direction.

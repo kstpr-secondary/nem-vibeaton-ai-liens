@@ -8,7 +8,8 @@
 
 // Half-extent of the enemy ship cube — used to offset projectile spawn point
 // so the projectile starts outside the enemy's own collider.
-static constexpr float k_ship_half   = 1.5f;
+// Note: Matches k_enemy_half_extent in spawn.cpp (2.0f) plus a small buffer.
+static constexpr float k_ship_half   = 2.1f;
 
 // Base orientation to map glTF model (+Y up, nose along +Y) to game space (-Z forward, +Y up).
 static const glm::quat k_ship_base_orientation = 
@@ -73,10 +74,12 @@ void enemy_ai_update(float /*dt*/) {
             continue;
 
         // Calculate actual forward direction for spawning and velocity.
-        const glm::vec3 ship_forward = t.rotation * glm::vec3(0.0f, 0.0f, -1.0f);
+        const glm::vec3 ship_forward = t.rotation * glm::vec3(0.0f, 1.0f, 0.0f);
 
         // Line-of-sight via engine_raycast.
-        const auto hit = engine_raycast(t.position, ship_forward, dist);
+        // Start ray from just outside the enemy's own collider to avoid self-hit.
+        const float ray_offset = k_ship_half + 0.1f;
+        const auto hit = engine_raycast(t.position + ship_forward * ray_offset, ship_forward, dist - ray_offset);
         if (hit.has_value() && hit->entity != player_e)
             continue;  // something blocks the shot
 

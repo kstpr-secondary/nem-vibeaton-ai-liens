@@ -201,6 +201,8 @@ entt::entity spawn_player(const glm::vec3& position) {
     engine_add_component<WeaponState>(e);
     engine_add_component<CameraRigState>(e);
 
+    engine_registry().emplace<Interactable>(e);
+
     return e;
 }
 
