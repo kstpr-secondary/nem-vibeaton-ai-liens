@@ -27,7 +27,7 @@ Ubuntu 24.04 LTS everywhere. Hostnames are set in `/etc/hostname` pre-hackathon 
 | `laptopC` | Game                                      |
 | `rtx3090` | Validation, tests, local model, demo box  |
 
-**Owner tag in `TASKS.md`**: `<agent_name>@<machine>`.
+**Owner tag**: `<agent_name>@<machine>`.
 
 - `agent_name` is lowercase tool name: `claude`, `copilot`, `gemini`, `glm`, `local-qwen`.
 - Two instances of the same agent on one machine: append `-2`, `-3` → `claude-2@laptopA`.
@@ -73,15 +73,13 @@ After a milestone merge, the downstream workstream runs the full build **once** 
 ├── .github/copilot-instructions.md ← short mirror of critical rules
 ├── .gemini/settings.json           ← "contextFileName": "AGENTS.md"
 ├── .agents/skills/                 ← role, library, and domain SKILLs
+├── _coordination/                  ← README only; archive in _coordination.archive/
 ├── docs/
 │   ├── architecture/               ← ARCHITECTURE.md + per-workstream
 │   ├── interfaces/                 ← INTERFACE_SPEC.md + per-workstream specs (frozen)
 │   ├── game-design/                ← GAME_DESIGN.md
 │   └── planning/speckit/{renderer,engine,game}/
-├── _coordination/                  ← live operational state
-│   ├── overview/                   ← PROGRESS.md, BLOCKERS.md, MERGE_QUEUE.md, MASTER_TASKS.md
-│   ├── {renderer,engine,game}/     ← TASKS.md, PROGRESS.md, VALIDATION/, REVIEWS/
-│   └── queues/                     ← VALIDATION_QUEUE.md, REVIEW_QUEUE.md, TEST_QUEUE.md
+├── pre_planning_docs/              ← Hackathon Master Blueprint + concept seeds
 ├── shaders/
 │   ├── renderer/*.glsl
 │   └── game/*.glsl
@@ -89,7 +87,7 @@ After a milestone merge, the downstream workstream runs the full build **once** 
 ```
 
 - `docs/` — stable reference. Read-only between milestones.
-- `_coordination/` — live state. Every task, blocker, and queue entry lives here.
+- `_coordination/` — archived hackathon-era state (see `_coordination.archive/README.md`). New features use simpler research+plan documents.
 - `.agents/skills/` — role skills, library cheat-sheets, per-aspect references.
 
 ---
@@ -99,16 +97,15 @@ After a milestone merge, the downstream workstream runs the full build **once** 
 All task tables use this row schema:
 
 ```
-| ID | Task | Tier | Status | Owner | Depends_on | Milestone | Parallel_Group | Validation | Notes |
+| ID | Task | Tier | Status | Owner | Depends_on | Milestone | Validation | Notes |
 ```
 
 - **Tier**: `LOW` | `MED` | `HIGH` (implementation risk / difficulty).
-- **Status**: `TODO` | `CLAIMED` | `IN_PROGRESS` | `READY_FOR_VALIDATION` | `READY_FOR_REVIEW` | `DONE` | `BLOCKED`.
+- **Status**: `TODO` | `IN_PROGRESS` | `READY_FOR_VALIDATION` | `READY_FOR_REVIEW` | `DONE` | `BLOCKED`.
 - **Validation**: `NONE` | `SELF-CHECK` | `SPEC-VALIDATE` | `REVIEW` | `SPEC-VALIDATE + REVIEW`.
-- **Parallel_Group**: `PG-<milestone>-<letter>` | `BOTTLENECK` | `SEQUENTIAL` (default).
-- **Notes**: must include `files: <comma-separated list>` for any task in a `PG-*` group.
+- **Notes**: may include `files: <comma-separated list>` when relevant.
 
-Workstream `TASKS.md` files are authoritative **on their feature branches**. Cross-workstream progress becomes visible only after a milestone merge to `main` + `git pull`. `MASTER_TASKS.md` is the human supervisor's integration dashboard, not a live feed.
+Post-hackathon, new features are added via research+plan documents directly implemented by agents. A better tracking schema will be devised later for tractability. The old parallel-group (`PG-*`), bottleneck, and queue-based validation mechanisms have been retired.
 
 ---
 
@@ -119,22 +116,9 @@ Workstream `TASKS.md` files are authoritative **on their feature branches**. Cro
 
 ---
 
-## 7. Parallel groups and file ownership
+## 7. Validation and review
 
-- Tasks in the **same** `PG-*` group must have **disjoint file sets**, listed in `Notes` as `files: renderer.cpp, renderer.h`.
-- Before editing, the claiming agent re-checks the file set. If the task needs a file outside its declared set:
-  1. **Pause.**
-  2. Update the file set in `TASKS.md`.
-  3. Check whether the new file is claimed by another task in the same parallel group.
-  4. If yes: flag in `_coordination/overview/BLOCKERS.md` and wait for human resolution. Do **not** race.
-- `BOTTLENECK` tasks block every dependent until merged. While a BOTTLENECK is open, idle agents pull work from **other** milestones or workstreams (tests, docs, aspect references, validation queue entries). Use `BOTTLENECK` sparingly.
-- Multiple agents may share a worktree/branch only if their file sets are disjoint per this rule.
-
----
-
-## 8. Validation, review, and queues
-
-Risk-based per task; mandatory per milestone. Trigger validation and review via queue files, **not hidden hooks**.
+Risk-based per task:
 
 - **Low/trivial task** → `SELF-CHECK` unless touching shared interfaces, build system, or milestone-critical behavior.
 - **Medium task** → `SPEC-VALIDATE` or `REVIEW` for nontrivial logic or integration surfaces.
@@ -142,47 +126,39 @@ Risk-based per task; mandatory per milestone. Trigger validation and review via 
 - **Every milestone** → Spec Validator + human behavioral check + lightweight Code Review.
 - **Testing** — Catch2 for math, parsers, ECS logic. Rendering correctness is verified by human behavioral check + smoke-test visuals, **not** unit tests.
 
-Queue files (add entries, do not invoke tools directly):
-
-- `_coordination/queues/VALIDATION_QUEUE.md`
-- `_coordination/queues/REVIEW_QUEUE.md`
-- `_coordination/queues/TEST_QUEUE.md`
-
 ---
 
-## 9. Skills and large headers
+## 8. Skills and large headers
 
 1. When starting a task, read:
-   - the relevant `TASKS.md` row,
+   - the relevant research/plan document,
    - the role `SKILL.md` for your workstream,
    - only the library/domain SKILLs needed by this task,
    - per-aspect references under `.agents/skills/<lib>-api/references/` only when the task clearly falls in that aspect.
 2. **Use the SKILL first; open the actual header only if the SKILL is insufficient.** Quote only the minimal snippet needed (relevant struct + 2–3 functions).
 3. Large headers (`sokol_gfx.h`, `entt.hpp`, `cgltf.h`, …) are 20–30k LOC — loading them naively wastes context.
-4. If a SKILL contains an error or missing API, flag it in `_coordination/overview/BLOCKERS.md` — the human supervisor fixes and pushes so all agents benefit. Do not quietly patch around drift.
+4. If a SKILL contains an error or missing API, log it in `_coordination.archive/` and stop — do not invent API behavior.
 
 ---
 
-## 10. Global rules
+## 9. Global rules
 
-1. **Read before you edit.** Read the workstream `TASKS.md` row and the spec it references before touching code.
-2. **Humans claim tasks.** The human supervisor updates `TASKS.md`, commits, and pushes before triggering an agent. Agents do not self-claim.
-3. **Never change frozen shared interfaces** without explicit human approval.
-4. **Every implementation task must reference** its milestone unlock or dependency.
-5. **Respect `Validation`** — never silently downgrade a required check.
-6. **Do not merge** milestone-ready work until acceptance checklist, required validation, and human behavioral check are all complete.
-7. **Validation and review are queue-triggered**, not hidden hooks.
-8. **Pull before starting** new work when multiple people/machines touch the same workstream.
-9. **SKILLs first, headers second.** Quote only minimal header snippets when the SKILL is insufficient.
-10. **`Owner` = `<agent_name>@<machine>`.** Unknown machine → leave existing owner intact and add a note.
-11. **CMakeLists.txt** is owned by Renderer / Systems Architect. Cross-workstream build changes require 2-minute notice.
-12. **Agent outage.** If you stall > 90 s on a subtask, stop and log in `_coordination/overview/BLOCKERS.md` so the human can re-route. Do not silently spin.
-13. **SKILL drift** is fixed upstream. Flag it in `BLOCKERS.md`; do not silently work around it.
-14. **Milestone validation:** every milestone merge requires a behavioral check by a **different person from the implementer** if possible; otherwise the human supervisor verifies each acceptance criterion on the demo machine.
+1. **Read before you edit.** Read the research/plan document and the spec it references before touching code.
+2. **Never change frozen shared interfaces** without explicit human approval.
+3. **Every implementation task must reference** its milestone unlock or dependency.
+4. **Respect `Validation`** — never silently downgrade a required check.
+5. **Do not merge** milestone-ready work until acceptance checklist, required validation, and human behavioral check are all complete.
+6. **Pull before starting** new work when multiple people/machines touch the same workstream.
+7. **SKILLs first, headers second.** Quote only minimal header snippets when the SKILL is insufficient.
+8. **`Owner` = `<agent_name>@<machine>`.** Unknown machine → leave existing owner intact and add a note.
+9. **CMakeLists.txt** is owned by Renderer / Systems Architect. Cross-workstream build changes require 2-minute notice.
+10. **Agent outage.** If you stall > 90 s on a subtask, stop and log in `_coordination.archive/` so the human can re-route. Do not silently spin.
+11. **SKILL drift** is fixed upstream. Flag it; do not silently work around it.
+12. **Milestone validation:** every milestone merge requires a behavioral check by a **different person from the implementer** if possible; otherwise the human supervisor verifies each acceptance criterion on the demo machine.
 
 ---
 
-## 11. Quality gates
+## 10. Quality gates
 
 | Gate | Rule                                               | Enforcer                              | Timing                       |
 | :--- | :------------------------------------------------- | :------------------------------------ | :--------------------------- |
@@ -192,23 +168,21 @@ Queue files (add entries, do not invoke tools directly):
 | G4   | Required validation completed                      | Spec Validator / Code Reviewer        | Before merge when required   |
 | G5   | Milestone-level validation completed               | Spec Validator + human + Reviewer     | Before milestone merge       |
 | G6   | `main` remains demo-safe                           | Humans                                | Continuous                   |
-| G7   | Parallel-group file sets remain disjoint           | Task author + claiming agent          | Before task claim            |
 
 ---
 
-## 12. Source control
+## 11. Source control
 
-Branches: `main` / `integration` / `feature/renderer` / `feature/engine` / `feature/game`. `main` stays demo-safe at all times; `integration` is optional staging. Multiple agents may share a worktree/branch only if their file sets are disjoint (§7).
+Branches: `main` / `integration` / `feature/<workstream>`. `main` stays demo-safe at all times; `integration` is optional staging.
 
 ---
 
-## 13. If you are stuck
+## 12. If you are stuck
 
 1. Check the role SKILL and the per-aspect reference for the subsystem.
-2. If the SKILL is wrong or missing, log in `_coordination/overview/BLOCKERS.md` and stop — do not invent API behavior.
+2. If the SKILL is wrong or missing, log in `_coordination.archive/` and stop — do not invent API behavior.
 3. If a frozen-interface change is tempting, stop; flag the blocker; wait for human approval.
-4. If a file outside your declared set is needed, follow the §7 pause protocol.
-5. If you stall > 90 s, stop and log in `BLOCKERS.md` per Rule 12.
+4. If you stall > 90 s, stop and log in `_coordination.archive/` per Rule 10.
 
 ---
 
