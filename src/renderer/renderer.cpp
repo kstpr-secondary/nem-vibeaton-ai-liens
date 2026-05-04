@@ -764,22 +764,32 @@ void renderer_end_frame() {
         }
     };
 
+    // --- Find sorted range boundaries by render_queue value -------------------
+    int queue_boundaries[4] = {};  // indices into sorted_indices per queue group
+    int queue_counts[4]   = {};   {
+        for (int q = 0; q < 4; ++q) queue_boundaries[q] = 0;
+        int ranges_start[4] = {-1, -1, -1, -1};
+        int ranges_end[4]   = {-1, -1, -1, -1};
+        for (int i = 0; i < state.draw_count; ++i) {
+            uint8_t q = state.draw_queue[sorted_indices[i]].material.pipeline.render_queue;
+            if (q > 3) continue;  // skip legacy values like render_queue=255
+            if (ranges_start[q] < 0) ranges_start[q] = i;
+            ranges_end[q] = i + 1;
+        }
+        for (int q = 0; q < 4; ++q) {
+            queue_boundaries[q] = ranges_start[q] >= 0 ? ranges_start[q] : state.draw_count;
+            queue_counts[q]     = ranges_end[q] - ranges_start[q];
+        }
+    }
+
     // --- Pass 1: Opaque objects (render_queue=0) with culling + front-to-back sort --
-    int opaque_range_start = 0;
-    for (int i = 0; i <= state.draw_count; ++i) {
-        bool is_boundary = (i == state.draw_count) ||
-            (state.draw_queue[sorted_indices[i]].material.pipeline.render_queue !=
-             state.draw_queue[sorted_indices[opaque_range_start]].material.pipeline.render_queue);
-        if (!is_boundary) continue;
-
-        uint8_t queue_val = state.draw_queue[sorted_indices[opaque_range_start]].material.pipeline.render_queue;
-
-        // --- Opaque: front-to-back sort (nearest first for early-Z rejection) --
-        if (queue_val == 0) {
+    {
+        int opaque_total = queue_counts[0];
+        if (opaque_total > 0) {
             int opaque_indices[1024];
-            int opaque_total = extract_indices(opaque_range_start, i, opaque_indices, 1024);
+            extract_indices(queue_boundaries[0], queue_boundaries[0] + opaque_total, opaque_indices, 1024);
 
-            if (state.culling_enabled && opaque_total > 0) {
+            if (state.culling_enabled) {
                 float draw_z[1024];
                 compute_view_z(opaque_indices, opaque_total, draw_z);
                 std::sort(opaque_indices, opaque_indices + opaque_total,
@@ -795,66 +805,70 @@ void renderer_end_frame() {
                 draw_batch(opaque_indices, opaque_total, nullptr, 0);
             }
         }
+    }
 
-        // --- Cutout: front-to-back sort (z-write, discards in shader) ----------
-        if (queue_val == 1 && state.culling_enabled) {
+    // --- Pass 2: Cutout objects (render_queue=1) with culling + front-to-back sort --
+    {
+        int cutout_total = queue_counts[1];
+        if (cutout_total > 0) {
             int cutout_indices[1024];
-            int cutout_total = extract_indices(opaque_range_start, i, cutout_indices, 1024);
+            extract_indices(queue_boundaries[1], queue_boundaries[1] + cutout_total, cutout_indices, 1024);
 
-            if (cutout_total > 0) {
+            bool culled[1024] = {};
+            if (state.culling_enabled) {
                 float draw_z[1024];
                 compute_view_z(cutout_indices, cutout_total, draw_z);
                 std::sort(cutout_indices, cutout_indices + cutout_total,
                     [&draw_z](int a, int b) { return draw_z[a] > draw_z[b]; });
 
-                bool culled[1024] = {};
                 compute_cull_status(cutout_indices, cutout_total, culled);
                 int total_culled = 0;
                 for (int j = 0; j < cutout_total; ++j) if (culled[j]) ++total_culled;
                 state.cull_count += total_culled;
-                draw_batch(cutout_indices, cutout_total, culled, cutout_total);
             }
+            draw_batch(cutout_indices, cutout_total, culled, cutout_total);
         }
+    }
 
-        // --- Skybox pass (after opaques+cutouts so it fills z=1.0 gaps only) -----
-        if (state.skybox_handle.id != 0) {
-            sg_image cubemap_img = texture_get(state.skybox_handle.id);
-            if (sg_query_image_state(cubemap_img) == SG_RESOURCESTATE_VALID) {
-                glm::mat4 view_mat = state.camera_set ? glm::make_mat4(state.camera.view) : glm::mat4(1.0f);
-                glm::mat4 proj_mat = state.camera_set ? glm::make_mat4(state.camera.projection) : glm::mat4(1.0f);
-                draw_skybox_pass(state.pipeline_skybox, cubemap_img,
-                                 glm::value_ptr(proj_mat), glm::value_ptr(view_mat));
-            }
+    // --- Skybox pass (drawn once after opaques+cutouts) ------------------------
+    if (state.skybox_handle.id != 0) {
+        sg_image cubemap_img = texture_get(state.skybox_handle.id);
+        if (sg_query_image_state(cubemap_img) == SG_RESOURCESTATE_VALID) {
+            glm::mat4 view_mat = state.camera_set ? glm::make_mat4(state.camera.view) : glm::mat4(1.0f);
+            glm::mat4 proj_mat = state.camera_set ? glm::make_mat4(state.camera.projection) : glm::mat4(1.0f);
+            draw_skybox_pass(state.pipeline_skybox, cubemap_img,
+                             glm::value_ptr(proj_mat), glm::value_ptr(view_mat));
         }
+    }
 
-        // --- Transparent+Additive: back-to-front sort (no z-write, z-read) -----
-        if (queue_val >= 2 && queue_val <= 3) {
+    // --- Pass 3: Transparent+Additive (render_queue=2,3) back-to-front sort ----
+    {
+        int trans_total = queue_counts[2] + queue_counts[3];
+        if (trans_total > 0) {
             int trans_indices[1024];
-            int trans_total = extract_indices(opaque_range_start, i, trans_indices, 1024);
-
-            if (trans_total > 0) {
-                float trans_z[1024];
-                compute_view_z(trans_indices, trans_total, trans_z);
-                std::sort(trans_indices, trans_indices + trans_total,
-                    [&trans_z](int a, int b) { return trans_z[a] < trans_z[b]; });
-
-                bool culled[1024] = {};
-                if (state.culling_enabled) {
-                    compute_cull_status(trans_indices, trans_total, culled);
-                    int total_culled = 0;
-                    for (int j = 0; j < trans_total; ++j) if (culled[j]) ++total_culled;
-                    state.cull_count += total_culled;
+            int trans_idx = 0;
+            for (int q = 2; q <= 3; ++q) {
+                if (queue_counts[q] > 0) {
+                    extract_indices(queue_boundaries[q], queue_boundaries[q] + queue_counts[q],
+                                    trans_indices + trans_idx, queue_counts[q]);
+                    trans_idx += queue_counts[q];
                 }
-                draw_batch(trans_indices, trans_total, culled, trans_total);
             }
-        }
 
-        // --- Skybox (render_queue=255): skip here, drawn below -----------------
-        if (queue_val == 255) {
-            // handled separately after opaque+cutout pass
-        }
+            float trans_z[1024];
+            compute_view_z(trans_indices, trans_total, trans_z);
+            std::sort(trans_indices, trans_indices + trans_total,
+                [&trans_z](int a, int b) { return trans_z[a] < trans_z[b]; });
 
-        opaque_range_start = i;
+            bool culled[1024] = {};
+            if (state.culling_enabled) {
+                compute_cull_status(trans_indices, trans_total, culled);
+                int total_culled = 0;
+                for (int j = 0; j < trans_total; ++j) if (culled[j]) ++total_culled;
+                state.cull_count += total_culled;
+            }
+            draw_batch(trans_indices, trans_total, culled, trans_total);
+        }
     }
 
     // --- Line quad draws (UI) ------------------------------------------------
