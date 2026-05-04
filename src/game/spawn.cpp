@@ -142,10 +142,12 @@ static entt::entity spawn_from_model(const char* model_path,
         // For textured asteroids: blend 50% procedural color with 50% sampled texture.
         // base_color.a encodes the blend factor (1.0 = fully procedural, 0.0 = fully textured).
         if (is_asteroid_model(model_path)) {
-            mat.base_color[3] = 0.5f;
-            mat.shininess    = ((float)std::rand() / (float)RAND_MAX) * 64.0f;
+            auto* p = material_uniforms_as<BlinnPhongFSParams>(mat);
+            p->base_color.a = 0.5f;
+            p->spec_shin.w  = ((float)std::rand() / (float)RAND_MAX) * 64.0f;
         } else {
-            mat.base_color[3] = 0.0f;
+            auto* p = material_uniforms_as<BlinnPhongFSParams>(mat);
+            p->base_color.a = 0.0f;
         }
     } else {
         static const float s_fallback_gray[3] = {0.7f, 0.7f, 0.7f};

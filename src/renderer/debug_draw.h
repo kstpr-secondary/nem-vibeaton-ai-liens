@@ -1,6 +1,8 @@
 #ifndef VIBEATON_DEBUG_DRAW_H
 #define VIBEATON_DEBUG_DRAW_H
 
+#include "renderer.h"
+
 // ---------------------------------------------------------------------------
 // Internal types shared between debug_draw.cpp and renderer.cpp
 // ---------------------------------------------------------------------------

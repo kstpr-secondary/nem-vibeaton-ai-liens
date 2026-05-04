@@ -85,21 +85,27 @@ static const char* tex_files[] = {
 // ---------------------------------------------------------------------------
 
 static void spawn_shape(RendererMeshHandle mesh, const glm::vec3& pos, float scale,
-                        const float rgb[3], float alpha, ShadingModel shading,
+                        const float rgb[3], float alpha, int shading_type,
                         RendererTextureHandle tex = {}) {
     glm::mat4 model = glm::scale(glm::translate(glm::mat4(1.0f), pos), glm::vec3(scale));
     float transform[16];
     std::memcpy(transform, glm::value_ptr(model), sizeof(transform));
 
     Material mat;
-    if (shading == ShadingModel::Unlit) {
+    if (shading_type == 0) {
         mat = renderer_make_unlit_material(rgb);
-    } else if (shading == ShadingModel::Lambertian) {
+    } else if (shading_type == 1) {
         mat = renderer_make_lambertian_material(rgb);
-    } else { // BlinnPhong
+    } else {
         mat = renderer_make_blinnphong_material(rgb, 64.0f, tex);
     }
-    mat.alpha = alpha;
+    if (alpha >= 1.0f) {
+        mat.pipeline.blend = BlendMode::Opaque;
+        mat.pipeline.depth_write = true;
+    } else {
+        mat.pipeline.blend = BlendMode::AlphaBlend;
+        mat.pipeline.depth_write = false;
+    }
     renderer_enqueue_draw(mesh, transform, mat);
 }
 
@@ -191,19 +197,19 @@ static void on_frame(float dt, void*) {
         // 1. Unlit red cube (center)
         {
             float rgb[3] = {1.0f, 0.2f, 0.2f};
-            spawn_shape(g_app.cube, glm::vec3(0.0f, center_y, 0.0f), 1.5f, rgb, 1.0f, ShadingModel::Unlit);
+            spawn_shape(g_app.cube, glm::vec3(0.0f, center_y, 0.0f), 1.5f, rgb, 1.0f, 0);
         }
 
         // 2. Lambertian green sphere (left)
         {
             float rgb[3] = {0.2f, 1.0f, 0.3f};
-            spawn_shape(g_app.sphere_12, glm::vec3(-5.0f, center_y, 0.0f), 1.0f, rgb, 1.0f, ShadingModel::Lambertian);
+            spawn_shape(g_app.sphere_12, glm::vec3(-5.0f, center_y, 0.0f), 1.0f, rgb, 1.0f, 1);
         }
 
         // 3. Lambertian blue sphere (right)
         {
             float rgb[3] = {0.2f, 0.4f, 1.0f};
-            spawn_shape(g_app.sphere_12, glm::vec3(5.0f, center_y, 0.0f), 1.0f, rgb, 1.0f, ShadingModel::Lambertian);
+            spawn_shape(g_app.sphere_12, glm::vec3(5.0f, center_y, 0.0f), 1.0f, rgb, 1.0f, 1);
         }
 
         // 4. Blinn-Phong textured sphere (front-left) — uses first available texture
@@ -211,7 +217,7 @@ static void on_frame(float dt, void*) {
             float rgb[3] = {1.0f, 1.0f, 1.0f};
             RendererTextureHandle tex = {};
             if (g_app.tex_count > 0) tex = g_app.textures[0];
-            spawn_shape(g_app.sphere_16, glm::vec3(-2.5f, center_y, 4.0f), 1.2f, rgb, 1.0f, ShadingModel::BlinnPhong, tex);
+            spawn_shape(g_app.sphere_16, glm::vec3(-2.5f, center_y, 4.0f), 1.2f, rgb, 1.0f, 2, tex);
         }
 
         // 5. Blinn-Phong textured sphere (front-right) — second texture, high shininess
@@ -219,25 +225,25 @@ static void on_frame(float dt, void*) {
             float rgb[3] = {1.0f, 1.0f, 1.0f};
             RendererTextureHandle tex = {};
             if (g_app.tex_count > 1) tex = g_app.textures[1];
-            spawn_shape(g_app.sphere_16, glm::vec3(2.5f, center_y, 4.0f), 1.2f, rgb, 1.0f, ShadingModel::BlinnPhong, tex);
+            spawn_shape(g_app.sphere_16, glm::vec3(2.5f, center_y, 4.0f), 1.2f, rgb, 1.0f, 2, tex);
         }
 
         // 6. Blinn-Phong untextured gold sphere (back-left) — very shiny
         {
             float rgb[3] = {1.0f, 0.85f, 0.2f};
-            spawn_shape(g_app.sphere_16, glm::vec3(-4.0f, center_y, -5.0f), 1.1f, rgb, 1.0f, ShadingModel::BlinnPhong, {});
+            spawn_shape(g_app.sphere_16, glm::vec3(-4.0f, center_y, -5.0f), 1.1f, rgb, 1.0f, 2, {});
         }
 
         // 7. Transparent red sphere (floating above)
         {
             float rgb[3] = {1.0f, 0.3f, 0.3f};
-            spawn_shape(g_app.sphere_8, glm::vec3(0.0f, center_y + 4.0f, 2.0f), 0.6f, rgb, 0.35f, ShadingModel::Unlit);
+            spawn_shape(g_app.sphere_8, glm::vec3(0.0f, center_y + 4.0f, 2.0f), 0.6f, rgb, 0.35f, 0);
         }
 
         // 8. Transparent blue sphere (floating above)
         {
             float rgb[3] = {0.3f, 0.6f, 1.0f};
-            spawn_shape(g_app.sphere_8, glm::vec3(0.0f, center_y + 5.5f, -2.0f), 0.5f, rgb, 0.45f, ShadingModel::Unlit);
+            spawn_shape(g_app.sphere_8, glm::vec3(0.0f, center_y + 5.5f, -2.0f), 0.5f, rgb, 0.45f, 0);
         }
     }
 
@@ -258,7 +264,7 @@ static void on_frame(float dt, void*) {
             float rgb[3] = {r, g, b};
 
             spawn_shape(g_app.sphere_12, ring_pos(radius, a, y), 0.6f + (i % 5) * 0.1f,
-                        rgb, 1.0f, ShadingModel::Lambertian);
+                        rgb, 1.0f, 1);
             ++count;
         }
         printf("[info] Section 2: %d Lambertian spheres at radius %.1f\n", count, radius);
@@ -283,7 +289,7 @@ static void on_frame(float dt, void*) {
             float rgb[3] = {1.0f, 1.0f, 1.0f}; // white base color — texture drives appearance
 
             spawn_shape(g_app.sphere_16, ring_pos(radius, a, y), 0.8f,
-                        rgb, 1.0f, ShadingModel::BlinnPhong, tex);
+                        rgb, 1.0f, 2, tex);
             ++count;
         }
         printf("[info] Section 3: %d Blinn-Phong textured spheres at radius %.1f\n", count, radius);
@@ -310,7 +316,7 @@ static void on_frame(float dt, void*) {
             float rgb[3] = {fabsf(r), fabsf(g), fabsf(b)};
 
             spawn_shape(g_app.sphere_8, ring_pos(radius, a, y), 0.4f + (i % 3) * 0.1f,
-                        rgb, alpha, ShadingModel::Unlit);
+                        rgb, alpha, 0);
             ++count;
         }
         printf("[info] Section 4: %d transparent spheres at radius %.1f\n", count, radius);
@@ -331,7 +337,7 @@ static void on_frame(float dt, void*) {
             float rgb[3] = {v, v * 0.8f, v * 0.6f};
 
             spawn_shape(g_app.cube, ring_pos(radius, a, y), 0.8f + (i % 4) * 0.2f,
-                        rgb, 1.0f, ShadingModel::Unlit);
+                        rgb, 1.0f, 0);
             ++count;
         }
         printf("[info] Section 5: %d unlit cubes at radius %.1f\n", count, radius);
@@ -366,14 +372,14 @@ static void on_frame(float dt, void*) {
 
             if (type < 2) {
                 // Lambertian sphere
-                spawn_shape(g_app.sphere_12, pos, scale, rgb, 1.0f, ShadingModel::Lambertian);
+                spawn_shape(g_app.sphere_12, pos, scale, rgb, 1.0f, 1);
             } else if (type == 2) {
                 // Unlit cube
-                spawn_shape(g_app.cube, pos, scale * 0.8f, rgb, 1.0f, ShadingModel::Unlit);
+                spawn_shape(g_app.cube, pos, scale * 0.8f, rgb, 1.0f, 0);
             } else if (type == 3) {
                 // Transparent sphere
                 float alpha = 0.2f + static_cast<float>(rand() % 30) * 0.02f;
-                spawn_shape(g_app.sphere_8, pos, scale * 0.6f, rgb, alpha, ShadingModel::Unlit);
+                spawn_shape(g_app.sphere_8, pos, scale * 0.6f, rgb, alpha, 0);
             } else {
                 // Blinn-Phong sphere (untextured)
                 float shininess = 32.0f + static_cast<float>(rand() % 4) * 64.0f;
@@ -411,7 +417,7 @@ static void on_frame(float dt, void*) {
             }
 
             spawn_shape(g_app.sphere_12, ring_pos(radius, a, y), 0.5f,
-                        rgb, 1.0f, ShadingModel::BlinnPhong, tex);
+                        rgb, 1.0f, 2, tex);
             ++count;
         }
         printf("[info] Section 7: %d Blinn-Phong spheres at radius %.1f (far)\n", count, radius);
@@ -430,7 +436,7 @@ static void on_frame(float dt, void*) {
             float v = 0.5f + static_cast<float>(i % 4) * 0.15f;
             float rgb[3] = {v, v * 0.7f, v * 0.9f};
 
-            spawn_shape(g_app.cube, pos, 0.6f, rgb, 1.0f, ShadingModel::Unlit);
+            spawn_shape(g_app.cube, pos, 0.6f, rgb, 1.0f, 0);
             ++count;
         }
         printf("[info] Section 8: %d near-field cubes\n", count);

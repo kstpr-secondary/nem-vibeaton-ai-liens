@@ -23,10 +23,11 @@ void main() {
 
 @fs lambertian_fs
 layout(binding=1) uniform lambertian_fs_params {
-    vec3 light_dir;
-    vec3 light_color;
-    float light_intensity;
-    vec4 base_color;
+    vec4 light_dir;        // .xyz = direction FROM surface TO light, .w unused
+    vec4 light_color;      // .rgb = light color, .w unused
+    float light_intensity; // intensity scalar
+    float _pad;            // std140 padding (vec3→vec4 alignment)
+    vec4 base_color;       // .rgba = material albedo + alpha
 };
 
 in vec3 v_normal;
@@ -35,9 +36,8 @@ out vec4 frag_color;
 void main() {
     // Lambertian: N dot L
     // light_dir is assumed to be the direction FROM the surface TO the light
-    // or adjusted accordingly. Task says "normalize(light_dir)".
-    float ndotl = max(dot(normalize(v_normal), normalize(light_dir)), 0.0);
-    vec3 diffuse = base_color.rgb * light_color * light_intensity * ndotl;
+    float ndotl = max(dot(normalize(v_normal), normalize(light_dir.xyz)), 0.0);
+    vec3 diffuse = base_color.rgb * light_color.rgb * light_intensity * ndotl;
     frag_color = vec4(diffuse, base_color.a);
 }
 @end

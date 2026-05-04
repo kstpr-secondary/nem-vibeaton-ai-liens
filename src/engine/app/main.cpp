@@ -7,6 +7,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <cstdio>
 #include <cmath>
+#include <cstring>
 #include <random>
 #include <filesystem>
 #include <string>
@@ -136,20 +137,24 @@ static void frame_cb(float dt, void* /*user_data*/) {
             }
 
            Material mat = em.mat;
-            if (cf && cf->timer > 0.f) {
-                float t_norm = std::min(cf->timer, 1.0f);
-                // Timer 1.0→0.5: flash→mid-blend; 0.5→0.0: mid-blend→base
-                float blend = (t_norm > 0.5f) ? (t_norm - 0.5f) * 2.0f : t_norm * 2.0f;
-                blend = std::clamp(blend, 0.0f, 1.0f);
-                for (int c = 0; c < 3; ++c) {
-                    mat.base_color[c] = cf->flash_color[c] + blend * (cf->base_color[c] - cf->flash_color[c]);
-                }
-            } else if (reg.all_of<OutOfBounds>(e)) {
-                // OOB override — bright green (collision red already takes priority above)
-                mat.base_color[0] = 0.f;
-                mat.base_color[1] = 1.f;
-                mat.base_color[2] = 0.f;
-            }
+             if (cf && cf->timer > 0.f) {
+                 float t_norm = std::min(cf->timer, 1.0f);
+                 // Timer 1.0→0.5: flash→mid-blend; 0.5→0.0: mid-blend→base
+                 float blend = (t_norm > 0.5f) ? (t_norm - 0.5f) * 2.0f : t_norm * 2.0f;
+                 blend = std::clamp(blend, 0.0f, 1.0f);
+                 // Write blended RGB into the first 12 bytes of the uniform blob
+                 // (works for both UnlitFSParams::color and BlinnPhongFSParams::base_color)
+                 float blended[3] = {
+                     cf->flash_color[0] + blend * (cf->base_color[0] - cf->flash_color[0]),
+                     cf->flash_color[1] + blend * (cf->base_color[1] - cf->flash_color[1]),
+                     cf->flash_color[2] + blend * (cf->base_color[2] - cf->flash_color[2]),
+                 };
+                 std::memcpy(mat.uniforms, blended, 3 * sizeof(float));
+             } else if (reg.all_of<OutOfBounds>(e)) {
+                 // OOB override — bright green (collision red already takes priority above)
+                 float green[] = { 0.f, 1.f, 0.f };
+                 std::memcpy(mat.uniforms, green, 3 * sizeof(float));
+             }
 
             const glm::mat4 world =
                 glm::translate(glm::mat4(1.f), t.position)
@@ -297,7 +302,7 @@ static void setup_scene() {
     // Directional light for Lambertian shading
     auto light = engine_create_entity();
     auto& l    = engine_add_component<Light>(light);
-    l.direction = {-0.6f, -1.f, -0.4f};
+    l.direction = {0.6f, 1.f, 0.4f};   // direction FROM surface TO light (world space)
     l.color     = {1.f, 1.f, 1.f};
     l.intensity = 2.0f;
 

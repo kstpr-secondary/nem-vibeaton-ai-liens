@@ -1,6 +1,6 @@
 # Renderer Interface Spec
 
-> **Status:** `FROZEN — v1.1`
+> **Status:** `FROZEN — v1.2`
 > **Source**: Promoted from `specs/001-sokol-render-engine/contracts/renderer-api.md`
 
 ---
@@ -11,7 +11,7 @@
 
 ### Changelog
 
-- **v1.2**: Added `renderer_upload_texture_from_memory(pixels, w, h, ch)` — accepts raw RGBA pixel data already in memory, required for engine-side glTF texture extraction (Approach B). Approved by human supervisor via ASSESSMENT-gltf-texture-extraction.md.
+- **v1.2**: Full Material redesign (Section 3.1 of visual-improvements.md). Removed `ShadingModel` enum. Added `RendererShaderHandle`, `PipelineState`, `BlendMode`, `CullMode`. Replaced flat `Material` fields with pipeline-cache-backed `shader` + `pipeline` + generic `uniforms` blob (256 bytes). Added `renderer_create_shader()`, `renderer_builtin_shader(BuiltinShader)`, `renderer_set_time(float)`. Updated `renderer_enqueue_line_quad` with optional `BlendMode` parameter. Published `UnlitFSParams` / `BlinnPhongFSParams` for game-side uniform casting. Convenience factories (`renderer_make_unlit_material`, etc.) now fill the uniforms blob and set `shader = builtin_shader(...)`. Approved by human supervisor via visual-improvements.md (2026-05-03).
 - **v1.1**: Added `FrameCallback` type and `renderer_set_frame_callback()` — required for engine/game to inject per-frame tick logic into the renderer-owned sokol_app loop. Approved by human supervisor.
 
 ---
@@ -36,6 +36,13 @@ The renderer exposes a single C++ header `renderer.h` (under `src/renderer/`) wi
 ```cpp
 #pragma once
 #include <cstdint>
+#include <cstring>
+
+// GLM for FS param structs (UnlitFSParams, BlinnPhongFSParams)
+#include <glm/glm.hpp>
+
+// sokol_gfx.h for sg_shader_desc (renderer_create_shader)
+#include "sokol_gfx.h"
 
 // ---------------------------------------------------------------------------
 // Handle types — opaque GPU resource references
@@ -43,6 +50,7 @@ The renderer exposes a single C++ header `renderer.h` (under `src/renderer/`) wi
 
 struct RendererMeshHandle    { uint32_t id = 0; };
 struct RendererTextureHandle { uint32_t id = 0; };
+struct RendererShaderHandle  { uint32_t id = 0; };
 
 inline bool renderer_handle_valid(RendererMeshHandle h)    { return h.id != 0; }
 inline bool renderer_handle_valid(RendererTextureHandle h) { return h.id != 0; }
@@ -73,25 +81,68 @@ struct Vertex {
 };
 
 // ---------------------------------------------------------------------------
-// Shading model
+// Pipeline state — travels with the material instance
 // ---------------------------------------------------------------------------
 
-enum class ShadingModel : uint8_t {
-    Unlit      = 0,   // R-M1
-    Lambertian = 1,   // R-M2
-    BlinnPhong = 2,   // R-M4 (Desirable)
+enum class BlendMode  : uint8_t { Opaque = 0, Cutout, AlphaBlend, Additive };
+enum class CullMode   : uint8_t { Back   = 0, Front,  None };
+
+struct PipelineState {
+    BlendMode blend        = BlendMode::Opaque;
+    CullMode  cull         = CullMode::Back;
+    bool      depth_write  = true;
+    uint8_t   render_queue = 0;
+    // render_queue: 0=opaque, 1=cutout, 2=transparent, 3=additive
+    // Renderer draws passes in this order. Custom shaders choose their queue.
 };
 
 // ---------------------------------------------------------------------------
 // Material — inline value type, passed per draw call
 // ---------------------------------------------------------------------------
 
+static constexpr int k_material_uniform_bytes = 256;
+static constexpr int k_material_texture_slots  = 4;
+
 struct Material {
-    ShadingModel          shading_model = ShadingModel::Unlit;
-    float                 base_color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-    RendererTextureHandle texture        = {};
-    float                 shininess      = 32.0f;
-    float                 alpha          = 1.0f;
+    RendererShaderHandle  shader;
+    PipelineState         pipeline;
+    uint8_t               uniforms[k_material_uniform_bytes] = {};
+    uint8_t               uniforms_size  = 0;
+    RendererTextureHandle textures[k_material_texture_slots] = {};
+    uint8_t               texture_count  = 0;
+};
+
+// Typed helpers — both declared inline in renderer.h
+template<typename T>
+void material_set_uniforms(Material& m, const T& params) {
+    static_assert(sizeof(T) <= k_material_uniform_bytes, "Params struct too large");
+    memcpy(m.uniforms, &params, sizeof(T));
+    m.uniforms_size = static_cast<uint8_t>(sizeof(T));
+}
+
+template<typename T>
+T* material_uniforms_as(Material& m) {
+    static_assert(sizeof(T) <= k_material_uniform_bytes, "Params struct too large");
+    return reinterpret_cast<T*>(m.uniforms);
+}
+
+// ---------------------------------------------------------------------------
+// Published FS param structs for built-in shaders
+// (Game code may reinterpret_cast into Material::uniforms using these)
+// ---------------------------------------------------------------------------
+
+struct UnlitFSParams {
+    glm::vec4 color;             // rgba
+    glm::vec4 flags;             // .x = use_texture (1.0 or 0.0)
+};
+
+struct BlinnPhongFSParams {
+    glm::vec4 base_color;
+    glm::vec4 light_dir_ws;
+    glm::vec4 light_color_inten;
+    glm::vec4 view_pos_w;
+    glm::vec4 spec_shin;         // .rgb = specular color, .w = shininess
+    glm::vec4 flags;             // .x = use_texture
 };
 
 // ---------------------------------------------------------------------------
@@ -120,7 +171,7 @@ struct RendererCamera {
 using InputCallback = void(*)(const void* sapp_event, void* user_data);
 
 // ---------------------------------------------------------------------------
-// Frame callback (v1.1) — consumer injects per-frame logic
+// Frame callback — consumer injects per-frame logic
 // ---------------------------------------------------------------------------
 
 using FrameCallback = void(*)(float dt, void* user_data);
@@ -136,11 +187,32 @@ void renderer_run();
 void renderer_shutdown();
 
 // ---------------------------------------------------------------------------
+// Shader API
+// ---------------------------------------------------------------------------
+
+// Register a shader from a sokol-shdc generated descriptor.
+// Call once at init after renderer_init(). Returns an opaque handle.
+RendererShaderHandle renderer_create_shader(const sg_shader_desc* desc);
+
+// Retrieve handles to the built-in shaders (no GPU work — just returns a stored handle).
+enum class BuiltinShader : uint8_t { Unlit = 0, BlinnPhong, Lambertian };
+RendererShaderHandle renderer_builtin_shader(BuiltinShader s);
+
+// ---------------------------------------------------------------------------
 // Per-frame API
 // ---------------------------------------------------------------------------
 
 void renderer_begin_frame();
 void renderer_end_frame();
+
+// Query submitted draw count, triangle count, and frustum cull count for ImGui HUD display.
+int renderer_get_draw_count();
+int renderer_get_triangle_count();
+int renderer_get_culled_count();
+
+// Propagate elapsed time to animated materials.
+// Called once per tick from game_tick, before enqueue calls.
+void renderer_set_time(float seconds_since_start);
 
 // ---------------------------------------------------------------------------
 // Scene setup (between begin_frame / end_frame)
@@ -149,6 +221,7 @@ void renderer_end_frame();
 void renderer_set_camera(const RendererCamera& camera);
 void renderer_set_directional_light(const DirectionalLight& light);
 void renderer_set_skybox(RendererTextureHandle cubemap);
+void renderer_set_culling_enabled(bool enabled);
 
 // ---------------------------------------------------------------------------
 // Draw submission (between begin_frame / end_frame)
@@ -164,7 +237,8 @@ void renderer_enqueue_line_quad(
     const float p0[3],
     const float p1[3],
     float       width,
-    const float color[4]
+    const float color[4],
+    BlendMode   blend = BlendMode::Opaque   // Additive for laser/VFX
 );
 
 // ---------------------------------------------------------------------------
@@ -173,13 +247,13 @@ void renderer_enqueue_line_quad(
 
 RendererMeshHandle renderer_make_sphere_mesh(float radius, int subdivisions);
 RendererMeshHandle renderer_make_cube_mesh(float half_extent);
-// Desirable (R-M5): renderer_make_capsule_mesh(float radius, float height, int subdivisions)
 
 RendererMeshHandle renderer_upload_mesh(
     const Vertex*   vertices,
     uint32_t        vertex_count,
     const uint32_t* indices,
-    uint32_t        index_count
+    uint32_t        index_count,
+    float           radius = 0.0f      // 0.0f = auto-compute from vertex positions
 );
 
 // ---------------------------------------------------------------------------
@@ -187,13 +261,6 @@ RendererMeshHandle renderer_upload_mesh(
 // ---------------------------------------------------------------------------
 
 RendererTextureHandle renderer_upload_texture_2d(
-    const void* pixels,
-    int         width,
-    int         height,
-    int         channels
-);
-
-RendererTextureHandle renderer_upload_texture_from_memory(
     const void* pixels,
     int         width,
     int         height,
@@ -210,13 +277,15 @@ RendererTextureHandle renderer_upload_cubemap(
 );
 
 // ---------------------------------------------------------------------------
-// Material helpers
+// Material helpers — convenience factories
+// (Internally fill the uniforms blob using material_set_uniforms<T>(…)
+//  and set m.shader = renderer_builtin_shader(...))
 // ---------------------------------------------------------------------------
 
 Material renderer_make_unlit_material(const float rgba[4]);
 Material renderer_make_lambertian_material(const float rgb[3]);
 Material renderer_make_blinnphong_material(const float rgb[3], float shininess,
-                                           RendererTextureHandle texture = {});
+                                            RendererTextureHandle texture = {});
 ```
 
 ---

@@ -8,6 +8,7 @@
 
 #include <glm/gtc/type_ptr.hpp>
 #include <cstdio>
+#include <cstring>
 
 // ---------------------------------------------------------------------------
 // Engine-global state
@@ -163,5 +164,7 @@ void engine_on_collision(entt::entity e) {
     auto& em = g_registry.get<EntityMaterial>(e);
     auto& cf = g_registry.emplace<CollisionFlash>(e);
     cf.timer = 1.0f;
-    cf.base_color = glm::vec3(em.mat.base_color[0], em.mat.base_color[1], em.mat.base_color[2]);
+    // Extract RGB from the first 12 bytes of the uniform blob
+    // (both UnlitFSParams::color and BlinnPhongFSParams::base_color start with vec4 rgba)
+    std::memcpy(&cf.base_color, em.mat.uniforms, sizeof(glm::vec3));
 }
