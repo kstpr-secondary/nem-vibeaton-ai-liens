@@ -102,9 +102,11 @@ static void spawn_shape(RendererMeshHandle mesh, const glm::vec3& pos, float sca
     if (alpha >= 1.0f) {
         mat.pipeline.blend = BlendMode::Opaque;
         mat.pipeline.depth_write = true;
+        mat.pipeline.render_queue = 0;
     } else {
         mat.pipeline.blend = BlendMode::AlphaBlend;
         mat.pipeline.depth_write = false;
+        mat.pipeline.render_queue = 2;
     }
     renderer_enqueue_draw(mesh, transform, mat);
 }

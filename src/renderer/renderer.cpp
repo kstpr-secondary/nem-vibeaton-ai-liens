@@ -617,6 +617,7 @@ void renderer_begin_frame() {
 
 // ---------------------------------------------------------------------------
 // renderer_end_frame — generic draw loop with pipeline cache (Section 3.2.3)
+// Rendering order: opaques+cutouts → skybox → transparents/additive → UI
 // ---------------------------------------------------------------------------
 
 void renderer_end_frame() {
@@ -639,7 +640,6 @@ void renderer_end_frame() {
     }
 
     // --- Sort draw_queue by render_queue (stable, ascending) -----------------
-    // Build an index array and sort by render_queue value.
     int sorted_indices[1024];
     for (int i = 0; i < state.draw_count; ++i) {
         sorted_indices[i] = i;
@@ -650,214 +650,214 @@ void renderer_end_frame() {
                    state.draw_queue[b].material.pipeline.render_queue;
         });
 
-    // --- Process each render queue group -------------------------------------
-    int queue_start = 0;
+    // --- Helper: extract indices from a sorted range by render_queue value ---
+    auto extract_indices = [sorted_indices](int start, int end, int* out, int max_out) -> int {
+        int count = 0;
+        for (int i = start; i < end && count < max_out; ++i) {
+            out[count++] = sorted_indices[i];
+        }
+        return count;
+    };
+
+    // --- Helper: compute view-space Z for a set of draw commands ------------
+    auto compute_view_z = [](const int* indices, int count, float* z_out) {
+        glm::mat4 view_mat = state.camera_set ? glm::make_mat4(state.camera.view) : glm::mat4(1.0f);
+        for (int i = 0; i < count; ++i) {
+            const DrawCommand& cmd = state.draw_queue[indices[i]];
+            glm::mat4 model = glm::make_mat4(cmd.world_transform);
+            glm::vec3 world_pos(model[3][0], model[3][1], model[3][2]);
+            z_out[i] = (view_mat * glm::vec4(world_pos, 1.0f)).z;
+        }
+    };
+
+    // --- Helper: AABB frustum culling --------------------------------------
+    auto compute_cull_status = [frustum_planes](const int* indices, int count, bool* culled_out) {
+        glm::mat4 world_mat;
+        float corners[8][3];
+        float wc[8][4];
+        for (int i = 0; i < count; ++i) {
+            const DrawCommand& cmd = state.draw_queue[indices[i]];
+            MeshAABB aabb = mesh_aabb_get(cmd.mesh.id);
+            float half = aabb.half;
+            if (half <= 0.0f) { culled_out[i] = false; continue; }
+
+            world_mat = glm::make_mat4(cmd.world_transform);
+            for (int c = 0; c < 8; ++c) {
+                corners[c][0] = aabb.center[0] + ((c & 1) ?  half : -half);
+                corners[c][1] = aabb.center[1] + ((c & 2) ?  half : -half);
+                corners[c][2] = aabb.center[2] + ((c & 4) ?  half : -half);
+            }
+            for (int c = 0; c < 8; ++c) {
+                wc[c][0] = world_mat[0][0]*corners[c][0] + world_mat[1][0]*corners[c][1] + world_mat[2][0]*corners[c][2] + world_mat[3][0];
+                wc[c][1] = world_mat[0][1]*corners[c][0] + world_mat[1][1]*corners[c][1] + world_mat[2][1]*corners[c][2] + world_mat[3][1];
+                wc[c][2] = world_mat[0][2]*corners[c][0] + world_mat[1][2]*corners[c][1] + world_mat[2][2]*corners[c][2] + world_mat[3][2];
+                wc[c][3] = world_mat[0][3]*corners[c][0] + world_mat[1][3]*corners[c][1] + world_mat[2][3]*corners[c][2] + world_mat[3][3];
+            }
+            bool culled_flag = false;
+            for (int p = 0; p < 6 && !culled_flag; ++p) {
+                bool all_outside = true;
+                for (int c = 0; c < 8; ++c) {
+                    float d = frustum_planes[p].xyzw.x*wc[c][0] + frustum_planes[p].xyzw.y*wc[c][1] +
+                              frustum_planes[p].xyzw.z*wc[c][2] + frustum_planes[p].xyzw.w*wc[c][3];
+                    if (d >= 0.0f) { all_outside = false; break; }
+                }
+                if (all_outside) culled_flag = true;
+            }
+            culled_out[i] = culled_flag;
+        }
+    };
+
+    // --- Helper: draw a batch of commands from the pipeline cache -----------
+    auto draw_batch = [&](const int* indices, int count, const bool* culled, int culled_count) {
+        sg_pipeline bound_pipeline = {};
+        for (int i = 0; i < count; ++i) {
+            if (culled && i < culled_count && culled[i]) continue;
+            const DrawCommand& cmd = state.draw_queue[indices[i]];
+
+            sg_pipeline pip = get_or_create_pipeline(cmd.material.shader, cmd.material.pipeline);
+            if (pip.id != bound_pipeline.id) {
+                sg_apply_pipeline(pip);
+                bound_pipeline = pip;
+            }
+
+            glm::mat4 model = glm::make_mat4(cmd.world_transform);
+            glm::mat4 mvp   = state.vp * model;
+            apply_draw_uniforms(cmd.material.shader, cmd.material, model, mvp);
+
+            sg_bindings bind = {};
+            bind.vertex_buffers[0] = mesh_vbuf_get(cmd.mesh.id);
+            bind.index_buffer      = mesh_ibuf_get(cmd.mesh.id);
+
+            if (cmd.material.shader.id == 2) {
+                // BlinnPhong texture slot
+                sg_view tex_view = {};
+                sg_sampler tex_smp = {};
+                if (cmd.material.texture_count > 0 && cmd.material.textures[0].id != 0) {
+                    uint32_t tex_id = cmd.material.textures[0].id;
+                    tex_view = texture_get_view(tex_id);
+                    tex_smp  = texture_get_sampler(tex_id);
+                } else {
+                    tex_view   = state.dummy_blinnphong_view;
+                    tex_smp    = state.dummy_blinnphong_smp;
+                }
+                if (tex_view.id == 0 || tex_smp.id == 0) {
+                    tex_view   = state.dummy_blinnphong_view;
+                    tex_smp    = state.dummy_blinnphong_smp;
+                }
+                bind.views[VIEW_albedo_tex] = tex_view;
+                bind.samplers[SMP_smp]      = tex_smp;
+            } else if (cmd.material.shader.id != 1 && cmd.material.shader.id != 3) {
+                // Custom shader: bind textures from material
+                for (uint8_t t = 0; t < cmd.material.texture_count && t < k_material_texture_slots; ++t) {
+                    if (cmd.material.textures[t].id != 0) {
+                        sg_view v = texture_get_view(cmd.material.textures[t].id);
+                        sg_sampler s = texture_get_sampler(cmd.material.textures[t].id);
+                        if (v.id != 0 && s.id != 0) {
+                            bind.views[t]    = v;
+                            bind.samplers[t] = s;
+                        }
+                    }
+                }
+            }
+            sg_apply_bindings(&bind);
+            sg_draw(0, static_cast<int>(mesh_index_count_get(cmd.mesh.id)), 1);
+        }
+    };
+
+    // --- Pass 1: Opaque objects (render_queue=0) with culling + front-to-back sort --
+    int opaque_range_start = 0;
     for (int i = 0; i <= state.draw_count; ++i) {
-        // Detect queue boundary
         bool is_boundary = (i == state.draw_count) ||
             (state.draw_queue[sorted_indices[i]].material.pipeline.render_queue !=
-             state.draw_queue[sorted_indices[queue_start]].material.pipeline.render_queue);
-
+             state.draw_queue[sorted_indices[opaque_range_start]].material.pipeline.render_queue);
         if (!is_boundary) continue;
 
-        int queue_len = i - queue_start;
-        uint8_t queue_val = state.draw_queue[sorted_indices[queue_start]].material.pipeline.render_queue;
+        uint8_t queue_val = state.draw_queue[sorted_indices[opaque_range_start]].material.pipeline.render_queue;
 
-        // --- Skybox: always last (render_queue implicitly after everything) --
-        if (queue_val == 255) { // sentinel for skybox — drawn last
-            // handled separately below
-        }
-
-        // --- Opaque queue (render_queue=0): culling + front-to-back sort ----
-        if (queue_val == 0 && state.culling_enabled) {
-            // Collect opaque indices and compute view-space Z
+        // --- Opaque: front-to-back sort (nearest first for early-Z rejection) --
+        if (queue_val == 0) {
             int opaque_indices[1024];
-            float draw_z[1024] = {};
-            int opaque_total = 0;
+            int opaque_total = extract_indices(opaque_range_start, i, opaque_indices, 1024);
 
-            for (int qi = queue_start; qi < i; ++qi) {
-                int idx = sorted_indices[qi];
-                const DrawCommand& cmd = state.draw_queue[idx];
-                opaque_indices[opaque_total] = idx;
-                glm::mat4 model = glm::make_mat4(cmd.world_transform);
-                glm::vec3 world_pos(model[3][0], model[3][1], model[3][2]);
+            if (state.culling_enabled && opaque_total > 0) {
+                float draw_z[1024];
+                compute_view_z(opaque_indices, opaque_total, draw_z);
+                std::sort(opaque_indices, opaque_indices + opaque_total,
+                    [&draw_z](int a, int b) { return draw_z[a] > draw_z[b]; });
+
+                bool culled[1024] = {};
+                compute_cull_status(opaque_indices, opaque_total, culled);
+                int total_culled = 0;
+                for (int j = 0; j < opaque_total; ++j) if (culled[j]) ++total_culled;
+                state.cull_count += total_culled;
+                draw_batch(opaque_indices, opaque_total, culled, opaque_total);
+            } else {
+                draw_batch(opaque_indices, opaque_total, nullptr, 0);
+            }
+        }
+
+        // --- Cutout: front-to-back sort (z-write, discards in shader) ----------
+        if (queue_val == 1 && state.culling_enabled) {
+            int cutout_indices[1024];
+            int cutout_total = extract_indices(opaque_range_start, i, cutout_indices, 1024);
+
+            if (cutout_total > 0) {
+                float draw_z[1024];
+                compute_view_z(cutout_indices, cutout_total, draw_z);
+                std::sort(cutout_indices, cutout_indices + cutout_total,
+                    [&draw_z](int a, int b) { return draw_z[a] > draw_z[b]; });
+
+                bool culled[1024] = {};
+                compute_cull_status(cutout_indices, cutout_total, culled);
+                int total_culled = 0;
+                for (int j = 0; j < cutout_total; ++j) if (culled[j]) ++total_culled;
+                state.cull_count += total_culled;
+                draw_batch(cutout_indices, cutout_total, culled, cutout_total);
+            }
+        }
+
+        // --- Skybox pass (after opaques+cutouts so it fills z=1.0 gaps only) -----
+        if (state.skybox_handle.id != 0) {
+            sg_image cubemap_img = texture_get(state.skybox_handle.id);
+            if (sg_query_image_state(cubemap_img) == SG_RESOURCESTATE_VALID) {
                 glm::mat4 view_mat = state.camera_set ? glm::make_mat4(state.camera.view) : glm::mat4(1.0f);
-                draw_z[opaque_total] = (view_mat * glm::vec4(world_pos, 1.0f)).z;
-                ++opaque_total;
-            }
-
-            // Front-to-back sort (nearest first)
-            std::sort(opaque_indices, opaque_indices + opaque_total,
-                [&draw_z](int a, int b) { return draw_z[a] < draw_z[b]; });
-
-            // Pre-compute cull status
-            bool culled[1024] = {};
-            int total_culled = 0;
-            {
-                glm::mat4 world_mat;
-                float corners[8][3];
-                float wc[8][4];
-
-                for (int oi = 0; oi < opaque_total; ++oi) {
-                    const DrawCommand& cmd = state.draw_queue[opaque_indices[oi]];
-                    MeshAABB aabb = mesh_aabb_get(cmd.mesh.id);
-                    float half = aabb.half;
-                    if (half <= 0.0f) continue;
-
-                    world_mat = glm::make_mat4(cmd.world_transform);
-                    for (int c = 0; c < 8; ++c) {
-                        corners[c][0] = aabb.center[0] + ((c & 1) ?  half : -half);
-                        corners[c][1] = aabb.center[1] + ((c & 2) ?  half : -half);
-                        corners[c][2] = aabb.center[2] + ((c & 4) ?  half : -half);
-                    }
-                    for (int c = 0; c < 8; ++c) {
-                        wc[c][0] = world_mat[0][0]*corners[c][0] + world_mat[1][0]*corners[c][1] + world_mat[2][0]*corners[c][2] + world_mat[3][0];
-                        wc[c][1] = world_mat[0][1]*corners[c][0] + world_mat[1][1]*corners[c][1] + world_mat[2][1]*corners[c][2] + world_mat[3][1];
-                        wc[c][2] = world_mat[0][2]*corners[c][0] + world_mat[1][2]*corners[c][1] + world_mat[2][2]*corners[c][2] + world_mat[3][2];
-                        wc[c][3] = world_mat[0][3]*corners[c][0] + world_mat[1][3]*corners[c][1] + world_mat[2][3]*corners[c][2] + world_mat[3][3];
-                    }
-                    bool culled_flag = false;
-                    for (int p = 0; p < 6 && !culled_flag; ++p) {
-                        bool all_outside = true;
-                        for (int c = 0; c < 8; ++c) {
-                            float d = frustum_planes[p].xyzw.x*wc[c][0] + frustum_planes[p].xyzw.y*wc[c][1] +
-                                      frustum_planes[p].xyzw.z*wc[c][2] + frustum_planes[p].xyzw.w*wc[c][3];
-                            if (d >= 0.0f) { all_outside = false; break; }
-                        }
-                        if (all_outside) culled_flag = true;
-                    }
-                    culled[oi] = culled_flag;
-                    if (culled_flag) ++total_culled;
-                }
-            }
-            state.cull_count += total_culled;
-
-            // Draw opaque — generic pipeline cache loop
-            sg_pipeline bound_pipeline = {};
-            for (int oi = 0; oi < opaque_total; ++oi) {
-                if (culled[oi]) continue;
-
-                const DrawCommand& cmd = state.draw_queue[opaque_indices[oi]];
-
-                sg_pipeline pip = get_or_create_pipeline(cmd.material.shader, cmd.material.pipeline);
-                if (pip.id != bound_pipeline.id) {
-                    sg_apply_pipeline(pip);
-                    bound_pipeline = pip;
-                }
-
-                glm::mat4 model = glm::make_mat4(cmd.world_transform);
-                glm::mat4 mvp   = state.vp * model;
-                apply_draw_uniforms(cmd.material.shader, cmd.material, model, mvp);
-
-                // Bindings — handle built-in texture slots + custom shader textures
-                sg_bindings bind = {};
-                bind.vertex_buffers[0] = mesh_vbuf_get(cmd.mesh.id);
-                bind.index_buffer      = mesh_ibuf_get(cmd.mesh.id);
-
-                   if (cmd.material.shader.id == 2) {
-                    // BlinnPhong texture slot
-                    sg_view tex_view = {};
-                    sg_sampler tex_smp = {};
-                    if (cmd.material.texture_count > 0 && cmd.material.textures[0].id != 0) {
-                        uint32_t tex_id = cmd.material.textures[0].id;
-                        tex_view = texture_get_view(tex_id);
-                        tex_smp  = texture_get_sampler(tex_id);
-                    } else {
-                        tex_view   = state.dummy_blinnphong_view;
-                        tex_smp    = state.dummy_blinnphong_smp;
-                    }
-                    if (tex_view.id == 0 || tex_smp.id == 0) {
-                        tex_view   = state.dummy_blinnphong_view;
-                        tex_smp    = state.dummy_blinnphong_smp;
-                    }
-                    bind.views[VIEW_albedo_tex] = tex_view;
-                    bind.samplers[SMP_smp]      = tex_smp;
-                } else if (cmd.material.shader.id != 1 && cmd.material.shader.id != 3) {
-                    // Custom shader: bind textures from material
-                    for (uint8_t t = 0; t < cmd.material.texture_count && t < k_material_texture_slots; ++t) {
-                        if (cmd.material.textures[t].id != 0) {
-                            sg_view v = texture_get_view(cmd.material.textures[t].id);
-                            sg_sampler s = texture_get_sampler(cmd.material.textures[t].id);
-                            if (v.id != 0 && s.id != 0) {
-                                bind.views[t]    = v;
-                                bind.samplers[t] = s;
-                            }
-                        }
-                    }
-                }
-                sg_apply_bindings(&bind);
-                sg_draw(0, static_cast<int>(mesh_index_count_get(cmd.mesh.id)), 1);
-            }
-        }
-        // --- Non-opaque queues (transparent, additive): no culling, no sort --
-        else {
-            sg_pipeline bound_pipeline = {};
-            for (int qi = queue_start; qi < i; ++qi) {
-                int idx = sorted_indices[qi];
-                const DrawCommand& cmd = state.draw_queue[idx];
-
-                sg_pipeline pip = get_or_create_pipeline(cmd.material.shader, cmd.material.pipeline);
-                if (pip.id != bound_pipeline.id) {
-                    sg_apply_pipeline(pip);
-                    bound_pipeline = pip;
-                }
-
-                glm::mat4 model = glm::make_mat4(cmd.world_transform);
-                glm::mat4 mvp   = state.vp * model;
-                apply_draw_uniforms(cmd.material.shader, cmd.material, model, mvp);
-
-                // Bindings — handle built-in texture slots + custom shader textures
-                sg_bindings bind = {};
-                bind.vertex_buffers[0] = mesh_vbuf_get(cmd.mesh.id);
-                bind.index_buffer      = mesh_ibuf_get(cmd.mesh.id);
-
-                if (cmd.material.shader.id == 2) {
-                    // BlinnPhong texture slot
-                    sg_view tex_view = {};
-                    sg_sampler tex_smp = {};
-                    if (cmd.material.texture_count > 0 && cmd.material.textures[0].id != 0) {
-                        tex_view = texture_get_view(cmd.material.textures[0].id);
-                        tex_smp  = texture_get_sampler(cmd.material.textures[0].id);
-                    }
-                    if (tex_view.id == 0 || tex_smp.id == 0) {
-                        tex_view   = state.dummy_blinnphong_view;
-                        tex_smp    = state.dummy_blinnphong_smp;
-                    }
-                    bind.views[VIEW_albedo_tex] = tex_view;
-                    bind.samplers[SMP_smp]      = tex_smp;
-                } else if (cmd.material.shader.id != 1 && cmd.material.shader.id != 3) {
-                    // Custom shader: bind textures from material
-                    for (uint8_t t = 0; t < cmd.material.texture_count && t < k_material_texture_slots; ++t) {
-                        if (cmd.material.textures[t].id != 0) {
-                            sg_view v = texture_get_view(cmd.material.textures[t].id);
-                            sg_sampler s = texture_get_sampler(cmd.material.textures[t].id);
-                            if (v.id != 0 && s.id != 0) {
-                                bind.views[t]    = v;
-                                bind.samplers[t] = s;
-                            }
-                        }
-                    }
-                }
-                sg_apply_bindings(&bind);
-
-                sg_draw(0, static_cast<int>(mesh_index_count_get(cmd.mesh.id)), 1);
+                glm::mat4 proj_mat = state.camera_set ? glm::make_mat4(state.camera.projection) : glm::mat4(1.0f);
+                draw_skybox_pass(state.pipeline_skybox, cubemap_img,
+                                 glm::value_ptr(proj_mat), glm::value_ptr(view_mat));
             }
         }
 
-        queue_start = i;
+        // --- Transparent+Additive: back-to-front sort (no z-write, z-read) -----
+        if (queue_val >= 2 && queue_val <= 3) {
+            int trans_indices[1024];
+            int trans_total = extract_indices(opaque_range_start, i, trans_indices, 1024);
+
+            if (trans_total > 0) {
+                float trans_z[1024];
+                compute_view_z(trans_indices, trans_total, trans_z);
+                std::sort(trans_indices, trans_indices + trans_total,
+                    [&trans_z](int a, int b) { return trans_z[a] < trans_z[b]; });
+
+                bool culled[1024] = {};
+                if (state.culling_enabled) {
+                    compute_cull_status(trans_indices, trans_total, culled);
+                    int total_culled = 0;
+                    for (int j = 0; j < trans_total; ++j) if (culled[j]) ++total_culled;
+                    state.cull_count += total_culled;
+                }
+                draw_batch(trans_indices, trans_total, culled, trans_total);
+            }
+        }
+
+        // --- Skybox (render_queue=255): skip here, drawn below -----------------
+        if (queue_val == 255) {
+            // handled separately after opaque+cutout pass
+        }
+
+        opaque_range_start = i;
     }
 
-    // --- Skybox pass (LAST — renders at far plane) ---------------------------
-    if (state.skybox_handle.id != 0) {
-        sg_image cubemap_img = texture_get(state.skybox_handle.id);
-        if (sg_query_image_state(cubemap_img) == SG_RESOURCESTATE_VALID) {
-            glm::mat4 view_mat = state.camera_set ? glm::make_mat4(state.camera.view) : glm::mat4(1.0f);
-            glm::mat4 proj_mat = state.camera_set ? glm::make_mat4(state.camera.projection) : glm::mat4(1.0f);
-            draw_skybox_pass(state.pipeline_skybox, cubemap_img,
-                             glm::value_ptr(proj_mat), glm::value_ptr(view_mat));
-        }
-    }
-    // --- Line quad draws ----------------------------------------------------
+    // --- Line quad draws (UI) ------------------------------------------------
     if (state.line_quad_count > 0) {
         if (!state.line_quad_bufs_init) {
             uint32_t line_quad_indices[256 * 6];
@@ -1030,6 +1030,8 @@ RendererShaderHandle renderer_builtin_shader(BuiltinShader s) {
 // ---------------------------------------------------------------------------
 
 void renderer_set_time(float seconds_since_start) {
+    // Stored for future time-based animation (animated materials, pulsating lights, etc.).
+    // Currently unused by built-in shaders — reserved API slot.
     state.current_time = seconds_since_start;
 }
 
@@ -1086,6 +1088,12 @@ Material renderer_make_unlit_material(const float rgba[4]) {
     }
     p.flags = glm::vec4(0.0f); // no texture by default
     material_set_uniforms(m, p);
+
+    if (rgba && rgba[3] < 1.0f) {
+        m.pipeline.blend = BlendMode::AlphaBlend;
+        m.pipeline.depth_write = false;
+        m.pipeline.render_queue = 2;
+    }
     return m;
 }
 

@@ -113,7 +113,7 @@ struct RendererShaderHandle { uint32_t id = 0; };
 // Pipeline state — travels with the material instance
 // ---------------------------------------------------------------------------
 enum class BlendMode  : uint8_t { Opaque = 0, Cutout, AlphaBlend, Additive };
-enum class CullMode   : uint8_t { Back   = 0, Front,  None };
+enum class CullMode   : uint8_t { Back   = 0, Front,  Off };
 
 struct PipelineState {
     BlendMode blend        = BlendMode::Opaque;
@@ -344,7 +344,7 @@ float alpha = rim * fresnel_params.y * shield_color.a;
 frag_color = vec4(shield_color.rgb * (0.3 + rim), alpha);
 ```
 
-Pipeline state when creating this material: `BlendMode::AlphaBlend, CullMode::None,
+Pipeline state when creating this material: `BlendMode::AlphaBlend, CullMode::Off,
 depth_write=false, render_queue=2`.
 
 #### 3.3.2 shaders/game/plasma_ball.glsl
@@ -385,7 +385,7 @@ frag_color = vec4(col, alpha);
 
 Include the `vnoise()` function from Section 5 Appendix A.
 
-Pipeline state: `BlendMode::Additive, CullMode::None, depth_write=false, render_queue=3`.
+Pipeline state: `BlendMode::Additive, CullMode::Off, depth_write=false, render_queue=3`.
 
 **Color parameter responsibility**: `core_color` and `rim_color` are hardcoded constants
 in the game-side material creation helper (`make_plasma_material()`). `bolt_color` is the
@@ -562,7 +562,7 @@ static entt::entity spawn_shield_sphere(entt::entity owner, float half_extent) {
     // ShieldFSParams is defined in shield_vfx.h (game-side, knows the layout).
     Material mat{};
     mat.shader = g_shield_shader;
-    mat.pipeline = { BlendMode::AlphaBlend, CullMode::None, false, 2 };
+    mat.pipeline = { BlendMode::AlphaBlend, CullMode::Off, false, 2 };
     ShieldFSParams p{};
     p.shield_color  = {0.3f, 0.5f, 1.0f, constants::shield_max_alpha};
     p.view_pos_w    = {};  // updated every frame by shield_vfx_update
@@ -621,7 +621,7 @@ Change `spawn_projectile()` to use the game-registered plasma shader:
 ```cpp
 Material mat{};
 mat.shader   = g_plasma_shader;
-mat.pipeline = { BlendMode::Additive, CullMode::None, false, 3 };
+mat.pipeline = { BlendMode::Additive, CullMode::Off, false, 3 };
 PlasmaBallFSParams p{};
 p.core_color  = {1.0f, 1.0f, 0.9f, 1.0f};
 p.rim_color   = {0.4f, 0.6f, 1.0f, 1.0f};

@@ -137,20 +137,24 @@ static void frame_cb(float dt, void* /*user_data*/) {
             }
 
            Material mat = em.mat;
-             if (cf && cf->timer > 0.f) {
-                 float t_norm = std::min(cf->timer, 1.0f);
-                 // Timer 1.0→0.5: flash→mid-blend; 0.5→0.0: mid-blend→base
-                 float blend = (t_norm > 0.5f) ? (t_norm - 0.5f) * 2.0f : t_norm * 2.0f;
-                 blend = std::clamp(blend, 0.0f, 1.0f);
-                 // Write blended RGB into the first 12 bytes of the uniform blob
-                 // (works for both UnlitFSParams::color and BlinnPhongFSParams::base_color)
-                 float blended[3] = {
-                     cf->flash_color[0] + blend * (cf->base_color[0] - cf->flash_color[0]),
-                     cf->flash_color[1] + blend * (cf->base_color[1] - cf->flash_color[1]),
-                     cf->flash_color[2] + blend * (cf->base_color[2] - cf->flash_color[2]),
-                 };
-                 std::memcpy(mat.uniforms, blended, 3 * sizeof(float));
-             } else if (reg.all_of<OutOfBounds>(e)) {
+              if (cf && cf->timer > 0.f) {
+                  float t_norm = std::min(cf->timer, 1.0f);
+                  // Timer 1.0→0.5: flash→mid-blend; 0.5→0.0: mid-blend→base
+                  float blend = (t_norm > 0.5f) ? (t_norm - 0.5f) * 2.0f : t_norm * 2.0f;
+                  blend = std::clamp(blend, 0.0f, 1.0f);
+                  // Write blended RGB into the first 12 bytes of the uniform blob
+                  // (works for both UnlitFSParams::color and BlinnPhongFSParams::base_color)
+                  float blended[3] = {
+                      cf->flash_color[0] + blend * (cf->base_color[0] - cf->flash_color[0]),
+                      cf->flash_color[1] + blend * (cf->base_color[1] - cf->flash_color[1]),
+                      cf->flash_color[2] + blend * (cf->base_color[2] - cf->flash_color[2]),
+                  };
+                  std::memcpy(mat.uniforms, blended, 3 * sizeof(float));
+                  // Collision flash must render as transparent (after skybox)
+                  mat.pipeline.blend = BlendMode::AlphaBlend;
+                  mat.pipeline.depth_write = false;
+                  mat.pipeline.render_queue = 2;
+              } else if (reg.all_of<OutOfBounds>(e)) {
                  // OOB override — bright green (collision red already takes priority above)
                  float green[] = { 0.f, 1.f, 0.f };
                  std::memcpy(mat.uniforms, green, 3 * sizeof(float));

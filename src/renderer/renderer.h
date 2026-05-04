@@ -104,7 +104,7 @@ T* material_uniforms_as(Material& m) {
 
 struct UnlitFSParams {
     glm::vec4 color;             // rgba
-    glm::vec4 flags;             // .x = use_texture (1.0 or 0.0)
+    glm::vec4 flags;             // reserved — not consumed by unlit shader (future animated textures)
 };
 
 struct BlinnPhongFSParams {
