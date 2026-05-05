@@ -43,6 +43,11 @@ constexpr float  laser_damage          = 10.0f;
 constexpr float  laser_cooldown        = 5.0f;     // seconds
 constexpr float  laser_max_range       = 800.0f;   // units
 constexpr float  laser_line_width      = 0.15f;    // visual quad width (units)
+constexpr float  laser_charge_time             = 0.8f;   // hold duration before firing
+constexpr float  laser_fire_duration             = 3.0f;   // active damage window
+constexpr float  laser_fade_duration             = 0.5f;   // glow-down after depletion
+constexpr float  laser_dps                      = 20.0f;  // damage per second while firing
+constexpr float  laser_impulse_per_second       = 30.0f;  // asteroid impulse per second
 
 // ---------------------------------------------------------------------------
 // Weapons — plasma
@@ -98,6 +103,20 @@ constexpr float  asteroid_large_spin_max   = 0.3f;
 constexpr float  asteroid_tier_small_frac  = 0.35f; // 210 small (from 600 total)
 constexpr float  asteroid_tier_medium_frac = 0.30f; // 180 medium
 // large fills the remainder                         // 210 large
+
+// ---------------------------------------------------------------------------
+// Shield VFX
+// ---------------------------------------------------------------------------
+
+constexpr float  shield_sphere_scale   = 1.45f;
+constexpr float  shield_max_alpha      = 0.55f;
+constexpr float  shield_fresnel_exp    = 3.0f;
+constexpr float  shield_rim_intensity  = 1.2f;
+
+// Impact VFX durations
+constexpr float  plasma_impact_duration  = 0.5f;
+constexpr float  laser_impact_duration   = 0.4f;
+constexpr float  shield_impact_duration  = 0.25f;
 
 // ---------------------------------------------------------------------------
 // Camera rig (third-person)

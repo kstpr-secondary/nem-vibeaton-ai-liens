@@ -73,7 +73,7 @@ struct WeaponState {
     WeaponType active_weapon   = WeaponType::Laser;
     float      laser_cooldown  = 5.0f;
     double     laser_last_fire = -std::numeric_limits<double>::infinity();
-    float      laser_damage    = 10.0f;
+    float      laser_dps       = 20.0f;
     float      plasma_cooldown  = 0.1f;
     double     plasma_last_fire = -std::numeric_limits<double>::infinity();
     float      plasma_damage    = 0.5f;
@@ -104,4 +104,34 @@ struct AsteroidData {
 struct Lifetime {
     double spawn_time = 0.0;
     float  lifetime   = 1.0f;  // seconds
+};
+
+// Visual shield sphere — follows owner transform, alpha driven by shield health.
+struct ShieldSphere {
+    entt::entity owner  = entt::null;
+    float        radius = 0.0f;
+};
+
+struct VFXData {
+    float initial_scale = 1.0f;
+    float final_scale   = 5.0f;
+    float initial_alpha = 1.0f;
+    float final_alpha   = 0.0f;
+    float r = 1.0f, g = 0.5f, b = 0.1f;
+};
+
+struct LaserBeam {
+    entt::entity owner      = entt::null;
+    glm::vec3    start      = {};
+    glm::vec3    end        = {};
+    bool         active     = false;
+    float        charge_t   = 0.0f;
+    float        fire_t     = 0.0f;
+    float        fade_t     = 0.0f;
+    double       spawn_time = 0.0;
+    entt::entity last_hit_entity = entt::null;
+};
+
+struct LaserCharge {
+    double start_time = 0.0;
 };

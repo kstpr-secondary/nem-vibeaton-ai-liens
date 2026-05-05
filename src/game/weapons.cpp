@@ -51,7 +51,7 @@ static void laser_fire(entt::entity player_e,
     const auto hit = engine_raycast(muzzle_origin, ray_dir, constants::laser_max_range);
     if (hit.has_value() && hit->entity != player_e) {
         // Damage target (shield → HP).
-        apply_damage(hit->entity, ws.laser_damage);
+        apply_damage(hit->entity, ws.laser_dps);
 
         // Extra impulse for asteroid hits — kick them away from the laser.
         if (engine_has_component<AsteroidTag>(hit->entity))
