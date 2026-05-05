@@ -44,10 +44,11 @@ AGENTS.md §3 already fixes: OpenGL 3.3 Core backend, sokol-shdc precompilation,
 
 **Public API surface** (see `docs/interfaces/renderer-interface-spec.md` for full frozen spec)
 - Lifecycle: `init(config)`, `shutdown()`, `run()`. `config` carries resolution + clear color.
-- Per-frame: `begin_frame()`, `enqueue_draw(mesh, transform, material)`, `enqueue_line_quad(p0, p1, width, color)`, `end_frame()`.
+- Per-frame: `begin_frame()`, `enqueue_draw(mesh, transform, material)`, `enqueue_line_quad(p0, p1, width, color, blend)`, `end_frame()`.
 - Meshes: procedural builders + `upload_mesh(vertices, indices, layout)` for engine-imported assets.
-- Materials: shading model enum (`Unlit`, `Lambertian`, `BlinnPhong`), base color, optional texture handle, shininess, alpha.
-- Textures: `upload_texture_2d`, `upload_texture_from_memory`, `upload_texture_from_file`, `upload_cubemap`.
+- Materials (v1.2): `Material` struct with `RendererShaderHandle`, `PipelineState` (blend, cull, depth, queue), and a 256-byte uniform blob. No more shading model enums.
+- Shaders: `renderer_create_shader(desc)` for custom shaders; `renderer_builtin_shader(type)` for Unlit, BlinnPhong, Lambertian.
+- Textures: `upload_texture_2d`, `upload_texture_from_file`, `upload_cubemap`.
 - Lights: `set_directional_light(dir, color, intensity)` — single directional light.
 - Camera: `set_camera(view_matrix, projection_matrix)` — engine computes; renderer applies.
 - Skybox: `set_skybox(cubemap_handle)`.
@@ -59,9 +60,9 @@ AGENTS.md §3 already fixes: OpenGL 3.3 Core backend, sokol-shdc precompilation,
 - `renderer_tests` (Catch2) for math and mesh-builder unit coverage.
 - Iteration build: `cmake --build build --target renderer_app renderer_tests`.
 
-**Completed milestones** (all merged)
+**Completed milestones**
 - R-M0 through R-M3 (MVP), R-M4 (Blinn-Phong + textures), R-M6 (frustum culling).
-- Remaining: R-M5 capsule mesh, sorted transparency queue.
+- Visual Improvements Phase 2: Material system redesign, pipeline cache, and sorted render queues.
 
 ---
 
@@ -69,34 +70,44 @@ AGENTS.md §3 already fixes: OpenGL 3.3 Core backend, sokol-shdc precompilation,
 
 1. **Read before editing.** Load the research/plan document for the feature and the frozen interface spec.
 2. **Load domain skills** — C++ draw-path/pipelines → `sokol-api`; shaders → `sokol-shdc` + `glsl-patterns`. Open raw headers only when a skill is insufficient; quote minimal snippets (AGENTS.md §9).
-3. **Implement the minimum slice** that makes the feature visible in `renderer_app`. Resist adjacent-milestone creep.
-4. **Update `src/renderer/app/main.cpp`** to exercise the new feature.
-5. **Build target-scoped:** `cmake --build build --target renderer_app renderer_tests`.
-6. **Run `renderer_app` and visually confirm.** Rendering correctness is behavioral, not unit-tested.
-7. **Verify magenta fallback** — intentionally break a shader; confirm it triggers without crashing. Acceptance criterion from R-M2 onward.
+3. **Follow the Universal VS Uniform Convention.** Every mesh shader MUST have VS binding 0 as:
+   ```glsl
+   layout(binding=0) uniform vs_params { mat4 mvp; mat4 model; mat4 normal_mat; };
+   ```
+   The renderer ALWAYS sends this 192-byte block.
+4. **Utilize the Material System (v1.2).** Use `material_set_uniforms<T>(mat, params)` and `material_uniforms_as<T>(mat)` to manage the raw uniform blob. Set `mat.pipeline.render_queue` to control draw order.
+5. **Implement the minimum slice** that makes the feature visible in `renderer_app`. Resist adjacent-milestone creep.
+6. **Update `src/renderer/app/main.cpp`** to exercise the new feature.
+7. **Build target-scoped:** `cmake --build build --target renderer_app renderer_tests`.
+8. **Run `renderer_app` and visually confirm.** Rendering correctness is behavioral, not unit-tested.
+9. **Verify magenta fallback** — intentionally break a shader; confirm it triggers without crashing.
 
 ---
 
 ## 4. Decision rules
 
-- **Prefer `renderer_app` for feature demos** over wiring early into `game`. Keep the workstream independent.
+- **Rendering Sequence (Mandatory):**
+  1. Opaque (`render_queue=0`): Sorted front-to-back.
+  2. Cutout (`render_queue=1`): Sorted front-to-back.
+  3. Skybox: xyww trick, drawn after opaques/cutouts.
+  4. Transparent/Additive (`render_queue=2,3`): Sorted back-to-front.
+  5. UI/Line Quads: Overlaid last.
+- **Prefer the pipeline cache** over hardcoded `sg_pipeline` fields. Use `get_or_create_pipeline(shader, state)`.
 - **Prefer the magenta fallback over exception-throwing shader loads.** Crashing the renderer breaks every downstream workstream.
-- **Prefer CPU-side normal matrices** uploaded as uniforms over per-vertex `inverse(transpose(...))`.
-- **Prefer a single `mat4` uniform block per pipeline** over many scalar uniforms — fewer state changes, simpler sokol-shdc reflection.
+- **Prefer CPU-side normal matrices** computed as `transpose(inverse(model))` and uploaded in the universal VS block.
 - **Escalate (do not resolve unilaterally):** any Vulkan request, any runtime-GLSL request, any FetchContent→non-FetchContent substitution, any frozen-interface change, any engine-side edit from a renderer agent.
 
 ---
 
 ## 5. Gotchas
 
-- **Uniform-block layout is std140-sensitive.** Align `vec3` carefully or use `vec4`. Let sokol-shdc reflection drive C++ struct layout — do not hand-pad and hope.
-- **Normal matrix is not the model matrix.** Non-uniform scale breaks lighting if you pass `mat3(model)`. Compute on CPU; upload as `mat3` (padded to 3×`vec4` under std140).
-- **Skybox depth gotchas:** forgetting to disable depth write produces z-fight; missing the `pos.xyww` trick (or depth-off + draw-first) breaks occlusion.
-- **Alpha blending without a sorted queue shows artifacts** when two transparent surfaces overlap. Sorted transparency lands at R-M5.
+- **Uniform-block layout is std140-sensitive.** Align `vec3` carefully or use `vec4`. The universal VS block is exactly 192 bytes (3x `mat4`).
+- **Render Queues drive the draw loop.** Ensure materials have the correct `render_queue` assigned: 0=opaque, 1=cutout, 2=transparent, 3=additive.
+- **Z-Sorting is unconditional.** Opaques/Cutouts sort front-to-back; Transparents sort back-to-front. Culling is a separate optimization step.
+- **Skybox depth gotchas:** utilizes `pos.xyww` in the vertex shader and `LESS_EQUAL` depth comparison to draw at the far plane.
+- **Line Quads (lasers/VFX) use Additive blending** when `blend=BlendMode::Additive` is passed. They are batched by blend mode in the final UI pass.
 - **`glLineWidth` > 1 px is not portable in GL 3.3 Core** — this is why lasers are world-space quads.
-- **sokol-shdc errors surface at CMake configure/build time.** A broken shader fails the build; fix it there — do not wrap in runtime try/catch.
 - **Engine tick runs *inside* the renderer frame callback.** Do not call engine code from outside, and do not assume the engine drives the loop.
-- **Input callbacks must be re-entrancy-safe** — `sokol_app` may deliver events across begin/end boundaries; keep dispatch thin.
 - **Mesh builders live here.** If the engine duplicates them, that is a cross-workstream bug — flag it.
 - **`renderer_app` is not the game.** Keep its scene minimal and procedural — it is a demo harness, not shipped code.
 - **Matrix algorithms from references assume row-major; GLM is column-major.** Row k translates to `(M[0][k], M[1][k], M[2][k], M[3][k])`. When a matrix-based algorithm produces geometrically scrambled results and the formula looks right, check row/column transposition first.

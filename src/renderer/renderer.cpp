@@ -261,21 +261,12 @@ static void apply_draw_uniforms(RendererShaderHandle shader,
                                 const Material& mat,
                                 const glm::mat4& model_mat,
                                 const glm::mat4& mvp) {
-    // --- Binding 0: vertex shader uniforms ---
-    if (shader.id == 1) {
-        // Unlit: only mat4 mvp (64 bytes)
-        struct UnlitVS { glm::mat4 mvp; };
-        UnlitVS uvs = { mvp };
-        sg_range r = { &uvs, sizeof(uvs) };
-        sg_apply_uniforms(0, &r);
-    } else {
-        // BlinnPhong / Lambertian: mat4 mvp + model + normal_mat (192 bytes)
-        glm::mat4 normal_mat = glm::transpose(glm::inverse(model_mat));
-        struct VSParams { glm::mat4 mvp; glm::mat4 model; glm::mat4 normal_mat; };
-        VSParams vs_p = { mvp, model_mat, normal_mat };
-        sg_range r = { &vs_p, sizeof(vs_p) };
-        sg_apply_uniforms(0, &r);
-    }
+    // --- Binding 0: vertex shader uniforms (all shaders: mvp + model + normal_mat) --
+    glm::mat4 normal_mat = glm::transpose(glm::inverse(model_mat));
+    struct VSParams { glm::mat4 mvp; glm::mat4 model; glm::mat4 normal_mat; };
+    VSParams vs_p = { mvp, model_mat, normal_mat };
+    sg_range r = { &vs_p, sizeof(vs_p) };
+    sg_apply_uniforms(0, &r);
 
     // --- Binding 1: fragment shader uniforms ---
     if (shader.id == 2) {
@@ -789,13 +780,13 @@ void renderer_end_frame() {
             int opaque_indices[1024];
             extract_indices(queue_boundaries[0], queue_boundaries[0] + opaque_total, opaque_indices, 1024);
 
-            if (state.culling_enabled) {
-                float draw_z[1024];
-                compute_view_z(opaque_indices, opaque_total, draw_z);
-                std::sort(opaque_indices, opaque_indices + opaque_total,
-                    [&draw_z](int a, int b) { return draw_z[a] > draw_z[b]; });
+            float draw_z[1024];
+            compute_view_z(opaque_indices, opaque_total, draw_z);
+            std::sort(opaque_indices, opaque_indices + opaque_total,
+                [&draw_z](int a, int b) { return draw_z[a] > draw_z[b]; });
 
-                bool culled[1024] = {};
+            bool culled[1024] = {};
+            if (state.culling_enabled) {
                 compute_cull_status(opaque_indices, opaque_total, culled);
                 int total_culled = 0;
                 for (int j = 0; j < opaque_total; ++j) if (culled[j]) ++total_culled;
@@ -814,13 +805,13 @@ void renderer_end_frame() {
             int cutout_indices[1024];
             extract_indices(queue_boundaries[1], queue_boundaries[1] + cutout_total, cutout_indices, 1024);
 
+            float draw_z[1024];
+            compute_view_z(cutout_indices, cutout_total, draw_z);
+            std::sort(cutout_indices, cutout_indices + cutout_total,
+                [&draw_z](int a, int b) { return draw_z[a] > draw_z[b]; });
+
             bool culled[1024] = {};
             if (state.culling_enabled) {
-                float draw_z[1024];
-                compute_view_z(cutout_indices, cutout_total, draw_z);
-                std::sort(cutout_indices, cutout_indices + cutout_total,
-                    [&draw_z](int a, int b) { return draw_z[a] > draw_z[b]; });
-
                 compute_cull_status(cutout_indices, cutout_total, culled);
                 int total_culled = 0;
                 for (int j = 0; j < cutout_total; ++j) if (culled[j]) ++total_culled;
@@ -925,15 +916,29 @@ void renderer_end_frame() {
         bind.vertex_buffers[0] = state.line_quad_vbuf;
         bind.index_buffer      = state.line_quad_ibuf;
 
-        // Route each command to the correct pipeline based on stored blend mode.
-        // Additive quads first (order-independent), then opaque/alpha-blended.
+        // Batch additive quads first (order-independent blending), then opaque/alpha-blended.
+        int additive_start = 0, additive_end = 0, opaque_start = 0, opaque_end = 0;
         for (int i = 0; i < state.line_quad_count; ++i) {
-            BlendMode bm = state.line_quad_blend[i];
-            sg_pipeline pip = (bm == BlendMode::Additive) ? state.pipeline_line_quad_additive : state.pipeline_line_quad;
-            sg_apply_pipeline(pip);
+            if (state.line_quad_blend[i] == BlendMode::Additive) {
+                if (additive_end == 0) additive_start = i;
+                additive_end = i + 1;
+            } else {
+                if (opaque_end == 0) opaque_start = i;
+                opaque_end = i + 1;
+            }
+        }
+
+        if (additive_end > additive_start) {
+            sg_apply_pipeline(state.pipeline_line_quad_additive);
             sg_apply_uniforms(UB_line_quad_vs_params, &vp_range);
             sg_apply_bindings(&bind);
-            sg_draw(i * 6, 6, 1); // draw one quad at a time (6 indices each)
+            sg_draw(additive_start * 6, (additive_end - additive_start) * 6, 1);
+        }
+        if (opaque_end > opaque_start) {
+            sg_apply_pipeline(state.pipeline_line_quad);
+            sg_apply_uniforms(UB_line_quad_vs_params, &vp_range);
+            sg_apply_bindings(&bind);
+            sg_draw(opaque_start * 6, (opaque_end - opaque_start) * 6, 1);
         }
     }
 
