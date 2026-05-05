@@ -5,6 +5,7 @@
 #include "constants.h"
 #include "damage.h"
 #include "enemy_ai.h"
+#include "game_shaders.h"
 #include "hud.h"
 #include "player.h"
 #include "projectile.h"
@@ -202,6 +203,10 @@ void game_init() {
     s_match_state                = {};
     s_match_state.phase          = MatchPhase::Playing;
     s_match_state.phase_enter_time = engine_now();
+
+    // Register game-side shaders (shield, plasma ball) — must be called before
+    // any spawn function that uses g_shield_shader or g_plasma_shader.
+    game_shaders_init();
 
     // Directional light entity — warm sun from upper-left at ~60° elevation.
     // The engine iterates all Light entities each tick and pushes them to

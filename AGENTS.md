@@ -1,192 +1,91 @@
-# AGENTS.md — Cross-Tool Root Behavior
+# AGENTS.md — Repository operating guide
 
-> Authoritative behavior rules for every AI agent working in this repo (Claude, Copilot, Gemini, GLM, local Qwen, …). Tool-specific notes live in their own files (`CLAUDE.md`, `.github/copilot-instructions.md`, `.gemini/settings.json`). Workstream-specific and library-specific knowledge lives in `.agents/skills/`.
->
-> Master Blueprint: `pre_planning_docs/Hackathon Master Blueprint.md` (iteration 8). This file distills the parts every agent must obey every session.
+> Authoritative behavior rules for every AI agent working in this repo. Tool-specific notes live in `CLAUDE.md`, `.github/copilot-instructions.md`, and `.gemini/settings.json`. Workstream-specific knowledge lives in `.agents/skills/`.
 
----
+## 1. Project state
 
-## 1. What we are building
+This repo contains three C++17 workstreams:
 
-Three C++17 projects, one repo, initial prototype built from scratch during a 4 hour hackathon, currently developing further:
+1. **Renderer** (`src/renderer/`) — OpenGL 3.3 Core renderer using `sokol_gfx`/`sokol_app`; owns window/app lifecycle, frame callback, pipelines, shaders, mesh upload, and draw submission.
+2. **Engine** (`src/engine/`) — ECS (`entt`), asset import (`cgltf`, `tinyobjloader`), Euler physics, AABB/raycast queries, camera computation, renderer bridge.
+3. **Game** (`src/game/`) — the space-shooter game executable: controls, combat, enemy AI, HUD, match flow, and game-layer ECS state.
 
-1. **Rendering engine** (`src/renderer/`) — forward, OpenGL 3.3 Core via `sokol_gfx`; owns `sokol_app` init and the main frame callback.
-2. **Game engine** (`src/engine/`) — ECS (`entt`), asset import (`cgltf`/`tinyobjloader`), Euler physics, AABB collision, raycast. Ticks from inside the renderer frame callback.
-3. **Game** (`src/game/`) — 3D space shooter. Consumes the game-engine public API.
+The hackathon coordination workflow is retired. Current work is feature-based.
 
----
+## 2. Active documentation model
 
-## 2. Hostnames and owner tags
+Current feature work may be documented in either of these shapes:
 
-Ubuntu 24.04 LTS everywhere. Hostnames are set in `/etc/hostname` pre-hackathon and are the authoritative machine identifiers.
+- **Structured feature folder** under `specs/<feature>/` with files such as `spec.md`, `plan.md`, `tasks.md`, `research.md`, `data-model.md`, and `contracts/*`.
+- **Single combined markdown design doc** such as `pre_planning_docs/next-gen-tasks/visual-improvements.md` that may contain research, diagnostics, design, phases, tasks, and acceptance notes in one file.
 
-| Hostname  | Primary role                              |
-| :-------- | :---------------------------------------- |
-| `laptopA` | Rendering engine                          |
-| `laptopB` | Game engine                               |
-| `laptopC` | Game                                      |
-| `rtx3090` | Validation, tests, local model, demo box  |
+When starting work, read the feature document the user points at. If it is a combined markdown file, use the sections that matter to the task:
 
-**Owner tag**: `<agent_name>@<machine>`.
+- problem statement / diagnostics
+- design or proposed changes
+- phases
+- task list
+- checkpoints / acceptance notes
 
-- `agent_name` is lowercase tool name: `claude`, `copilot`, `gemini`, `glm`, `local-qwen`.
-- Two instances of the same agent on one machine: append `-2`, `-3` → `claude-2@laptopA`.
-- Human manual path: `FirstName@machine` (e.g., `Alice@laptopA`).
-- If you cannot determine the machine name, **do not overwrite** a populated `Owner`; add `"assisted by <agent_name>, machine unknown"` to `Notes`.
+Use stable reference docs only when the feature doc points at them or when the task clearly depends on them:
 
----
+- `docs/interfaces/` — frozen public contracts
+- `docs/architecture/` — subsystem architecture
+- `docs/game-design/` — gameplay intent
+- `.agents/skills/` — role and library guidance
 
-## 3. Build stack (reminder — do not argue with these)
+`_coordination/` is archived and should not drive new work.
 
-- **CMake + Ninja + Clang**, **C++17**, warnings `-Wall -Wextra -Wpedantic`; `-Werror` off.
-- Dependencies via **FetchContent only** — no Conan, no vcpkg, no system packages.
-- Graphics backend: **OpenGL 3.3 Core only**. Vulkan removed.
-- Shaders: annotated `.glsl` under `shaders/{renderer,game}/`, **precompiled via `sokol-shdc`** into `${CMAKE_BINARY_DIR}/generated/shaders/<name>.glsl.h`. Include the header; call `shd_<name>_shader_desc(sg_query_backend())`. No runtime GLSL loading, no hot-reload.
-- Shader creation failures log and fall back to a **magenta error pipeline**. Never crash.
-- Asset paths come from the generated `ASSET_ROOT` macro (`paths.h`). **Never hard-code relative asset paths**; always compose from `ASSET_ROOT`. Shaders need no runtime path.
+## 3. Build and platform constraints
 
-### Per-workstream iteration build — do not rebuild unrelated targets
+- C++17, CMake, Ninja, Clang, warnings `-Wall -Wextra -Wpedantic`, `-Werror` off.
+- Dependencies via **FetchContent only**.
+- **OpenGL 3.3 Core only**.
+- Shaders live under `shaders/{renderer,game}/` and are compiled by `sokol-shdc` into generated headers.
+- Shader creation failures must log and fall back to the **magenta error pipeline**.
+- Runtime asset paths must be composed from `ASSET_ROOT`.
+
+Target-scoped builds:
 
 ```bash
-# Renderer workstream
 cmake --build build --target renderer_app renderer_tests
-# Engine workstream
 cmake --build build --target engine_app engine_tests
-# Game workstream
 cmake --build build --target game
-# Milestone-sync full rebuild (only then)
 cmake --build build
 ```
 
-After a milestone merge, the downstream workstream runs the full build **once** to refresh upstream static libs; routine iteration stays target-scoped.
+Top-level `CMakeLists.txt` is co-owned by Renderer and Systems Architect.
 
-**CMakeLists.txt ownership:** the Renderer workstream / Systems Architect owns the top-level `CMakeLists.txt`. Cross-workstream build changes require a **2-minute notice** to the other workstreams.
+## 4. Ownership boundaries
 
----
+- **Renderer owns** `sokol_app`, frame lifecycle, pipelines, shaders, textures, mesh upload, skybox, line quads.
+- **Engine owns** ECS lifecycle, component schema, physics, scene queries, asset import, camera matrices, renderer-facing scene submission.
+- **Game owns** gameplay systems, tuning, HUD, weapons, enemy behavior, match state, game-local components.
 
-## 4. Repository map (anchors agents must know)
+Do not move behavior across workstreams unless the feature explicitly requires it.
 
-```
-<repo>/
-├── AGENTS.md                       ← this file
-├── CLAUDE.md                       ← imports AGENTS.md via @AGENTS.md
-├── .github/copilot-instructions.md ← short mirror of critical rules
-├── .gemini/settings.json           ← "contextFileName": "AGENTS.md"
-├── .agents/skills/                 ← role, library, and domain SKILLs
-├── _coordination/                  ← README only; archive in _coordination.archive/
-├── docs/
-│   ├── architecture/               ← ARCHITECTURE.md + per-workstream
-│   ├── interfaces/                 ← INTERFACE_SPEC.md + per-workstream specs (frozen)
-│   ├── game-design/                ← GAME_DESIGN.md
-│   └── planning/speckit/{renderer,engine,game}/
-├── pre_planning_docs/              ← Hackathon Master Blueprint + concept seeds
-├── shaders/
-│   ├── renderer/*.glsl
-│   └── game/*.glsl
-└── src/{renderer,engine,game}/
-```
+## 5. Frozen interfaces
 
-- `docs/` — stable reference. Read-only between milestones.
-- `_coordination/` — archived hackathon-era state (see `_coordination.archive/README.md`). New features use simpler research+plan documents.
-- `.agents/skills/` — role skills, library cheat-sheets, per-aspect references.
+`docs/interfaces/*-interface-spec.md` are cross-workstream contracts. Do not edit a frozen interface to make code compile. If a feature requires an interface change, stop and surface that clearly for human approval.
 
----
+## 6. Working rules
 
-## 5. Task schema
+- Read the active feature docs before editing code.
+- Use the relevant skill first; open large headers only if the skill is insufficient.
+- Keep changes within the owning workstream unless the feature explicitly spans multiple workstreams.
+- Prefer precise, feature-scoped changes over cleanup outside the task.
+- Keep `main` demo-safe.
 
-All task tables use this row schema:
+## 7. Validation expectations
 
-```
-| ID | Task | Tier | Status | Owner | Depends_on | Milestone | Validation | Notes |
-```
+- Use tests for deterministic math, ECS, parser, and helper logic.
+- Use human behavioral checks for rendering correctness, gameplay feel, and live demo behavior.
+- Use spec validation when the question is “did this match the feature docs?”
+- Use code review when the question is “is this diff risky or obviously broken?”
 
-- **Tier**: `LOW` | `MED` | `HIGH` (implementation risk / difficulty).
-- **Status**: `TODO` | `IN_PROGRESS` | `READY_FOR_VALIDATION` | `READY_FOR_REVIEW` | `DONE` | `BLOCKED`.
-- **Validation**: `NONE` | `SELF-CHECK` | `SPEC-VALIDATE` | `REVIEW` | `SPEC-VALIDATE + REVIEW`.
-- **Notes**: may include `files: <comma-separated list>` when relevant.
+## 8. If stuck
 
-Post-hackathon, new features are added via research+plan documents directly implemented by agents. A better tracking schema will be devised later for tractability. The old parallel-group (`PG-*`), bottleneck, and queue-based validation mechanisms have been retired.
-
----
-
-## 6. Interfaces and milestones
-
-- **Frozen interfaces** (`docs/interfaces/*-interface-spec.md`) are contracts between workstreams. Never edit them to make your code compile; instead, flag a blocker and wait for human approval. Tasks that touch a frozen interface must set `Depends_on` to the interface spec version.
-- **Milestone-ready** means (all of): acceptance checklist met, required validation complete, human behavioral check done. Only then does the feature branch merge.
-
----
-
-## 7. Validation and review
-
-Risk-based per task:
-
-- **Low/trivial task** → `SELF-CHECK` unless touching shared interfaces, build system, or milestone-critical behavior.
-- **Medium task** → `SPEC-VALIDATE` or `REVIEW` for nontrivial logic or integration surfaces.
-- **High/hard task** → at least one secondary check before merge.
-- **Every milestone** → Spec Validator + human behavioral check + lightweight Code Review.
-- **Testing** — Catch2 for math, parsers, ECS logic. Rendering correctness is verified by human behavioral check + smoke-test visuals, **not** unit tests.
-
----
-
-## 8. Skills and large headers
-
-1. When starting a task, read:
-   - the relevant research/plan document,
-   - the role `SKILL.md` for your workstream,
-   - only the library/domain SKILLs needed by this task,
-   - per-aspect references under `.agents/skills/<lib>-api/references/` only when the task clearly falls in that aspect.
-2. **Use the SKILL first; open the actual header only if the SKILL is insufficient.** Quote only the minimal snippet needed (relevant struct + 2–3 functions).
-3. Large headers (`sokol_gfx.h`, `entt.hpp`, `cgltf.h`, …) are 20–30k LOC — loading them naively wastes context.
-4. If a SKILL contains an error or missing API, log it in `_coordination.archive/` and stop — do not invent API behavior.
-
----
-
-## 9. Global rules
-
-1. **Read before you edit.** Read the research/plan document and the spec it references before touching code.
-2. **Never change frozen shared interfaces** without explicit human approval.
-3. **Every implementation task must reference** its milestone unlock or dependency.
-4. **Respect `Validation`** — never silently downgrade a required check.
-5. **Do not merge** milestone-ready work until acceptance checklist, required validation, and human behavioral check are all complete.
-6. **Pull before starting** new work when multiple people/machines touch the same workstream.
-7. **SKILLs first, headers second.** Quote only minimal header snippets when the SKILL is insufficient.
-8. **`Owner` = `<agent_name>@<machine>`.** Unknown machine → leave existing owner intact and add a note.
-9. **CMakeLists.txt** is owned by Renderer / Systems Architect. Cross-workstream build changes require 2-minute notice.
-10. **Agent outage.** If you stall > 90 s on a subtask, stop and log in `_coordination.archive/` so the human can re-route. Do not silently spin.
-11. **SKILL drift** is fixed upstream. Flag it; do not silently work around it.
-12. **Milestone validation:** every milestone merge requires a behavioral check by a **different person from the implementer** if possible; otherwise the human supervisor verifies each acceptance criterion on the demo machine.
-
----
-
-## 10. Quality gates
-
-| Gate | Rule                                               | Enforcer                              | Timing                       |
-| :--- | :------------------------------------------------- | :------------------------------------ | :--------------------------- |
-| G1   | `cmake --build` returns 0                          | Implementing agent                    | Before `DONE`                |
-| G2   | Relevant tests pass                                | Implementing agent / Test Author      | Before `DONE` where applicable |
-| G3   | Frozen interfaces unchanged without approval       | Human + Spec Validator                | Continuous                   |
-| G4   | Required validation completed                      | Spec Validator / Code Reviewer        | Before merge when required   |
-| G5   | Milestone-level validation completed               | Spec Validator + human + Reviewer     | Before milestone merge       |
-| G6   | `main` remains demo-safe                           | Humans                                | Continuous                   |
-
----
-
-## 11. Source control
-
-Branches: `main` / `integration` / `feature/<workstream>`. `main` stays demo-safe at all times; `integration` is optional staging.
-
----
-
-## 12. If you are stuck
-
-1. Check the role SKILL and the per-aspect reference for the subsystem.
-2. If the SKILL is wrong or missing, log in `_coordination.archive/` and stop — do not invent API behavior.
-3. If a frozen-interface change is tempting, stop; flag the blocker; wait for human approval.
-4. If you stall > 90 s, stop and log in `_coordination.archive/` per Rule 10.
-
----
-
-> **Tool-specific companions**
-> - `CLAUDE.md` — Claude-only notes; imports this file via `@AGENTS.md`.
-> - `.github/copilot-instructions.md` — short mirror of the critical rules for Copilot.
-> - `.gemini/settings.json` — points Gemini at `AGENTS.md` via `contextFileName`.
+1. Re-read the active feature doc and the relevant skill.
+2. Open only the minimal supporting reference needed.
+3. If the task appears to require a frozen interface change, stop and flag it.
+4. If a skill is stale or missing key project facts, update the skill instead of inventing policy.

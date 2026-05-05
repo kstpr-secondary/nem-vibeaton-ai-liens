@@ -1,5 +1,8 @@
 #include "spawn.h"
 #include "constants.h"
+#include "shield_vfx.h"
+#include "vfx.h"
+#include "game_shaders.h"
 #include <engine.h>
 #include <physics.h>
 #include <renderer.h>
@@ -162,6 +165,30 @@ static entt::entity spawn_from_model(const char* model_path,
 }
 
 // ---------------------------------------------------------------------------
+// spawn_shield_sphere
+// ---------------------------------------------------------------------------
+
+static entt::entity spawn_shield_sphere(entt::entity owner, float half_extent) {
+    float radius = half_extent * constants::shield_sphere_scale;
+
+    Material mat{};
+    mat.shader = g_shield_shader;
+    mat.pipeline = { BlendMode::AlphaBlend, CullMode::Off, false, 2 };
+    ShieldFSParams p{};
+    p.shield_color  = {0.3f, 0.5f, 1.0f, constants::shield_max_alpha};
+    p.view_pos_w    = {};
+    p.fresnel_params = {constants::shield_fresnel_exp, constants::shield_rim_intensity, 0, 0};
+    material_set_uniforms(mat, p);
+
+    const auto& ot = engine_get_component<Transform>(owner);
+    entt::entity e = engine_spawn_sphere(ot.position, radius, mat);
+    auto& ss = engine_add_component<ShieldSphere>(e);
+    ss.owner  = owner;
+    ss.radius = radius;
+    return e;
+}
+
+// ---------------------------------------------------------------------------
 // spawn_player
 // ---------------------------------------------------------------------------
 
@@ -204,6 +231,8 @@ entt::entity spawn_player(const glm::vec3& position) {
     engine_add_component<CameraRigState>(e);
 
     engine_registry().emplace<Interactable>(e);
+
+    spawn_shield_sphere(e, k_player_half_extent);
 
     return e;
 }
@@ -251,6 +280,8 @@ entt::entity spawn_enemy(const glm::vec3& position) {
     ai.fire_cooldown     = constants::enemy_fire_cooldown;
 
     engine_registry().emplace<Interactable>(e);
+
+    spawn_shield_sphere(e, k_enemy_half_extent);
 
     return e;
 }
@@ -319,10 +350,20 @@ entt::entity spawn_asteroid(const glm::vec3& position,
 entt::entity spawn_projectile(entt::entity owner,
                                 const glm::vec3& position,
                                 const glm::vec3& velocity) {
-    const float  rgba[4] = {1.0f, 0.75f, 0.1f, 1.0f};
-    const Material mat   = renderer_make_unlit_material(rgba);
+    Material mat{};
+    mat.shader   = g_plasma_shader;
+    mat.pipeline = { BlendMode::Additive, CullMode::Off, false, 3 };
+
+    PlasmaBallFSParams p{};
+    p.core_color  = {1.0f, 1.0f, 0.9f, 1.0f};
+    p.rim_color   = {0.4f, 0.6f, 1.0f, 1.0f};
+    p.bolt_color  = {0.5f, 0.7f, 1.0f, 1.0f};
+    p.params      = {0.0f, 3.0f, 0.65f, 1.0f};
+    p.view_pos_w  = {};
+    material_set_uniforms(mat, p);
+
     entt::entity e       = engine_spawn_sphere(position,
-                                                constants::plasma_sphere_radius, mat);
+                                                 constants::plasma_sphere_radius, mat);
 
     auto& rb             = engine_add_component<RigidBody>(e);
     rb.mass              = 0.1f;

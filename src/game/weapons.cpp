@@ -3,17 +3,12 @@
 #include "constants.h"
 #include "damage.h"
 #include "spawn.h"
+#include "vfx.h"
 #include <engine.h>
 #include <renderer.h>
 #include <sokol_app.h>
 #include <glm/gtc/quaternion.hpp>
-
-// Impulse magnitude applied to asteroids struck by the laser (units·kg/s).
-// Tunable in T028.
-static constexpr float k_laser_impulse = 80.0f;
-
-// Laser beam colour: bright cyan.
-static constexpr float k_laser_color[4] = {0.3f, 0.85f, 1.0f, 1.0f};
+#include <cmath>
 
 // ---------------------------------------------------------------------------
 // Cooldown query
@@ -29,41 +24,192 @@ bool weapon_ready(const WeaponState& ws) {
 // Must match k_enemy_half_extent in spawn.cpp (2.0f) plus a small buffer.
 static constexpr float k_ship_half = 2.1f;
 
-static void laser_fire(entt::entity player_e,
-                           WeaponState& ws) {
-    glm::vec3 ray_origin, ray_dir;
-    camera_rig_cursor_ray(ray_origin, ray_dir);
+// ---------------------------------------------------------------------------
+// Sphere-ray intersection helper — finds the near-point t along ray ro+rd*t
+// where the ray enters a sphere centered at `center` with radius `radius`.
+// Returns -1.0f if no intersection.
+// ---------------------------------------------------------------------------
 
-    // Use the player's current position and forward to offset the ray.
-    // We want the ray to start just ahead of the ship so it doesn't hit itself.
+static float sphere_intersect_t(const glm::vec3& ro, const glm::vec3& rd,
+                                const glm::vec3& center, float radius) {
+    glm::vec3 oc = ro - center;
+    float b    = glm::dot(oc, rd);
+    float c    = glm::dot(oc, oc) - radius * radius;
+    float disc = b * b - c;
+    if (disc < 0.0f) return -1.0f;
+    return -b - sqrtf(disc);
+}
+
+// ---------------------------------------------------------------------------
+// laser_update — handles firing and fading phases of the laser beam.
+// Called every frame from weapon_update() for all entities with LaserBeam.
+// ---------------------------------------------------------------------------
+
+static void laser_update(entt::entity player_e, float dt) {
     auto& reg = engine_registry();
-    const auto& t = reg.get<Transform>(player_e);
-    const glm::vec3 ship_forward = t.rotation * glm::vec3(0.0f, 1.0f, 0.0f);
-    const float offset = k_ship_half + 0.1f;
-    const glm::vec3 muzzle_origin = t.position + ship_forward * offset;
+    auto  view = reg.view<LaserBeam, Transform>();
 
-    // Use the cursor ray origin (camera near-plane) for initial visual/math,
-    // but start the actual damage raycast from the muzzle to avoid self-hit.
-    const glm::vec3 origin = ray_origin;
-    const glm::vec3 end = origin + ray_dir * constants::laser_max_range;
+    for (auto e : view) {
+        auto& lb   = view.get<LaserBeam>(e);
+        auto& t    = view.get<Transform>(e);
 
-    // Raycast from muzzle along the cursor direction.
-    const auto hit = engine_raycast(muzzle_origin, ray_dir, constants::laser_max_range);
-    if (hit.has_value() && hit->entity != player_e) {
-        // Damage target (shield → HP).
-        apply_damage(hit->entity, ws.laser_dps);
+        double fire_age = engine_now() - lb.fire_time;
 
-        // Extra impulse for asteroid hits — kick them away from the laser.
-        if (engine_has_component<AsteroidTag>(hit->entity))
-            engine_apply_impulse(hit->entity, ray_dir * k_laser_impulse);
+        // --- Firing phase ---------------------------------------------------
+        if (fire_age < static_cast<double>(lb.fire_duration)) {
+            // Detect early release: clamp remaining duration to begin fading.
+            if (!engine_mouse_button(1)) {
+                lb.fire_duration = static_cast<float>(fire_age);
+            }
+
+            // Compute muzzle origin from ship forward axis.
+            const glm::vec3 ship_forward = t.rotation * glm::vec3(0.0f, 1.0f, 0.0f);
+            const float offset = k_ship_half + 0.1f;
+            const glm::vec3 muzzle_origin = t.position + ship_forward * offset;
+
+            // Get cursor ray direction for raycast.
+            glm::vec3 ray_origin, ray_dir;
+            camera_rig_cursor_ray(ray_origin, ray_dir);
+            (void)ray_origin;
+
+            // Raycast from muzzle along cursor direction.
+            const auto hit = engine_raycast(muzzle_origin, ray_dir, constants::laser_max_range);
+
+            if (hit.has_value() && hit->entity != player_e) {
+                // Apply DPS-scaled damage.
+                apply_damage(hit->entity, constants::laser_dps * dt);
+
+                // Apply asteroid impulse.
+                if (engine_has_component<AsteroidTag>(hit->entity))
+                    engine_apply_impulse(hit->entity, ray_dir * constants::laser_impulse_per_second * dt);
+
+                // Compute exact hit point on beam.
+                const glm::vec3 hit_point = muzzle_origin + ray_dir * (hit->distance);
+                lb.end = hit_point;
+
+                // Spawn impact VFX on new target contact.
+                if (hit->entity != lb.last_hit_entity) {
+                    spawn_laser_impact(hit_point);
+                    lb.last_hit_entity = hit->entity;
+                }
+            } else {
+                // No hit — extend to max range.
+                lb.end = muzzle_origin + ray_dir * constants::laser_max_range;
+                lb.last_hit_entity = entt::null;
+            }
+
+            // Submit full-brightness beam (two additive line quads).
+            float opacity = std::min(1.0f, static_cast<float>(fire_age) * 8.0f)
+                          * (1.0f + 0.04f * sinf(static_cast<float>(fire_age) * 25.0f));
+
+            const float p0[3] = {muzzle_origin.x, muzzle_origin.y, muzzle_origin.z};
+            const float p1[3] = {lb.end.x, lb.end.y, lb.end.z};
+
+            renderer_enqueue_line_quad(p0, p1,
+                constants::laser_core_width * opacity, constants::laser_core_color,
+                BlendMode::Additive);
+            renderer_enqueue_line_quad(p0, p1,
+                constants::laser_halo_width * opacity, constants::laser_halo_color,
+                BlendMode::Additive);
+
+        // --- Fading phase ---------------------------------------------------
+        } else if (fire_age < static_cast<double>(lb.fire_duration + lb.fade_duration)) {
+            // No raycast, no damage. Beam end stays fixed.
+            lb.last_hit_entity = entt::null;
+
+            float fade_t = static_cast<float>(fire_age - lb.fire_duration) / lb.fade_duration;
+            float opacity = 1.0f - fade_t;
+
+            const float p0[3] = {lb.origin.x, lb.origin.y, lb.origin.z};
+            const float p1[3] = {lb.end.x, lb.end.y, lb.end.z};
+
+            renderer_enqueue_line_quad(p0, p1,
+                constants::laser_core_width * opacity, constants::laser_core_color,
+                BlendMode::Additive);
+            renderer_enqueue_line_quad(p0, p1,
+                constants::laser_halo_width * opacity, constants::laser_halo_color,
+                BlendMode::Additive);
+
+            // Remove beam when fade complete.
+            if (fade_t >= 1.0f) {
+                reg.remove<LaserBeam>(e);
+            }
+        } else {
+            // Past fade — remove.
+            reg.remove<LaserBeam>(e);
+        }
     }
+}
 
-    // Render beam from muzzle to max range.
-    const float p0[3] = {origin.x, origin.y, origin.z};
-    const float p1[3] = {end.x,    end.y,    end.z   };
-    renderer_enqueue_line_quad(p0, p1, constants::laser_line_width, k_laser_color);
+// ---------------------------------------------------------------------------
+// laser_charging — handles the charging phase of the laser.
+// Called every frame from weapon_update() for all entities with LaserCharge.
+// ---------------------------------------------------------------------------
 
-    ws.laser_last_fire = engine_now();
+static void laser_charging(entt::entity player_e, WeaponState& ws) {
+    auto& reg = engine_registry();
+    auto  view = reg.view<LaserCharge, Transform>();
+
+    for (auto e : view) {
+        auto& lc      = view.get<LaserCharge>(e);
+        auto& t       = view.get<Transform>(e);
+
+        double age = engine_now() - lc.charge_start;
+
+        // Check for early release — cancelled, no cooldown.
+        if (!engine_mouse_button(1)) {
+            reg.remove<LaserCharge>(e);
+            continue;
+        }
+
+        // Compute opacity: grows from 0 to 0.40 over charge time.
+        float opacity = std::min(1.0f, static_cast<float>(age) / lc.charge_time) * 0.40f;
+
+        // Muzzle origin from ship forward axis.
+        const glm::vec3 ship_forward = t.rotation * glm::vec3(0.0f, 1.0f, 0.0f);
+        const float offset = k_ship_half + 0.1f;
+        const glm::vec3 muzzle_origin = t.position + ship_forward * offset;
+
+        // Raycast from muzzle along cursor direction.
+        glm::vec3 ray_origin, ray_dir;
+        camera_rig_cursor_ray(ray_origin, ray_dir);
+        (void)ray_origin;
+
+        glm::vec3 beam_end = muzzle_origin + ray_dir * constants::laser_max_range;
+        const auto hit = engine_raycast(muzzle_origin, ray_dir, constants::laser_max_range);
+        if (hit.has_value() && hit->entity != player_e) {
+            beam_end = muzzle_origin + ray_dir * hit->distance;
+        }
+
+        // Submit dim aiming beam (two additive line quads).
+        const float p0[3] = {muzzle_origin.x, muzzle_origin.y, muzzle_origin.z};
+        const float p1[3] = {beam_end.x, beam_end.y, beam_end.z};
+
+        renderer_enqueue_line_quad(p0, p1,
+            constants::laser_core_width * 0.5f * opacity, constants::laser_core_color,
+            BlendMode::Additive);
+        renderer_enqueue_line_quad(p0, p1,
+            constants::laser_halo_width * 0.7f * opacity, constants::laser_halo_color,
+            BlendMode::Additive);
+
+        // Charge complete — transition to firing phase.
+        if (age >= static_cast<double>(lc.charge_time)) {
+            reg.remove<LaserCharge>(e);
+
+            LaserBeam lb;
+            lb.fire_time = engine_now();
+            lb.fire_duration = constants::laser_fire_duration;
+            // fade_duration uses default 0.5f from component definition.
+            lb.origin = muzzle_origin;
+            lb.end = beam_end;
+            lb.last_hit_entity = entt::null;
+
+            reg.emplace<LaserBeam>(e, std::move(lb));
+
+            // Start cooldown now (at the charge→fire transition).
+            ws.laser_last_fire = engine_now();
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -71,8 +217,8 @@ static void laser_fire(entt::entity player_e,
 // ---------------------------------------------------------------------------
 
 static void plasma_fire(entt::entity player_e,
-                             const Transform& t,
-                             WeaponState& ws) {
+                       const Transform& t,
+                       WeaponState& ws) {
     glm::vec3 ray_origin, ray_dir;
     camera_rig_cursor_ray(ray_origin, ray_dir);
 
@@ -107,11 +253,15 @@ void weapon_update(float dt) {
     s_prev_q = cur_q;
     s_prev_e = cur_e;
 
-    const bool fire = engine_mouse_button(1);  // right mouse
+    // Edge-trigger for right mouse (laser charge start).
+    static bool s_prev_fire = false;
+    const bool fire_pressed = engine_mouse_button(1) && !s_prev_fire;
+    s_prev_fire = engine_mouse_button(1);
 
     // Skip the registry scan entirely when there is no relevant input.
-    if (!switch_plasma && !switch_laser && !fire)
-        return;
+    if (!switch_plasma && !switch_laser && !fire_pressed) {
+        // Still need to run laser_update/laser_charging even without new input.
+    }
 
     auto& reg  = engine_registry();
     auto  view = reg.view<PlayerTag, Transform, WeaponState>();
@@ -125,12 +275,21 @@ void weapon_update(float dt) {
         else if (switch_plasma)
             ws.active_weapon = WeaponType::Plasma;
 
-        // --- Fire -----------------------------------------------------------
-        if (fire && weapon_ready(ws)) {
-            if (ws.active_weapon == WeaponType::Laser)
-                laser_fire(e, ws);
-            else if (ws.active_weapon == WeaponType::Plasma)
-                plasma_fire(e, t, ws);
+        // --- Start laser charge on fire press (if ready) --------------------
+        if (ws.active_weapon == WeaponType::Laser && fire_pressed && weapon_ready(ws)) {
+            LaserCharge lc;
+            lc.charge_start = engine_now();
+            lc.charge_time  = constants::laser_charge_time;
+            reg.emplace<LaserCharge>(e, std::move(lc));
         }
+
+        // --- Plasma fire (unchanged: instant on press) ----------------------
+        if (ws.active_weapon == WeaponType::Plasma && engine_mouse_button(1) && weapon_ready(ws)) {
+            plasma_fire(e, t, ws);
+        }
+
+        // --- Laser update (charging / firing / fading) ----------------------
+        laser_charging(e, ws);
+        laser_update(e, dt);
     }
 }
