@@ -6,6 +6,15 @@
 namespace constants {
 
 // ---------------------------------------------------------------------------
+// WeaponState defaults — must be first so components.h can reference them
+// ---------------------------------------------------------------------------
+
+constexpr float  laser_dps                      = 20.0f;  // damage per second while firing
+constexpr float  player_health_max     = 100.0f;
+constexpr float  player_shield_max     = 100.0f;
+constexpr float  boost_max             = 100.0f;
+
+// ---------------------------------------------------------------------------
 // Field / containment
 // ---------------------------------------------------------------------------
 
@@ -27,11 +36,8 @@ constexpr float  boost_multiplier      = 2.0f;     // thrust scale while boost a
 // Player resources
 // ---------------------------------------------------------------------------
 
-constexpr float  player_health_max     = 100.0f;
-constexpr float  player_shield_max     = 100.0f;
 constexpr float  shield_regen_rate     = 2.0f;     // units/sec
 constexpr float  shield_regen_delay    = 3.0f;     // seconds after last damage before regen starts
-constexpr float  boost_max             = 100.0f;
 constexpr float  boost_drain_rate      = 20.0f;    // units/sec (~5s full drain)
 constexpr float  boost_regen_rate      = 5.0f;     // units/sec (~20s full regen)
 
@@ -46,8 +52,11 @@ constexpr float  laser_line_width      = 0.15f;    // visual quad width (units)
 constexpr float  laser_charge_time             = 0.8f;   // hold duration before firing
 constexpr float  laser_fire_duration             = 3.0f;   // active damage window
 constexpr float  laser_fade_duration             = 0.5f;   // glow-down after depletion
-constexpr float  laser_dps                      = 20.0f;  // damage per second while firing
 constexpr float  laser_impulse_per_second       = 30.0f;  // asteroid impulse per second
+constexpr float  laser_core_width               = 0.3f;
+constexpr float  laser_halo_width               = 2.5f;
+constexpr float  laser_core_color[4]            = {1.0f, 1.0f, 0.9f, 1.0f};
+constexpr float  laser_halo_color[4]            = {0.3f, 0.85f, 1.0f, 1.0f};
 
 // ---------------------------------------------------------------------------
 // Weapons — plasma

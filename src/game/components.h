@@ -5,6 +5,8 @@
 #include <glm/gtc/quaternion.hpp>
 #include <limits>
 
+#include "constants.h"
+
 // ---------------------------------------------------------------------------
 // Enums
 // ---------------------------------------------------------------------------
@@ -73,7 +75,7 @@ struct WeaponState {
     WeaponType active_weapon   = WeaponType::Laser;
     float      laser_cooldown  = 5.0f;
     double     laser_last_fire = -std::numeric_limits<double>::infinity();
-    float      laser_dps       = 20.0f;
+    float      laser_dps       = constants::laser_dps;
     float      plasma_cooldown  = 0.1f;
     double     plasma_last_fire = -std::numeric_limits<double>::infinity();
     float      plasma_damage    = 0.5f;
@@ -121,17 +123,15 @@ struct VFXData {
 };
 
 struct LaserBeam {
-    entt::entity owner      = entt::null;
-    glm::vec3    start      = {};
-    glm::vec3    end        = {};
-    bool         active     = false;
-    float        charge_t   = 0.0f;
-    float        fire_t     = 0.0f;
-    float        fade_t     = 0.0f;
-    double       spawn_time = 0.0;
-    entt::entity last_hit_entity = entt::null;
+    double       fire_time         = 0.0;
+    float        fire_duration     = 3.0f;   // active damage window (seconds)
+    float        fade_duration     = 0.5f;   // glow-down duration after depletion/release
+    glm::vec3    origin            = {};
+    glm::vec3    end               = {};     // updated each frame during firing
+    entt::entity last_hit_entity   = entt::null;  // for VFX dedup (one VFX per new target)
 };
 
 struct LaserCharge {
-    double start_time = 0.0;
+    double charge_start = 0.0;
+    float  charge_time  = 0.8f;
 };
