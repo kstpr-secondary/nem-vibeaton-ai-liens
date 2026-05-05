@@ -258,15 +258,22 @@ static sg_pipeline get_or_create_pipeline(RendererShaderHandle sh, PipelineState
 // ---------------------------------------------------------------------------
 
 static void apply_draw_uniforms(RendererShaderHandle shader,
-                                const Material& mat,
-                                const glm::mat4& model_mat,
-                                const glm::mat4& mvp) {
-    // --- Binding 0: vertex shader uniforms (all shaders: mvp + model + normal_mat) --
-    glm::mat4 normal_mat = glm::transpose(glm::inverse(model_mat));
-    struct VSParams { glm::mat4 mvp; glm::mat4 model; glm::mat4 normal_mat; };
-    VSParams vs_p = { mvp, model_mat, normal_mat };
-    sg_range r = { &vs_p, sizeof(vs_p) };
-    sg_apply_uniforms(0, &r);
+                                 const Material& mat,
+                                 const glm::mat4& model_mat,
+                                 const glm::mat4& mvp) {
+    // --- Binding 0: vertex shader uniforms (per-shader layout) ---
+    if (shader.id == 1) {
+        // Unlit: only mat4 mvp (64 bytes)
+        sg_range r = { &mvp, sizeof(mvp) };
+        sg_apply_uniforms(0, &r);
+    } else {
+        // BlinnPhong / Lambertian: mvp + model + normal_mat (192 bytes)
+        glm::mat4 normal_mat = glm::transpose(glm::inverse(model_mat));
+        struct VSParams { glm::mat4 mvp; glm::mat4 model; glm::mat4 normal_mat; };
+        VSParams vs_p = { mvp, model_mat, normal_mat };
+        sg_range r = { &vs_p, sizeof(vs_p) };
+        sg_apply_uniforms(0, &r);
+    }
 
     // --- Binding 1: fragment shader uniforms ---
     if (shader.id == 2) {
@@ -287,7 +294,7 @@ static void apply_draw_uniforms(RendererShaderHandle shader,
         sg_range r = { &patched, sizeof(patched) };
         sg_apply_uniforms(1, &r);
     } else if (shader.id == 3) {
-        // Lambertian: vec4+vec4+float+float+pad[8]+vec4 = 64 bytes
+        // Lambertian: vec4[4] = 64 bytes (std140 compacted to packed struct)
         auto* fs = material_uniforms_as<BlinnPhongFSParams>(const_cast<Material&>(mat));
         glm::mat4 cam_view = state.camera_set ? glm::make_mat4(state.camera.view) : glm::mat4(1.0f);
         glm::mat4 cam_world = glm::inverse(cam_view);
