@@ -11,6 +11,8 @@
 #include "projectile.h"
 #include "spawn.h"
 #include "weapons.h"
+#include "shield_vfx.h"
+#include "vfx.h"
 #include <engine.h>
 #include <renderer.h>
 #include <sokol_app.h>
@@ -243,6 +245,7 @@ void game_init() {
 }
 
 void game_tick(float dt) {
+    renderer_set_time(engine_now()); // 0. propagate elapsed time to animated materials
     player_update(dt);          // 1. WASD thrust/strafe only — NO rotation code
     camera_rig_input(dt);       // 2. mouse → rig_rotation; writes t.rotation = rig_rotation * roll_quat
     engine_tick(dt);            // 3. physics integration + collision resolution
@@ -255,9 +258,11 @@ void game_tick(float dt) {
     vfx_cleanup();              // 10. expire short-lived VFX entities
     match_state_update(dt);     // 11. phase transitions, win/loss, auto-restart
     handle_restart_quit_input();// 12. manual restart (Enter) and quit (Esc)
-    camera_rig_finalize(dt);    // 13. overwrite t.rotation, spring bank/roll, position camera
-    render_submit();            // 14. enqueue_draw for all visible entities
-    hud_render();               // 15. ImGui widgets + overlays
+    shield_vfx_update(dt);      // 13b. sync shield spheres to owners, update alpha from shield health
+    vfx_update(dt);             // 13c. animate VFX spheres (scale + fade)
+    camera_rig_finalize(dt);    // 14. overwrite t.rotation, spring bank/roll, position camera
+    render_submit();            // 15. enqueue_draw for all visible entities
+    hud_render();               // 16. ImGui widgets + overlays
 }
 
 void game_shutdown() {
