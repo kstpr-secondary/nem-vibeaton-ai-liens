@@ -1,9 +1,11 @@
 #include "damage.h"
 #include "components.h"
 #include "constants.h"
+#include "vfx.h"
 #include <engine.h>
 #include <glm/glm.hpp>
 #include <algorithm>
+#include <cmath>
 
 // ---------------------------------------------------------------------------
 // apply_damage
@@ -135,6 +137,24 @@ void damage_resolve() {
             const auto& tt = target_view.get<Transform>(te);
             const auto& tc = target_view.get<Collider>(te);
 
+            // --- Shield boundary check (Section 3.7.1) -----------------------
+            // If target has active shield: use sphere-overlap instead of AABB.
+            // shield_r = collider half_extent * shield_sphere_scale
+            auto* sh = engine_try_get_component<Shield>(te);
+            float shield_r = tc.half_extents.x * constants::shield_sphere_scale;
+            float proj_r   = pc.half_extents.x;
+            glm::vec3 diff = pt.position - tt.position;
+            float dist     = glm::length(diff);
+
+            if (sh && sh->current > 0.f && dist < (proj_r + shield_r)) {
+                // Shield hit — damage absorbed by shield.
+                apply_damage(te, pd.damage);
+                spawn_shield_impact(pt.position);
+                reg.emplace<DestroyPending>(pe);
+                break;
+            }
+
+            // --- Hull hit (AABB overlap) -------------------------------------
             if (!aabb_overlap(pt.position, pc.half_extents,
                               tt.position, tc.half_extents))
                 continue;
@@ -143,6 +163,8 @@ void damage_resolve() {
             auto* hp = engine_try_get_component<Health>(te);
             if (hp)
                 apply_damage(te, pd.damage);
+
+            spawn_plasma_impact(pt.position);
 
             // Projectile is consumed on first hit regardless of target type.
             reg.emplace<DestroyPending>(pe);

@@ -83,13 +83,36 @@ static void laser_update(entt::entity player_e, float dt) {
                 if (engine_has_component<AsteroidTag>(hit->entity))
                     engine_apply_impulse(hit->entity, ray_dir * constants::laser_impulse_per_second * dt);
 
-                // Compute exact hit point on beam.
-                const glm::vec3 hit_point = muzzle_origin + ray_dir * (hit->distance);
+                // Check for active shield on hit entity (Section 3.7.1).
+                auto* target_sh = engine_try_get_component<Shield>(hit->entity);
+                const auto* target_col = engine_try_get_component<Collider>(hit->entity);
+                const auto* target_t  = engine_try_get_component<Transform>(hit->entity);
+
+                glm::vec3 hit_point;
+                bool shielded = false;
+
+                if (target_sh && target_sh->current > 0.f && target_col && target_t) {
+                    float shield_r = target_col->half_extents.x * constants::shield_sphere_scale;
+                    float t = sphere_intersect_t(muzzle_origin, ray_dir, target_t->position, shield_r);
+                    if (t > 0.0f) {
+                        hit_point = muzzle_origin + ray_dir * t;
+                        shielded  = true;
+                    } else {
+                        hit_point = muzzle_origin + ray_dir * hit->distance;
+                    }
+                } else {
+                    hit_point = muzzle_origin + ray_dir * hit->distance;
+                }
+
                 lb.end = hit_point;
 
                 // Spawn impact VFX on new target contact.
                 if (hit->entity != lb.last_hit_entity) {
-                    spawn_laser_impact(hit_point);
+                    if (shielded) {
+                        spawn_shield_impact(hit_point);
+                    } else {
+                        spawn_laser_impact(hit_point);
+                    }
                     lb.last_hit_entity = hit->entity;
                 }
             } else {
