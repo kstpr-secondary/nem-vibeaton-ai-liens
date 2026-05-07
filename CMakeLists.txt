@@ -41,13 +41,6 @@ set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
 # ====================================================================
 
 FetchContent_Declare(
-    sokol
-    GIT_REPOSITORY https://github.com/floooh/sokol.git
-    GIT_TAG 1dabec18ec274ba670491d0e368165a53035d023
-    GIT_SHALLOW ON
-)
-
-FetchContent_Declare(
     glm
     GIT_REPOSITORY https://github.com/g-truc/glm.git
     GIT_TAG 1.0.1
@@ -98,11 +91,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(glm entt catch2)
 
-FetchContent_GetProperties(sokol)
-if(NOT sokol_POPULATED)
-    FetchContent_Populate(sokol)
-endif()
-
 FetchContent_GetProperties(cgltf)
 if(NOT cgltf_POPULATED)
     FetchContent_Populate(cgltf)
@@ -129,7 +117,7 @@ include(Catch)
 if(NOT TARGET Sokol::sokol)
     add_library(sokol INTERFACE)
     add_library(Sokol::sokol ALIAS sokol)
-    target_include_directories(sokol INTERFACE ${sokol_SOURCE_DIR})
+    target_include_directories(sokol INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/external/sokol)
 endif()
 
 # Platform libraries required by sokol_app (X11/OpenGL on Linux)
@@ -478,8 +466,8 @@ add_library(imgui::core ALIAS imgui_lib)
 add_library(imgui_sokol INTERFACE)
 target_include_directories(imgui_sokol INTERFACE
     ${imgui_SOURCE_DIR}
-    ${sokol_SOURCE_DIR}
-    ${sokol_SOURCE_DIR}/util
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/sokol
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/sokol/util
 )
 target_link_libraries(imgui_sokol INTERFACE imgui_lib Sokol::sokol)
 add_library(vibeaton::imgui_backend ALIAS imgui_sokol)
