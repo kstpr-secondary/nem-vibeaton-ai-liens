@@ -173,7 +173,10 @@ static entt::entity spawn_shield_sphere(entt::entity owner, float half_extent) {
 
     Material mat{};
     mat.shader = g_shield_shader;
-    mat.pipeline = { BlendMode::AlphaBlend, CullMode::Off, false, 2 };
+    // Back-face culling is required: CullMode::Off causes both hemispheres to
+    // render per pixel (depth_write=false lets both pass), making back faces
+    // render at rim=1 everywhere and flooding the center with full opacity.
+    mat.pipeline = { BlendMode::AlphaBlend, CullMode::Back, false, 2 };
     ShieldFSParams p{};
     p.shield_color  = {0.3f, 0.5f, 1.0f, constants::shield_max_alpha};
     p.view_pos_w    = {};
@@ -181,7 +184,10 @@ static entt::entity spawn_shield_sphere(entt::entity owner, float half_extent) {
     material_set_uniforms(mat, p);
 
     const auto& ot = engine_get_component<Transform>(owner);
-    entt::entity e = engine_spawn_sphere(ot.position, radius, mat);
+    // Spawn unit sphere — shield_vfx_update scales to `radius` via t.scale.
+    // Spawning with the actual radius and also setting t.scale = radius squares
+    // the size (apparent radius = radius²).
+    entt::entity e = engine_spawn_sphere(ot.position, 1.0f, mat);
     auto& ss = engine_add_component<ShieldSphere>(e);
     ss.owner  = owner;
     ss.radius = radius;

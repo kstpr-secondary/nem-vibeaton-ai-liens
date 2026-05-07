@@ -258,9 +258,9 @@ void game_tick(float dt) {
     vfx_cleanup();              // 10. expire short-lived VFX entities
     match_state_update(dt);     // 11. phase transitions, win/loss, auto-restart
     handle_restart_quit_input();// 12. manual restart (Enter) and quit (Esc)
-    shield_vfx_update(dt);      // 13b. sync shield spheres to owners, update alpha from shield health
-    vfx_update(dt);             // 13c. animate VFX spheres (scale + fade)
-    camera_rig_finalize(dt);    // 14. overwrite t.rotation, spring bank/roll, position camera
+    vfx_update(dt);             // 13b. animate VFX spheres (scale + fade)
+    camera_rig_finalize(dt);    // 13c. overwrite t.rotation, spring bank/roll, position camera
+    shield_vfx_update(dt);      // 13d. sync shield spheres to owners, update alpha from shield health
     render_submit();            // 15. enqueue_draw for all visible entities
     hud_render();               // 16. ImGui widgets + overlays
 }

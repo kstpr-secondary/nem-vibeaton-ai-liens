@@ -261,19 +261,12 @@ static void apply_draw_uniforms(RendererShaderHandle shader,
                                  const Material& mat,
                                  const glm::mat4& model_mat,
                                  const glm::mat4& mvp) {
-    // --- Binding 0: vertex shader uniforms (per-shader layout) ---
-    if (shader.id == 1) {
-        // Unlit: only mat4 mvp (64 bytes)
-        sg_range r = { &mvp, sizeof(mvp) };
-        sg_apply_uniforms(0, &r);
-    } else {
-        // BlinnPhong / Lambertian: mvp + model + normal_mat (192 bytes)
-        glm::mat4 normal_mat = glm::transpose(glm::inverse(model_mat));
-        struct VSParams { glm::mat4 mvp; glm::mat4 model; glm::mat4 normal_mat; };
-        VSParams vs_p = { mvp, model_mat, normal_mat };
-        sg_range r = { &vs_p, sizeof(vs_p) };
-        sg_apply_uniforms(0, &r);
-    }
+    // --- Binding 0: vertex shader uniforms — always 3-matrix block (192 bytes) ---
+    glm::mat4 normal_mat = glm::transpose(glm::inverse(model_mat));
+    struct VSParams { glm::mat4 mvp; glm::mat4 model; glm::mat4 normal_mat; };
+    VSParams vs_p = { mvp, model_mat, normal_mat };
+    sg_range r = { &vs_p, sizeof(vs_p) };
+    sg_apply_uniforms(0, &r);
 
     // --- Binding 1: fragment shader uniforms ---
     if (shader.id == 2) {
@@ -321,9 +314,9 @@ static void apply_draw_uniforms(RendererShaderHandle shader,
         sg_range r = { &lfs, sizeof(lfs) };
         sg_apply_uniforms(1, &r);
     } else if (shader.id == 1) {
-        // Unlit: single vec4 base_color (16 bytes) — reuse from material
+        // Unlit: full UnlitFSParams (32 bytes) — color + flags
         auto* fs = material_uniforms_as<UnlitFSParams>(const_cast<Material&>(mat));
-        sg_range r = { &fs->color, sizeof(fs->color) };
+        sg_range r = { fs, sizeof(*fs) };
         sg_apply_uniforms(1, &r);
     } else {
         // Custom shader: forward material blob verbatim
@@ -917,35 +910,62 @@ void renderer_end_frame() {
 
         line_quad_vs_params_t vs_p = { state.vp };
         sg_range vp_range = SG_RANGE(vs_p);
-        sg_apply_uniforms(0, &vp_range);
 
         sg_bindings bind = {};
         bind.vertex_buffers[0] = state.line_quad_vbuf;
         bind.index_buffer      = state.line_quad_ibuf;
 
-        // Batch additive quads first (order-independent blending), then opaque/alpha-blended.
-        int additive_start = 0, additive_end = 0, opaque_start = 0, opaque_end = 0;
-        for (int i = 0; i < state.line_quad_count; ++i) {
-            if (state.line_quad_blend[i] == BlendMode::Additive) {
-                if (additive_end == 0) additive_start = i;
-                additive_end = i + 1;
-            } else {
-                if (opaque_end == 0) opaque_start = i;
-                opaque_end = i + 1;
+        // Group additive quads first for order-independent blending, then opaque/alpha-blended.
+        // Sort in-place by blend mode to ensure contiguous draw ranges.
+        {
+            int write = 0;
+            // First pass: collect additive quads.
+            for (int i = 0; i < state.line_quad_count; ++i) {
+                if (state.line_quad_blend[i] == BlendMode::Additive) {
+                    if (write != i) {
+                        std::memcpy(&state.line_quad_queue[write],
+                                    &state.line_quad_queue[i],
+                                    sizeof(LineQuadCommand));
+                        state.line_quad_blend[write] = state.line_quad_blend[i];
+                        state.line_quad_blend[i]     = BlendMode::Opaque;
+                    }
+                    ++write;
+                }
+            }
+            // Second pass: collect non-additive quads.
+            for (int i = 0; i < state.line_quad_count; ++i) {
+                if (state.line_quad_blend[i] != BlendMode::Additive) {
+                    std::memcpy(&state.line_quad_queue[write],
+                                &state.line_quad_queue[i],
+                                sizeof(LineQuadCommand));
+                    state.line_quad_blend[write] = state.line_quad_blend[i];
+                    ++write;
+                }
             }
         }
 
-        if (additive_end > additive_start) {
+        // Draw additive batch.
+        int additive_count = 0;
+        for (int i = 0; i < state.line_quad_count; ++i) {
+            if (state.line_quad_blend[i] == BlendMode::Additive)
+                ++additive_count;
+            else
+                break;
+        }
+        if (additive_count > 0) {
             sg_apply_pipeline(state.pipeline_line_quad_additive);
             sg_apply_uniforms(UB_line_quad_vs_params, &vp_range);
             sg_apply_bindings(&bind);
-            sg_draw(additive_start * 6, (additive_end - additive_start) * 6, 1);
+            sg_draw(0, additive_count * 6, 1);
         }
-        if (opaque_end > opaque_start) {
+
+        // Draw opaque/alpha-blended batch.
+        if (additive_count < state.line_quad_count) {
+            int opaque_count = state.line_quad_count - additive_count;
             sg_apply_pipeline(state.pipeline_line_quad);
             sg_apply_uniforms(UB_line_quad_vs_params, &vp_range);
             sg_apply_bindings(&bind);
-            sg_draw(opaque_start * 6, (opaque_end - opaque_start) * 6, 1);
+            sg_draw(additive_count * 6, opaque_count * 6, 1);
         }
     }
 

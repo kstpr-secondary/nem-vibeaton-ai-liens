@@ -45,7 +45,6 @@ constexpr float  boost_regen_rate      = 5.0f;     // units/sec (~20s full regen
 // Weapons — laser
 // ---------------------------------------------------------------------------
 
-constexpr float  laser_damage          = 10.0f;
 constexpr float  laser_cooldown        = 5.0f;     // seconds
 constexpr float  laser_max_range       = 800.0f;   // units
 constexpr float  laser_line_width      = 0.15f;    // visual quad width (units)
@@ -118,7 +117,7 @@ constexpr float  asteroid_tier_medium_frac = 0.30f; // 180 medium
 // ---------------------------------------------------------------------------
 
 constexpr float  shield_sphere_scale   = 1.45f;
-constexpr float  shield_max_alpha      = 0.55f;
+constexpr float  shield_max_alpha      = 0.28f;
 constexpr float  shield_fresnel_exp    = 3.0f;
 constexpr float  shield_rim_intensity  = 1.2f;
 

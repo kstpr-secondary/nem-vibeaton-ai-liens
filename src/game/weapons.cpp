@@ -93,9 +93,9 @@ static void laser_update(entt::entity player_e, float dt) {
 
                 if (target_sh && target_sh->current > 0.f && target_col && target_t) {
                     float shield_r = target_col->half_extents.x * constants::shield_sphere_scale;
-                    float t = sphere_intersect_t(muzzle_origin, ray_dir, target_t->position, shield_r);
-                    if (t > 0.0f) {
-                        hit_point = muzzle_origin + ray_dir * t;
+                    float shield_t = sphere_intersect_t(muzzle_origin, ray_dir, target_t->position, shield_r);
+                    if (shield_t > 0.0f) {
+                        hit_point = muzzle_origin + ray_dir * shield_t;
                         shielded  = true;
                     } else {
                         hit_point = muzzle_origin + ray_dir * hit->distance;
@@ -280,11 +280,6 @@ void weapon_update(float dt) {
     static bool s_prev_fire = false;
     const bool fire_pressed = engine_mouse_button(1) && !s_prev_fire;
     s_prev_fire = engine_mouse_button(1);
-
-    // Skip the registry scan entirely when there is no relevant input.
-    if (!switch_plasma && !switch_laser && !fire_pressed) {
-        // Still need to run laser_update/laser_charging even without new input.
-    }
 
     auto& reg  = engine_registry();
     auto  view = reg.view<PlayerTag, Transform, WeaponState>();

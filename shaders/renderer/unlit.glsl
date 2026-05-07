@@ -4,6 +4,8 @@
 @vs unlit_vs
 layout(binding=0) uniform unlit_vs_params {
     mat4 mvp;
+    mat4 model;
+    mat4 normal_mat;
 };
 
 in vec3 position;
@@ -15,13 +17,14 @@ void main() {
 
 @fs unlit_fs
 layout(binding=1) uniform unlit_fs_params {
-    vec4 base_color;
+    vec4 color;
+    vec4 flags;
 };
 
 out vec4 frag_color;
 
 void main() {
-    frag_color = base_color;
+    frag_color = color;
 }
 @end
 
