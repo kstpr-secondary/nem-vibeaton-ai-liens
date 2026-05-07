@@ -116,7 +116,7 @@ constexpr float  asteroid_tier_medium_frac = 0.30f; // 180 medium
 // Shield VFX
 // ---------------------------------------------------------------------------
 
-constexpr float  shield_sphere_scale   = 1.45f;
+constexpr float  shield_sphere_scale   = 4.0f;
 constexpr float  shield_max_alpha      = 0.28f;
 constexpr float  shield_fresnel_exp    = 3.0f;
 constexpr float  shield_rim_intensity  = 1.2f;
