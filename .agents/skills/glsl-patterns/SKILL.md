@@ -3,7 +3,6 @@ name: glsl-patterns
 description: Use when authoring GLSL shaders for any workstream's rendering pipeline, reviewing shader diffs for correctness of transforms/lighting math/alpha-depth state, or debugging rendering issues (black screen, wrong shading, z-fighting, alpha artifacts). Covers sokol-shdc annotated GLSL patterns, uniform block layout rules, std140 alignment, and shader error handling. Activated by writing shaders/renderer/*.glsl, shaders/game/*.frag.glsl, or debugging rendering issues. Do NOT use for sokol_gfx API calls, C++ pipeline plumbing, or CMake integration — use the sokol-api and sokol-shdc skills instead.
 compatibility: Portable across heterogeneous agents (Claude, Copilot, Gemini, GLM, local Qwen). No model-specific behaviors.
 metadata:
-  author: hackathon-team
   version: "1.0"
   project-stage: pre-implementation
   role: shader-patterns-library

@@ -17,8 +17,6 @@ Library details live in dedicated skills (see §6); this skill holds project-spe
 
 Maintain and extend the engine as a C++17 static library (`engine`) that provides ECS scene management, physics simulation, asset loading, input polling, and camera matrix computation. `engine_app` (at `src/engine/app/main.cpp`) is the driver for behavioral verification.
 
-Working, visibly correct ECS + physics. Not elegance; not extensibility.
-
 ---
 
 ## 2. Scope
@@ -36,7 +34,7 @@ Working, visibly correct ECS + physics. Not elegance; not extensibility.
 **Out of scope — hand off**
 - Pipeline creation, shader authoring, sokol_app init, line-quad math, skybox → `renderer-specialist`.
 - Gameplay, enemy AI behavior, weapon/shield logic, HUD, game-side VFX → `game-developer`.
-- Cross-workstream planning, MASTER_TASKS synthesis, build-topology arbitration → `systems-architect`.
+- Cross-workstream planning, build-topology arbitration → `systems-architect`.
 
 ---
 

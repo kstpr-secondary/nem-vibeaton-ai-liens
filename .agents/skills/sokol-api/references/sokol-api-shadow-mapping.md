@@ -1,6 +1,6 @@
 # sokol-api / shadow-mapping
 
-**Stretch goal.** Use this when implementing directional-light shadow mapping. Shadows are not in the MVP scope — see Blueprint §13.1.
+**Stretch goal.** Use this when implementing directional-light shadow mapping. Shadows are not in the MVP scope.
 
 ---
 

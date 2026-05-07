@@ -3,7 +3,6 @@ name: sokol-api
 description: Use when working with sokol_gfx.h, sokol_app.h, sokol_time.h, sokol_glue.h, or sokol_log.h in any workstream. Covers resource creation (buffers, images, samplers, shaders, pipelines), render passes, draw calls, app lifecycle, time measurement, and the sokol_app↔sokol_gfx glue. Activated when authoring or reviewing renderer code that calls sg_* or sapp_* functions. Do NOT use for sokol-shdc shader compilation workflow — use the sokol-shdc skill instead.
 compatibility: Portable across heterogeneous agents (Claude, Copilot, Gemini, GLM, local Qwen).
 metadata:
-  author: hackathon-team
   version: "1.0"
   project-stage: pre-implementation
   role: library-reference

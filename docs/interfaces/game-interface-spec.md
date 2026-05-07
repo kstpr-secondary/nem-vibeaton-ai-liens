@@ -242,7 +242,6 @@ Current upstream state at SpecKit promotion (2026-04-26): renderer FROZEN v1.1 i
 
 ## Reference Inputs
 
-- `pre_planning_docs/Hackathon Master Blueprint.md`
 - `pre_planning_docs/Game Concept and Milestones.md`
 - `docs/interfaces/renderer-interface-spec.md` (FROZEN v1.1)
 - `docs/interfaces/engine-interface-spec.md` (FROZEN v1.2)

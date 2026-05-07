@@ -314,7 +314,6 @@ void engine_set_active_camera(entt::entity e);
 
 ## Intended Freeze Inputs
 
-- `pre_planning_docs/Hackathon Master Blueprint.md`
 - `pre_planning_docs/Game Engine Concept and Milestones.md`
 - `docs/interfaces/renderer-interface-spec.md` (FROZEN v1.1)
 - `docs/architecture/engine-architecture.md`

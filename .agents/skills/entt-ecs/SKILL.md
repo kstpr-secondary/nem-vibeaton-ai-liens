@@ -3,7 +3,6 @@ name: entt-ecs
 description: Use when implementing, designing, or reviewing ECS code in the game-engine workstream. Covers entt v3.x registry lifecycle, entity create/destroy, component emplace/get/remove, view iteration, exclusion filters, and structural-change safety rules. Activated when writing or reviewing any code that calls entt::registry, entt::entity, or entt views. Do NOT use for gameplay-layer component design (game code owns those) or renderer mesh/material handle internals — those belong to renderer-specialist.
 compatibility: Portable across heterogeneous agents (Claude, Copilot, Gemini, GLM, local Qwen).
 metadata:
-  author: hackathon-team
   version: "1.0"
   project-stage: pre-implementation
   role: library-reference

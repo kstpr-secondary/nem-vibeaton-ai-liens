@@ -5,7 +5,6 @@ compatibility: Portable across heterogeneous agents (Claude, Copilot, Gemini, GL
 metadata:
   author: project
   version: "2.0"
-  project-stage: post-hackathon features
   role: code-reviewer
   activated-by: human-or-task
 ---

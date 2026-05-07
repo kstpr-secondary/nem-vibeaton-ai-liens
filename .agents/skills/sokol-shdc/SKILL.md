@@ -3,7 +3,6 @@ name: sokol-shdc
 description: Use when authoring, compiling, or integrating sokol-shdc shaders. Covers the .glsl annotation dialect (@vs, @fs, @block, @include_block, @program, @ctype), the sokol-shdc CLI, the generated .glsl.h header API, and the CMake custom command that drives compilation. Activated whenever writing shaders/renderer/*.glsl or shaders/game/*.glsl files, or wiring up sokol-shdc in CMakeLists.txt.
 compatibility: Portable across heterogeneous agents (Claude, Copilot, Gemini, GLM, local Qwen).
 metadata:
-  author: hackathon-team
   version: "1.0"
   project-stage: pre-implementation
   role: library-reference

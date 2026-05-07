@@ -10,7 +10,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
 endif()
 
-# --- Compiler warnings (not -Werror for hackathon speed) ---
+# --- Compiler warnings ---
 add_compile_options(
     $<$<COMPILE_LANGUAGE:C>:-Wall>
     $<$<COMPILE_LANGUAGE:C>:-Wextra>
@@ -20,7 +20,7 @@ add_compile_options(
     $<$<COMPILE_LANGUAGE:CXX>:-Wpedantic>
 )
 
-# --- Hackathon bootstrap toggles ---
+# --- Mock/Tooling toggles ---
 option(USE_RENDERER_MOCKS "Build the renderer target from src/renderer/mocks when present" OFF)
 option(USE_ENGINE_MOCKS "Build the engine target from src/engine/mocks when present" OFF)
 option(VIBEATON_REQUIRE_SOKOL_SHDC "Fail when shader sources exist but sokol-shdc is unavailable" ON)
@@ -472,7 +472,7 @@ add_library(imgui_lib STATIC ${imgui_sources})
 target_include_directories(imgui_lib PUBLIC ${imgui_SOURCE_DIR})
 add_library(imgui::core ALIAS imgui_lib)
 
-# Freeze the hackathon UI path now: Dear ImGui is rendered through
+# Dear ImGui is rendered through
 # sokol_gfx/sokol_app via util/sokol_imgui.h, owned by the renderer.
 # The implementation translation unit will live in src/renderer/ when added.
 add_library(imgui_sokol INTERFACE)

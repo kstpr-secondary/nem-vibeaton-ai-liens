@@ -128,7 +128,7 @@ sokol_gfx has no built-in GPU→CPU readback. Options for this project if needed
 1. **Use the output buffer as a vertex buffer in the next render pass** — GPU-only pipeline, no readback needed.
 2. **Persistent mapped buffer (GL-specific)** — outside sokol_gfx; requires raw GL calls via `sg_gl_get_native_buffer` (if available) or a separate GL buffer.
 
-For the hackathon, keep compute results on the GPU and consume them as vertex/storage buffers in subsequent render passes.
+Keep compute results on the GPU and consume them as vertex/storage buffers in subsequent render passes.
 
 ---
 

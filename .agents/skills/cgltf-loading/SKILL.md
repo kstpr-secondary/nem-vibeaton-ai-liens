@@ -3,7 +3,6 @@ name: cgltf-loading
 description: Use when implementing or reviewing glTF/GLB asset import in the game-engine workstream. Covers cgltf single-header setup, the mandatory parse→load_buffers→walk lifecycle, accessor unpacking for positions/normals/UVs/indices, the mesh-upload bridge to the renderer's upload_mesh, and GLB vs glTF path handling. Activated when writing or reviewing code in asset_import.{cpp,h} or asset_bridge.{cpp,h}. Do NOT use for OBJ loading (tinyobjloader skill) or renderer mesh building (renderer-specialist).
 compatibility: Portable across heterogeneous agents (Claude, Copilot, Gemini, GLM, local Qwen).
 metadata:
-  author: hackathon-team
   version: "1.0"
   project-stage: pre-implementation
   role: library-reference
@@ -275,7 +274,7 @@ cgltf (PG-A) and OBJ (PG-B) are file-disjoint → safe to run in parallel. The `
 - **Missing normals.** Many exported GLBs from Blender omit normals if the mesh has smooth shading baked. Detect missing normals and synthesize flat normals (cross product of triangle edges) or log a warning. The Lambertian shader will render solid black otherwise.
 - **UV handedness.** glTF UV origin is top-left; OpenGL textures conventionally bottom-left. Flip V: `v_gl = 1.0 - v_gltf`. Only matters when textures are applied (R-M4 Desirable).
 - **`cgltf_free` frees everything.** The `cgltf_data` owns all parsed strings, buffers, and sub-structures. After calling it, all pointers into the data tree are invalid. Upload to GPU before freeing.
-- **No animation / skinning.** `data->skins_count`, `data->animations_count` — do not read or log these; they are out of scope and accessing them wastes context. Hard-cut per blueprint §5.
+- **No animation / skinning.** `data->skins_count`, `data->animations_count` — do not read or log these; they are out of scope and accessing them wastes context.
 - **Multi-mesh GLBs.** A single GLB can contain multiple `cgltf_mesh` nodes. For MVP, load only the first triangle primitive. The engine public API returns one mesh handle per `load_gltf` call; multi-mesh support can be deferred to `spawn_from_asset` returning multiple entities.
 
 ---

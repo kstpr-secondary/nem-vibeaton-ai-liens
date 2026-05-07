@@ -10,11 +10,11 @@ This repo contains three C++17 workstreams:
 2. **Engine** (`src/engine/`) — ECS (`entt`), asset import (`cgltf`, `tinyobjloader`), Euler physics, AABB/raycast queries, camera computation, renderer bridge.
 3. **Game** (`src/game/`) — the space-shooter game executable: controls, combat, enemy AI, HUD, match flow, and game-layer ECS state.
 
-The hackathon coordination workflow is retired. Current work is feature-based.
+Work is organized per-feature.
 
 ## 2. Active documentation model
 
-Current feature work may be documented in either of these shapes:
+Current feature work is documented in either of these shapes:
 
 - **Structured feature folder** under `specs/<feature>/` with files such as `spec.md`, `plan.md`, `tasks.md`, `research.md`, `data-model.md`, and `contracts/*`.
 - **Single combined markdown design doc** such as `pre_planning_docs/next-gen-tasks/visual-improvements.md` that may contain research, diagnostics, design, phases, tasks, and acceptance notes in one file.
@@ -33,8 +33,6 @@ Use stable reference docs only when the feature doc points at them or when the t
 - `docs/architecture/` — subsystem architecture
 - `docs/game-design/` — gameplay intent
 - `.agents/skills/` — role and library guidance
-
-`_coordination/` is archived and should not drive new work.
 
 ## 3. Build and platform constraints
 

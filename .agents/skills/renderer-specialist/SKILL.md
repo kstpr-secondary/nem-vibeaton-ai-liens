@@ -21,13 +21,13 @@ Library and shader-pattern knowledge lives in dedicated skills (see §7); this s
 - The `sokol-shdc` CMake custom command producing `${CMAKE_BINARY_DIR}/generated/shaders/<name>.glsl.h`.
 - `docs/interfaces/renderer-interface-spec.md` — the frozen engine-facing contract.
 - `docs/architecture/renderer-architecture.md`.
-- Top-level `CMakeLists.txt` (co-owned with systems-architect — see AGENTS.md §10 rule 11).
+- Top-level `CMakeLists.txt` (co-owned with systems-architect — see AGENTS.md §3 rule 11).
 - `renderer_tests` target (math, mesh-builder geometry sanity; *not* rendering correctness — that is behavioral).
 
 **Out of scope — hand off**
 - ECS, scene graph, physics, asset import, game loop → `engine-specialist`.
 - Gameplay, enemy AI, game-side VFX content → `game-developer`.
-- Cross-workstream planning, MASTER_TASKS synthesis, engine/game interface design → `systems-architect`.
+- Cross-workstream planning, engine/game interface design → `systems-architect`.
 - Unit tests beyond renderer math/builders → `test-author`.
 - Diff-level bug review → `code-reviewer`. Spec-adherence audits → `spec-validator`.
 
@@ -59,10 +59,6 @@ AGENTS.md §3 already fixes: OpenGL 3.3 Core backend, sokol-shdc precompilation,
 - `renderer_app` executable (`src/renderer/app/main.cpp`) — standalone demo driver with hardcoded procedural scene.
 - `renderer_tests` (Catch2) for math and mesh-builder unit coverage.
 - Iteration build: `cmake --build build --target renderer_app renderer_tests`.
-
-**Completed milestones**
-- R-M0 through R-M3 (MVP), R-M4 (Blinn-Phong + textures), R-M6 (frustum culling).
-- Visual Improvements Phase 2: Material system redesign, pipeline cache, and sorted render queues.
 
 ---
 

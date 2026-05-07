@@ -334,7 +334,6 @@ Material renderer_make_blinnphong_material(const float rgb[3], float shininess,
 
 ## Intended freeze inputs
 
-- `pre_planning_docs/Hackathon Master Blueprint.md`
 - `pre_planning_docs/Renderer Concept and Milestones.md`
 - `docs/architecture/renderer-architecture.md`
 - `specs/001-sokol-render-engine/plan.md`

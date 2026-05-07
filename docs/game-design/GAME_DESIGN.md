@@ -8,9 +8,9 @@
 
 ## Concept
 
-A third-person 3D space shooter in a contained asteroid field. Freelancer-inspired flight feel and shooting mechanics with Quake 3 inspired weapon and power-up system, scaled to hackathon MVP. Built on the game engine's public API and (transitively) the renderer's. The player pilots a ship through a tumbling asteroid field, fights a small number of enemy ships, and wins when all enemies are destroyed.
+A third-person 3D space shooter in a contained asteroid field. Freelancer-inspired flight feel and shooting mechanics with Quake 3 inspired weapon and power-up system, scaled to the project MVP. Built on the game engine's public API and (transitively) the renderer's. The player pilots a ship through a tumbling asteroid field, fights a small number of enemy ships, and wins when all enemies are destroyed.
 
-The game runs against engine + renderer mocks at T+0 so the game workstream never idles on upstream delivery. Each milestone leaves the game in a playable, demoable state.
+The game runs against engine + renderer interfaces. Each milestone leaves the game in a playable, demoable state.
 
 **Core loop:** fly → shoot enemies → avoid asteroids & incoming fire → survive → win when field is cleared. Death restarts the match.
 
@@ -59,8 +59,8 @@ These three points override any earlier ambiguity in the seed concept and are pa
 
 ### Cut entirely
 
-- Audio (blueprint-wide cut)
-- Networking, particles, post-processing (blueprint-wide cut)
+- Audio (cut)
+- Networking, particles, post-processing (cut)
 
 ---
 
@@ -178,7 +178,7 @@ Freelancer-style flight with strafe overlay.
 | G-M5 | — | E-M5 (steering) |
 | G-M6 | R-M5 (custom shader + alpha) | E-M4 |
 
-At Game SpecKit promotion (2026-04-26) renderer R-M1..R-M3 and engine E-M1..E-M4 are all delivered (renderer FROZEN v1.1; engine FROZEN v1.2), so the game runs end-to-end against real upstream for the entire MVP. Mocks remain available via `-DUSE_RENDERER_MOCKS=ON` / `-DUSE_ENGINE_MOCKS=ON` as a demo-day fallback if any upstream regresses.
+At feature start, renderer and engine interfaces are delivered, so the game runs end-to-end against real upstream for the entire MVP. Mocks remain available via `-DUSE_RENDERER_MOCKS=ON` / `-DUSE_ENGINE_MOCKS=ON` as a demo-day fallback if any upstream regresses.
 
 ---
 
