@@ -1,0 +1,45 @@
+# Phase Plan: [Feature Name] — Phase N: [Phase Name]
+
+**Gate**: [checkpoint-p(N-1).md exists | Feature Brief approved (Phase 1)]
+**Roadmap alignment**: [Phase N as named in roadmap.md | N/A for Quick/Phased]
+**Build target**: `cmake --build build --target [X]`
+
+## Expected Outcome
+
+[One concrete human-checkable statement. This is what the checkpoint will verify.]
+
+---
+
+## Tasks
+
+Tasks describe what must be achieved and how to verify it — not which functions to call.
+
+| ID | Description | Files | Schedule | Acceptance |
+|----|-------------|-------|----------|------------|
+| 1 | [what to achieve] | `src/renderer/foo.cpp` | GATE | [observable result] |
+| 2 | [what to achieve] | `src/game/bar.cpp` | ‖ | [observable result] |
+| 3 | [what to achieve] | `src/game/baz.cpp` | ‖ with 2 | [observable result] |
+| 4 | [what to achieve] | `shaders/game/new.glsl` | → | sokol-shdc compiles cleanly |
+| 5 | [what to achieve] | `src/renderer/renderer.cpp` | → | cmake exits 0; [behavior visible] |
+
+**Schedule codes**:
+- `GATE` — runs alone first; everything after depends on it
+- `‖` — parallel with adjacent `‖` tasks; listed Files must be disjoint
+- `→` — sequential, runs after all preceding tasks (or after the last GATE)
+
+---
+
+## Fallbacks
+
+*Required for any non-trivial task or API-dependent approach.*
+
+- Task N: if [primary approach] fails or is unavailable → [specific alternative]
+
+---
+
+## Human Checkpoint
+
+**Run**: `cmake --build build --target [X] && ./build/[X]`
+**Look for**: [specific observable criteria — name what to see, hear, or measure]
+**Pass**: [what "good" looks like in concrete terms]
+**Stop**: [what "not good enough" looks like — triggers re-plan of Phase N+1, not a retry]

@@ -1,0 +1,30 @@
+# Spike: [Specific Question Being Answered]
+
+**Date**: YYYY-MM-DD
+**Gates**: [which Roadmap phase or decision point this unblocks]
+**Time spent**: [~N minutes]
+
+## Question
+
+[The exact yes/no (or yes/partial/no) question this spike answers.]
+
+## Approach
+
+[What was tried. Specific enough that someone else could reproduce it.]
+
+## Result: PASS | FAIL | PARTIAL
+
+## Evidence
+
+[Specific observations — GL error text, measured value, screenshot note, build output excerpt. Not "it worked" — what exactly did you see?]
+
+## Impact on Roadmap
+
+[Which decision branch in roadmap.md this result selects. Include the annotation line to add to the Roadmap.]
+
+Annotation to add:
+`- YYYY-MM-DD S[N]: [PASS|FAIL|PARTIAL] — [one-line finding]`
+
+## Open Questions Remaining
+
+[Any new unknowns this spike revealed. If none, write "none".]

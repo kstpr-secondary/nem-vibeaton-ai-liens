@@ -1,0 +1,37 @@
+# Feature Brief: [Name]
+
+**Type**: Quick | Phased | Exploratory
+**Branch**: feature/[name]
+**Workstreams**: renderer | engine | game
+**Frozen interfaces affected**: none | [list which specs]
+
+## Goal
+
+[2–3 sentences: what user-visible change this makes and why.]
+
+## Success Criteria
+
+All items must be human-verifiable — no "works correctly" or "renders as expected".
+
+- [ ] Visual: [what to look at and what "good" specifically looks like]
+- [ ] Gameplay: [what to play and what "correct" specifically feels like — omit if not applicable]
+- [ ] Build: `cmake --build build --target [X]` exits 0
+
+## Scope
+
+**In**: [what this feature includes]
+**Out (explicit)**: [what is deliberately excluded — name it even if obvious]
+
+## Key Unknowns
+
+*Required for Phased and Exploratory. Omit for Quick if there are genuinely none.*
+
+| Unknown | Risk if wrong | How to verify | Fallback |
+|---------|--------------|---------------|---------|
+| [question] | [what breaks downstream] | [code check / spike / doc read] | [what to do instead] |
+
+## Known Risks
+
+*Anything that could cause mid-phase surprises.*
+
+- [risk]

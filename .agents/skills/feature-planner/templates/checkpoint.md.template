@@ -1,0 +1,25 @@
+# Checkpoint: [Feature Name] — Phase N
+
+**Date**: YYYY-MM-DD
+**Verified by**: [human name]
+
+## Result: PASS | STOP
+
+## What was tested
+
+[Brief description of what was run and what was observed. One paragraph.]
+
+## Observations
+
+[What worked, what surprised, anything that affects how the next phase should be approached.]
+
+## Roadmap impact
+
+*For Exploratory features only. Which decision point does this resolve?*
+
+[e.g., "Phase 1 primary approach confirmed — proceeding to Phase 2 (lighting accumulation)" |
+ "Pivoting to Phase 1-alt — MRT depth readback not usable on GL 3.3 without extension"]
+
+## Next step
+
+[One of: generate plan-p(N+1).md | stop and re-examine goal | feature complete → update docs/ and archive]

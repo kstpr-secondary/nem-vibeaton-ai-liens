@@ -14,21 +14,21 @@ Work is organized per-feature.
 
 ## 2. Active documentation model
 
-Current feature work is documented in either of these shapes:
+Active feature work lives under `features/active/<feature-name>/`. See `WORKFLOW.md` for the full process.
 
-- **Structured feature folder** under `specs/<feature>/` with files such as `spec.md`, `plan.md`, `tasks.md`, `research.md`, `data-model.md`, and `contracts/*`.
-- **Single combined markdown design doc** such as `pre_planning_docs/next-gen-tasks/visual-improvements.md` that may contain research, diagnostics, design, phases, tasks, and acceptance notes in one file.
+Key artifacts per feature:
+- `brief.md` — what and why; always present
+- `roadmap.md` — exploratory features only; full journey sketch with decision branches
+- `spike-<name>.md` — one per unknown resolved by experiment
+- `design.md` — technical design when needed
+- `plan-pN.md` — phase plan, one per phase, written before execution
+- `checkpoint-pN.md` — human-written after verification; gates the next phase plan
 
-When starting work, read the feature document the user points at. If it is a combined markdown file, use the sections that matter to the task:
+**Before starting implementation**: read `brief.md`, the current `plan-pN.md`, and any `checkpoint` files for context on prior phases. Do not read phase plans that have not yet been reached.
 
-- problem statement / diagnostics
-- design or proposed changes
-- phases
-- task list
-- checkpoints / acceptance notes
+Completed features are archived under `features/archive/<feature-name>/`. Older work lives under `specs/` (original SpecKit outputs) and `pre_planning_docs/` (hackathon artifacts) — treat those as historical reference only.
 
-Use stable reference docs only when the feature doc points at them or when the task clearly depends on them:
-
+Stable reference docs:
 - `docs/interfaces/` — frozen public contracts
 - `docs/architecture/` — subsystem architecture
 - `docs/game-design/` — gameplay intent
@@ -73,6 +73,8 @@ Do not move behavior across workstreams unless the feature explicitly requires i
 - Keep changes within the owning workstream unless the feature explicitly spans multiple workstreams.
 - Prefer precise, feature-scoped changes over cleanup outside the task.
 - Keep `main` demo-safe.
+- Every Phase Plan and every Exploratory Roadmap must pass Plan Groomer review before implementation starts (`.agents/skills/plan-groomer/SKILL.md`).
+- Do not generate `plan-pN.md` without `checkpoint-p(N-1).md` present; for Phase 1, the Feature Brief serves as the gate.
 
 ## 7. Validation expectations
 

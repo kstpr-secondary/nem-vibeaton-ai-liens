@@ -1,0 +1,75 @@
+# Exploratory Roadmap: [Feature Name]
+
+**Created**: YYYY-MM-DD
+**Goal**: [one sentence — the summit, stated as a user-visible outcome]
+**Done when**: [what human sign-off closes this roadmap]
+
+---
+
+## Spike Queue
+
+Spikes resolve unknowns before the phases that depend on them. Each spike is a focused throwaway experiment — not a phase, not a prototype.
+
+- [ ] S1: [Specific yes/no question] — gates Phase [N] approach decision
+- [ ] S2: [Specific yes/no question] — gates Phase [N] approach decision
+
+---
+
+## Phase Sequence
+
+Phases are sketched here upfront. Detailed task plans are written one phase at a time, after the prior phase checkpoint.
+
+---
+
+### Phase 1: [Name]
+
+**Primary approach**: [what we intend to try]
+**Expected outcome**: [human-checkable — what a passing checkpoint looks like]
+
+Decision point after Phase 1 checkpoint:
+- Checkpoint passes → proceed to Phase 2
+- [Specific failure mode A — name it] → pivot to Phase 1-alt
+- [Specific failure mode B — name it] → stop and re-examine goal
+
+---
+
+### Phase 1-alt: [Name] *(contingency — triggered by failure mode A above)*
+
+**Approach**: [the turn — concrete enough to act on]
+**Expected outcome**: [same summit, different path]
+
+Feeds into: Phase 2 (merge back to primary sequence here)
+
+---
+
+### Phase 2: [Name]
+
+**Depends on**: Phase 1 or Phase 1-alt checkpoint
+**Primary approach**: [what we intend to try]
+**Expected outcome**: [human-checkable]
+
+Decision point after Phase 2 checkpoint:
+- Checkpoint passes → proceed to Phase 3
+- [failure mode] → [named branch or stop condition]
+
+---
+
+### Phase 3: [Name]
+
+**Depends on**: Phase 2 checkpoint
+**Primary approach**: [what we intend to try]
+**Expected outcome**: [human-checkable — should align with overall Goal]
+
+Decision point after Phase 3 checkpoint:
+- Checkpoint passes → feature complete, update docs/ and archive
+- [failure mode] → [named branch or stop condition]
+
+---
+
+## Roadmap Annotations
+
+*Do not rewrite phases. Append dated notes here as spikes and checkpoints complete.*
+
+<!-- - YYYY-MM-DD S1: PASS — [finding and impact on plan] -->
+<!-- - YYYY-MM-DD Phase 1 checkpoint: PASS — [note for Phase 2 planner] -->
+<!-- - YYYY-MM-DD Phase 1 checkpoint: STOP — [finding, pivoting to Phase 1-alt] -->
