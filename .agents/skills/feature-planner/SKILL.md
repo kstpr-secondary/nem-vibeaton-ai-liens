@@ -88,7 +88,9 @@ No fixed template. Include: proposed data structures or API additions, module in
 
 Use `templates/phase-plan.md.template`. Key discipline:
 
-**Tasks describe outcomes, not implementations.** Write "add vertex-position-to-view-space transform for depth readback" not "call glm::inverse(view) and multiply column 3". The implementing agent decides the how; the plan specifies what must be demonstrably true when the task is done.
+**The planner is the architect; the implementor fills in the details.** For Quick and Phased features, task descriptions should sketch the implementation path: name the key functions, methods, or data structures to add or change, specify which algorithm to use, and flag dangerous spots the implementor should watch for (e.g., "sokol_gfx finalizes the pipeline at `sg_make_pipeline` — do not mutate the descriptor after that point"). The implementor resolves call sites, writes the boilerplate, and integrates with existing code. A useful test: a capable implementor who reads the task should not be able to take the wrong architectural approach, but the actual code is theirs to write.
+
+For Exploratory phase plans, keep "how" lighter — the approach is still being validated by spikes. The "how" sharpens progressively as unknowns are resolved and each phase plan is written in sequence.
 
 **Acceptance criteria are observable.** Each task row's acceptance must be something a human or a build step can verify in under 30 seconds. "Compiles" is acceptable only for pure structural tasks (adding a struct, creating a file). Any task that touches behavior needs a behavioral criterion.
 
