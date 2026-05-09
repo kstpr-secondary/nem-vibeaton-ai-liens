@@ -65,11 +65,11 @@ sokol_app main loop (renderer)
 |------|----------------|-----------|
 | `main.cpp` | Entry point: `renderer_init` → `engine_init` → `game_init` → register frame + input callbacks → `renderer_run` → shutdown | SETUP |
 | `game.h` / `game.cpp` | `game_init`, `game_tick`, `game_shutdown`; orchestrates the 11-step tick; owns `MatchState` singleton + match transitions; `render_submit` | SETUP / FOUNDATION / G-M1+ |
-| `components.h` | Game-layer ECS components: `PlayerTag`, `EnemyTag`, `AsteroidTag`, `ProjectileTag`, `Health`, `Shield`, `Boost`, `WeaponState`, `ProjectileData`, `EnemyAI`, `AsteroidData`; enums `WeaponType`, `SizeTier`, `MatchPhase` | FOUNDATION |
+| `components.h` | Game-layer ECS components: `PlayerTag`, `EnemyTag`, `AsteroidTag`, `ProjectileTag`, `Health`, `Shield`, `Boost`, `WeaponState`, `ProjectileData`, `EnemyAI`, `AsteroidData`, `CameraRigState`; enums `WeaponType`, `SizeTier`, `MatchPhase`, `NavigationMode` | FOUNDATION |
 | `constants.h` | Tuning constants (speeds, damage, cooldowns, field radius, camera offsets, regen rates, asteroid mass/scale tiers, auto-restart delays) | FOUNDATION |
 | `spawn.h` / `spawn.cpp` | Entity factories: `spawn_player`, `spawn_enemy`, `spawn_asteroid`, `spawn_projectile`; composes engine + game components per archetype | FOUNDATION |
-| `player.h` / `player.cpp` | Flight controller (W/S/A/D + mouse look with LMB hold), boost toggle, shield + boost regen logic | G-M1 / G-M2 |
-| `camera_rig.h` / `camera_rig.cpp` | Third-person follow camera with offset + lag (LERP); first-person fallback (offset = 0) | G-M1 |
+| `player.h` / `player.cpp` | Flight controller (W/S/A/D + mouse look with LMB hold), boost toggle, shield + boost regen logic, Z-key `NavigationMode` toggle (Normal / EngineKill) with velocity snap on EngineKill→Normal transition | G-M1 / G-M2 |
+| `camera_rig.h` / `camera_rig.cpp` | Third-person follow camera with offset + lag (LERP); freelancer velocity coupling (quaternion delta applied to `rb.linear_velocity` in Normal mode); `visual_pitch` + `visual_bank` spring-back tilts; first-person fallback (offset = 0) | G-M1 |
 | `asteroid_field.h` / `asteroid_field.cpp` | Procedural placement of 200 asteroids in 3 size tiers; spherical containment reflection + post-reflection speed cap | G-M1 / G-M2 |
 | `damage.h` / `damage.cpp` | Damage pipeline: collision kinetic-energy damage, weapon hit damage, shield → HP cascade, last-damage timestamping for shield-regen gate, death detection | G-M2 / G-M3 |
 | `weapons.h` / `weapons.cpp` | Weapon definitions, cooldown tracking, Q/E switch (edge-triggered), laser raycast + line visual, plasma projectile spawn | G-M3 |

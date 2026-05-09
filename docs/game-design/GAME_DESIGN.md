@@ -135,6 +135,7 @@ Freelancer-style flight with strafe overlay.
 | Right mouse | Fire active weapon |
 | W/S | Forward thrust / back |
 | A/D | Strafe left / right |
+| Z | Toggle Engine Kill mode (nose rotates freely; velocity held constant; Z again snaps velocity to nose direction) |
 | Space | Boost (while held) |
 | Q/E | Switch weapon (plasma / laser) |
 | Enter | Restart match |

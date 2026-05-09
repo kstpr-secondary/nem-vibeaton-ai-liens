@@ -23,7 +23,7 @@ src/game/
 ├── constants.h            # All tuning values
 ├── spawn.h / spawn.cpp    # Entity factories per archetype
 ├── player.h / player.cpp  # Flight controller, shield/boost regen
-├── camera_rig.h / .cpp    # Third-person follow with offset + lag
+├── camera_rig.h / .cpp    # Third-person follow with offset + lag; freelancer velocity coupling (Normal mode); visual_pitch + visual_bank spring-back tilts
 ├── asteroid_field.h/.cpp  # Procedural placement + spherical containment
 ├── damage.h / damage.cpp  # Kinetic-energy + weapon damage pipeline
 ├── weapons.h / .cpp       # Laser raycast + plasma spawn + cooldowns + Q/E switch

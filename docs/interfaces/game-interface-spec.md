@@ -163,6 +163,7 @@ The game **does not** own input event handling. It polls input state via the eng
 | Thrust reverse | `engine_key_down(SAPP_KEYCODE_S)` | per-frame poll |
 | Strafe left | `engine_key_down(SAPP_KEYCODE_A)` | per-frame poll |
 | Strafe right | `engine_key_down(SAPP_KEYCODE_D)` | per-frame poll |
+| Engine Kill toggle | `engine_key_down(SAPP_KEYCODE_Z)` | edge-triggered; flips `CameraRigState.nav_mode` between Normal and EngineKill; EngineKill→Normal snaps velocity to nose direction |
 | Boost | `engine_key_down(SAPP_KEYCODE_SPACE)` | per-frame poll |
 | Switch to Plasma | `engine_key_down(SAPP_KEYCODE_Q)` | edge-triggered (track previous state) |
 | Switch to Laser | `engine_key_down(SAPP_KEYCODE_E)` | edge-triggered |
