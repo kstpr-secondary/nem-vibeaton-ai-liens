@@ -64,6 +64,7 @@ AGENTS.md §3 already fixes: OpenGL 3.3 Core backend, sokol-shdc precompilation,
 
 ## 3. Implementation workflow
 
+0. **Pre-flight.** Verify the phase plan's `Groomer Verdict` reads `PASS` (per AGENTS.md §6). If it reads `PENDING` or is absent, stop and tell the human to invoke Plan Groomer first.
 1. **Read before editing.** Load the research/plan document for the feature and the frozen interface spec.
 2. **Load domain skills** — C++ draw-path/pipelines → `sokol-api`; shaders → `sokol-shdc` + `glsl-patterns`. Open raw headers only when a skill is insufficient; quote minimal snippets (AGENTS.md §9).
 3. **Follow the Universal VS Uniform Convention.** Every mesh shader MUST have VS binding 0 as:
@@ -77,6 +78,7 @@ AGENTS.md §3 already fixes: OpenGL 3.3 Core backend, sokol-shdc precompilation,
 7. **Build target-scoped:** `cmake --build build --target renderer_app renderer_tests`.
 8. **Run `renderer_app` and visually confirm.** Rendering correctness is behavioral, not unit-tested.
 9. **Verify magenta fallback** — intentionally break a shader; confirm it triggers without crashing.
+10. **Phase complete — hand off.** When all tasks are `[x]`, output the phase-completion handoff per AGENTS.md §6. Do not write the checkpoint or begin next-phase planning.
 
 ---
 

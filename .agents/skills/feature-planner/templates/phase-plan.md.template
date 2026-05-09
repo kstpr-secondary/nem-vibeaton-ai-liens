@@ -3,6 +3,7 @@
 **Gate**: [checkpoint-p(N-1).md exists | Feature Brief approved (Phase 1)]
 **Roadmap alignment**: [Phase N as named in roadmap.md | N/A for Quick/Phased]
 **Build target**: `cmake --build build --target [X]`
+**Groomer Verdict**: PENDING
 
 ## Expected Outcome
 
@@ -14,13 +15,13 @@
 
 The planner is the architect. Descriptions sketch the implementation path: key functions/structs to add or change, algorithm to use, gotchas to watch for. The implementor fills in boilerplate, call sites, and integration. For Exploratory phases keep "how" lighter until spikes resolve the unknowns.
 
-| ID | Description | Files | Schedule | Acceptance |
-|----|-------------|-------|----------|------------|
-| 1 | [what to achieve — key functions/structs, algorithm, gotchas] | `src/renderer/foo.cpp` | GATE | [observable result] |
-| 2 | [what to achieve — key functions/structs, algorithm, gotchas] | `src/game/bar.cpp` | ‖ | [observable result] |
-| 3 | [what to achieve — key functions/structs, algorithm, gotchas] | `src/game/baz.cpp` | ‖ with 2 | [observable result] |
-| 4 | [what to achieve — key functions/structs, algorithm, gotchas] | `shaders/game/new.glsl` | → | sokol-shdc compiles cleanly |
-| 5 | [what to achieve — key functions/structs, algorithm, gotchas] | `src/renderer/renderer.cpp` | → | cmake exits 0; [behavior visible] |
+| ID | Status | Description | Files | Schedule | Acceptance |
+|----|--------|-------------|-------|----------|------------|
+| 1 | [ ] | [what to achieve — key functions/structs, algorithm, gotchas] | `src/renderer/foo.cpp` | GATE | [observable result] |
+| 2 | [ ] | [what to achieve — key functions/structs, algorithm, gotchas] | `src/game/bar.cpp` | ‖ | [observable result] |
+| 3 | [ ] | [what to achieve — key functions/structs, algorithm, gotchas] | `src/game/baz.cpp` | ‖ with 2 | [observable result] |
+| 4 | [ ] | [what to achieve — key functions/structs, algorithm, gotchas] | `shaders/game/new.glsl` | → | sokol-shdc compiles cleanly |
+| 5 | [ ] | [what to achieve — key functions/structs, algorithm, gotchas] | `src/renderer/renderer.cpp` | → | cmake exits 0; [behavior visible] |
 
 **Schedule codes**:
 - `GATE` — runs alone first; everything after depends on it

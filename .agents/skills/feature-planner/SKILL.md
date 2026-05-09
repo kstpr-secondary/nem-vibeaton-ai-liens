@@ -119,9 +119,24 @@ Use these when writing task descriptions and acceptance criteria:
 
 ---
 
-## Checkpoint reminder
+## Checkpoint drafting
 
-After a phase executes, the human writes `checkpoint-pN.md` using `templates/checkpoint.md.template`. The Feature Planner does not write checkpoints — only the human does, after actual verification. Agents must not proceed to the next phase plan without this file existing.
+After a phase executes, `checkpoint-pN.md` must exist before the next phase plan can be written. The checkpoint records human-observed behavior — the human must have actually run the verification before a checkpoint is produced. The Feature Planner may draft the checkpoint from free-form human feedback, then the human confirms before it is written.
+
+**When the human provides feedback after a phase** (e.g., "all pass but the shield bar flickers on low HP" or "physics task fails — asteroids clip the boundary"):
+
+1. Read the current phase plan's **Human Checkpoint** section (Run / Look for / Pass / Stop).
+2. Read the human's feedback and map it to the checkpoint fields:
+   - **Result**: PASS if all Pass criteria met (minor observations don't block); STOP if any Stop condition triggered.
+   - **What was tested**: infer from the plan's "Run" field plus any specifics the human mentioned.
+   - **Observations**: the human's verbatim feedback, lightly structured. Include surprises, deviations, and anything that should inform the next phase.
+   - **Roadmap impact**: fill only for Exploratory features; leave blank or omit otherwise.
+   - **Next step**: infer from Result — PASS → `generate plan-p(N+1).md`; STOP → `stop and re-examine`; final phase → `feature complete → update docs/ and archive`.
+3. Draft the full `checkpoint-pN.md` and show it to the human.
+4. Ask: *"Does this accurately reflect what you observed? I'll write the file once you confirm."*
+5. On confirmation, write `features/active/<feature-name>/checkpoint-pN.md`.
+
+**Do not draft a checkpoint if the human has not run the verification.** If the human asks for the checkpoint without having tested, prompt them to run the Human Checkpoint steps from the plan first.
 
 ---
 

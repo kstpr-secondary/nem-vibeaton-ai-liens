@@ -97,13 +97,15 @@ Templates for all artifacts: `.agents/skills/feature-planner/templates/`
 
 **Frozen interfaces are approval gates.** If a Phase Plan requires a change to `docs/interfaces/*-interface-spec.md`, human approval must be explicitly noted in the plan as a GATE before any dependent tasks. Do not implement dependents speculatively.
 
+**Implementing agents stop at phase boundaries.** When all tasks in a phase plan are complete, the implementing agent outputs a handoff (summary + quoted Human Checkpoint criteria) and stops. It does not write `checkpoint-pN.md` and does not begin or sketch the next phase plan. The human runs the verification and provides feedback; Feature Planner drafts the checkpoint from that feedback and writes the file once the human confirms. Feature Planner then writes the next phase plan. The checkpoint requires human-observed behavior — an agent can format it, but cannot substitute for the human having actually run the check.
+
 ---
 
 ## Feature Lifecycle
 
 When all phase checkpoints pass and the human signs off:
 
-1. **Update live reference docs** in `docs/`:
+1. **Update live reference docs** — invoke Doc Updater (`.agents/skills/doc-updater/SKILL.md`). It reads the completed feature artifacts, determines which docs changed, and updates them. Covers:
    - `docs/interfaces/` — if a public API changed
    - `docs/architecture/` — if a subsystem's design changed
    - `docs/game-design/` — if gameplay intent changed
@@ -113,12 +115,13 @@ When all phase checkpoints pass and the human signs off:
 
 ---
 
-## Planning Skills
+## Workflow Skills
 
-| Skill | File | Purpose |
-|-------|------|---------|
-| Feature Planner | `.agents/skills/feature-planner/SKILL.md` | Creates and structures feature artifacts |
-| Plan Groomer | `.agents/skills/plan-groomer/SKILL.md` | Adversarial review before execution |
+| Skill | File | Purpose | When |
+|-------|------|---------|------|
+| Feature Planner | `.agents/skills/feature-planner/SKILL.md` | Creates and structures feature artifacts | Start of feature / after each checkpoint |
+| Plan Groomer | `.agents/skills/plan-groomer/SKILL.md` | Adversarial review before execution | After every Phase Plan or Roadmap |
+| Doc Updater | `.agents/skills/doc-updater/SKILL.md` | Updates `docs/` to reflect what was built | Once, after final checkpoint, before archive |
 
 Existing skills that remain active:
 - `spec-validator` — verifies code matches written spec after implementation

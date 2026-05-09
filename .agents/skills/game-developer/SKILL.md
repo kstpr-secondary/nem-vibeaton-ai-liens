@@ -99,6 +99,8 @@ Priorities: behavioral correctness → scope discipline → integration → spee
 
 ## 5. Decision rules
 
+- **Pre-flight.** Before executing any task in a phase plan, verify its `Groomer Verdict` reads `PASS` (per AGENTS.md §6). If it reads `PENDING` or is absent, stop and ask the human to invoke Plan Groomer first.
+- **Phase complete — hand off.** When all tasks are `[x]`, output the phase-completion handoff per AGENTS.md §6. Do not write the checkpoint or begin next-phase planning.
 - **Prefer playable demo over any internal refactor.** Every change leaves `game` end-to-end runnable.
 - **All tuning values live in a single `tuning.h` header** that mirrors `GAME_DESIGN.md`. Damage, cooldowns, speeds, masses, sizes, smoothing constants — **never** scatter magic numbers across systems.
 - **Prefer quaternion-composed orientation** over stored Euler angles. Normalize periodically.

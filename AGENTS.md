@@ -75,6 +75,17 @@ Do not move behavior across workstreams unless the feature explicitly requires i
 - Keep `main` demo-safe.
 - Every Phase Plan and every Exploratory Roadmap must pass Plan Groomer review before implementation starts (`.agents/skills/plan-groomer/SKILL.md`).
 - Do not generate `plan-pN.md` without `checkpoint-p(N-1).md` present; for Phase 1, the Feature Brief serves as the gate.
+- **Before executing any task in a phase plan**: verify the plan's `Groomer Verdict` field reads `PASS`. If it reads `PENDING` or the field is absent, stop and tell the human to invoke Plan Groomer before any implementation begins.
+- **As you complete each task in a phase plan**: update that task's `Status` field from `[ ]` to `[x]` in the plan document before moving to the next task.
+- **When all tasks in a phase plan are `[x]`**: stop. Do not write `checkpoint-pN.md`, do not write or sketch `plan-p(N+1).md`, and do not begin designing the next phase. Output the phase-completion handoff instead (see below).
+- **Implementing agents never write checkpoints.** The checkpoint records human-observed behavior. Feature Planner may draft it from the human's free-form feedback, but only after the human has run the verification. The next phase plan cannot exist without the checkpoint file.
+
+**Phase-completion handoff** (output when all tasks are `[x]`):
+1. Briefly summarize what was implemented in this phase.
+2. Quote the Human Checkpoint section verbatim from the plan (Run / Look for / Pass / Stop).
+3. Tell the human to run the verification and write `features/active/<feature-name>/checkpoint-pN.md` using the template at `.agents/skills/feature-planner/templates/checkpoint.md.template`.
+4. Tell the human to invoke Feature Planner once the checkpoint is written (for the next phase), or Doc Updater if this was the final phase.
+5. State explicitly: next-phase planning belongs to Feature Planner, not to this agent.
 
 ## 7. Validation expectations
 

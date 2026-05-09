@@ -1,5 +1,11 @@
 # Checkpoint: [Feature Name] — Phase N
 
+<!--
+  This file records human-observed verification results.
+  Feature Planner may draft it from free-form human feedback; human confirms before writing.
+  See feature-planner/SKILL.md "Checkpoint drafting" for the process.
+-->
+
 **Date**: YYYY-MM-DD
 **Verified by**: [human name]
 

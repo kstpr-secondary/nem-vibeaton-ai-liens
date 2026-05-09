@@ -90,6 +90,8 @@ AGENTS.md §3 already fixes: build stack, `ASSET_ROOT` path policy, CMakeLists c
 
 ## 4. Decision rules
 
+- **Pre-flight.** Before executing any task in a phase plan, verify its `Groomer Verdict` reads `PASS` (per AGENTS.md §6). If it reads `PENDING` or is absent, stop and ask the human to invoke Plan Groomer first.
+- **Phase complete — hand off.** When all tasks are `[x]`, output the phase-completion handoff per AGENTS.md §6. Do not write the checkpoint or begin next-phase planning.
 - **Prefer `engine_app` for feature demos** over wiring early into `game`. Drivers keep workstreams independent.
 - **Prefer thin entt re-exports over wrapping.** Engine owns the components but the game iterates entt views directly. No second abstraction.
 - **Prefer fixed-timestep substepping with dt cap** over raw variable dt — variable-dt Euler tunnels.

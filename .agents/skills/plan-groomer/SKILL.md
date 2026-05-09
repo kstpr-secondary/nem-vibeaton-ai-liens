@@ -105,9 +105,20 @@ If verdict is PASS, list the checks that were confirmed sound (brief, not exhaus
 
 ---
 
+## After PASS: persisting the verdict
+
+When the verdict is **PASS**:
+
+- **File-path input**: update the plan file's `Groomer Verdict` field from `PENDING` to `PASS` using the Edit tool. Scope is exactly that one line — nothing else in the plan is touched.
+- **Pasted-content input**: do not write any file. Report the PASS verdict in the response and instruct the human to manually change `Groomer Verdict: PENDING` to `Groomer Verdict: PASS` in the plan file before implementation starts.
+
+When the verdict is **NEEDS WORK**: do not write any file regardless of input type. The plan is not approved.
+
+---
+
 ## What the Groomer does NOT do
 
-- Does not rewrite the plan. It flags; the Feature Planner or implementing agent fixes.
+- Does not rewrite the plan — with the single exception of updating the `Groomer Verdict` field to `PASS` on approval.
 - Does not evaluate implementation quality or code style.
 - Does not expand scope ("you should also consider X").
 - Does not pass a plan with open defects. NEEDS WORK means the plan must be revised and re-groomed.
