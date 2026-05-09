@@ -144,8 +144,19 @@ void camera_rig_finalize(float dt) {
                                  -constants::visual_bank_max,
                                  constants::visual_bank_max);
     }
-    crs.visual_bank += (bank_target - crs.visual_bank)
-                       * constants::visual_bank_spring * dt;
+   crs.visual_bank += (bank_target - crs.visual_bank)
+                        * constants::visual_bank_spring * dt;
+
+    // ── Step A2: spring visual_pitch toward steering-based target ────────
+    float pitch_target = 0.f;
+    if (engine_mouse_button(0)) {
+        pitch_target = -engine_mouse_delta().y * constants::visual_pitch_gain;
+        pitch_target = glm::clamp(pitch_target,
+                                  -constants::visual_pitch_max,
+                                  constants::visual_pitch_max);
+    }
+    crs.visual_pitch += (pitch_target - crs.visual_pitch)
+                         * constants::visual_pitch_spring * dt;
 
     // ── Step B: spring collision_roll toward 0 (damped spring) ───────────
     // Accumulate any new impulse from damage_resolve.
@@ -171,7 +182,8 @@ void camera_rig_finalize(float dt) {
     // ── Step C: overwrite t.rotation (undoes any physics-baked rotation) ─
     float total_roll = crs.visual_bank + crs.collision_roll;
     glm::quat roll_quat = glm::angleAxis(total_roll, glm::vec3(0.f, 0.f, -1.f));
-    t.rotation = crs.rig_rotation * roll_quat * k_ship_base_orientation;
+    glm::quat pitch_quat = glm::angleAxis(crs.visual_pitch, glm::vec3(1.f, 0.f, 0.f));
+    t.rotation = crs.rig_rotation * pitch_quat * roll_quat * k_ship_base_orientation;
 
     // ── Step D: compute camera position (smoothed) ───────────────────────
     glm::vec3 rig_fwd = crs.rig_rotation * glm::vec3(0.f, 0.f, -1.f);

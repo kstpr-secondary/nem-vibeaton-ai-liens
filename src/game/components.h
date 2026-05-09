@@ -71,6 +71,7 @@ struct Boost {
 struct CameraRigState {
     glm::quat rig_rotation           = glm::quat(1.f, 0.f, 0.f, 0.f);
     float     visual_bank            = 0.f;
+    float     visual_pitch           = 0.f;
     NavigationMode nav_mode          = NavigationMode::Normal;
     float     collision_roll         = 0.f;
     float     collision_roll_vel     = 0.f;
