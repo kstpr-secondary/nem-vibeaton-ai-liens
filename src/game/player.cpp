@@ -10,11 +10,36 @@ void player_update(float dt) {
     auto& reg = engine_registry();
     auto view = reg.view<PlayerTag, Transform, RigidBody, Boost, Shield, CameraRigState>();
 
+    static bool s_prev_z = false;
+
     for (auto e : view) {
         auto& rb    = view.get<RigidBody>(e);
         auto& boost = view.get<Boost>(e);
         auto& sh    = view.get<Shield>(e);
         auto& crs   = view.get<CameraRigState>(e);
+
+        // ----------------------------------------------------------------
+        // Z key toggle — Engine Kill mode.
+        // ----------------------------------------------------------------
+        {
+            bool cur_z = engine_key_down(SAPP_KEYCODE_Z);
+            if (cur_z && !s_prev_z) {
+                // Rising edge: flip nav_mode.
+                if (crs.nav_mode == NavigationMode::EngineKill) {
+                    // EngineKill → Normal: snap velocity to current nose direction.
+                    float speed = glm::length(rb.linear_velocity);
+                    if (speed > 1e-6f) {
+                        glm::vec3 nose_dir = crs.rig_rotation * glm::vec3(0.f, 0.f, -1.f);
+                        rb.linear_velocity = speed * nose_dir;
+                    }
+                }
+                // Normal → EngineKill: no velocity change.
+                crs.nav_mode = (crs.nav_mode == NavigationMode::Normal)
+                    ? NavigationMode::EngineKill
+                    : NavigationMode::Normal;
+            }
+            s_prev_z = cur_z;
+        }
 
         // ----------------------------------------------------------------
         // Thrust and strafe — use rig_rotation (no visual bank).

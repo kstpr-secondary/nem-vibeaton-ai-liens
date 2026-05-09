@@ -61,6 +61,9 @@ void camera_rig_input(float dt) {
     auto& t   = view.get<Transform>(s_player);
     auto& crs = view.get<CameraRigState>(s_player);
 
+   // RigidBody reference for velocity coupling.
+    auto& rb  = reg.get<RigidBody>(s_player);
+
     // Steering: mouse delta drives yaw and pitch rates when LMB held.
     if (engine_mouse_button(0)) {
         glm::vec2 delta = engine_mouse_delta();
@@ -73,8 +76,17 @@ void camera_rig_input(float dt) {
         glm::vec3 rig_right = crs.rig_rotation * glm::vec3(1.f, 0.f, 0.f);
         glm::quat q_pitch = glm::angleAxis(-delta.y * constants::cam_turn_rate * dt, rig_right);
 
-        // Apply yaw first, then pitch; both in world space (pre-multiply).
-        crs.rig_rotation = glm::normalize(q_yaw * q_pitch * crs.rig_rotation);
+        // Combined rotation delta.
+        glm::quat q_delta = glm::normalize(q_yaw * q_pitch);
+
+        // Apply to rig_rotation.
+        crs.rig_rotation = glm::normalize(q_delta * crs.rig_rotation);
+
+        // Velocity coupling: in Normal mode, rotate velocity vector by same delta.
+        if (crs.nav_mode == NavigationMode::Normal) {
+            rb.linear_velocity = q_delta * rb.linear_velocity;
+        }
+        // EngineKill mode: velocity untouched (existing behavior).
     }
 
     // Write ship Transform — no roll yet, just rig orientation.
