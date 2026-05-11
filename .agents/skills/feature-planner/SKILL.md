@@ -39,6 +39,11 @@ Use the template at `templates/brief.md.template`. Key discipline:
 
 Choose `<feature-name>` as a short kebab-case slug, e.g. `shield-vfx`, `deferred-rendering`, `enemy-steering`.
 
+After writing the Brief, tell the human the next step based on feature type — **do not invoke Plan Groomer here; it only reviews Phase Plans and Roadmaps, not Briefs**:
+- **Quick**: brief and `plan-p1.md` are written together in one step — then tell the human to invoke Plan Groomer on the plan.
+- **Phased**: the Brief is the gate for Phase 1. Tell the human to invoke Feature Planner to write `plan-p1.md`.
+- **Exploratory**: Tell the human to invoke Feature Planner to write `roadmap.md`.
+
 ---
 
 ## Step 2: Exploratory Roadmap (`roadmap.md`) — Exploratory only

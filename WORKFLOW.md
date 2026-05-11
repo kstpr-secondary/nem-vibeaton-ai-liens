@@ -124,6 +124,6 @@ When all phase checkpoints pass and the human signs off:
 | Doc Updater | `.agents/skills/doc-updater/SKILL.md` | Updates `docs/` to reflect what was built | Once, after final checkpoint, before archive |
 
 Existing skills that remain active:
-- `spec-validator` — verifies code matches written spec after implementation
-- `code-reviewer` — reviews diffs for risk and correctness
+- `spec-validator` — verifies code matches written spec after implementation *(read-only: produces a gap report, never edits code)*
+- `code-reviewer` — reviews diffs for risk and correctness *(read-only: produces a defect report, never edits code)*
 - `systems-architect` — cross-workstream seams and frozen interface changes

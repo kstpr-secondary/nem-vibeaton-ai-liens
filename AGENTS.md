@@ -94,6 +94,8 @@ Do not move behavior across workstreams unless the feature explicitly requires i
 - Use spec validation when the question is “did this match the feature docs?”
 - Use code review when the question is “is this diff risky or obviously broken?”
 
+**Validation roles are read-only.** plan-groomer, code-reviewer, and spec-validator produce reports, never edits. Implementing agents fix what those reports name.
+
 ## 8. If stuck
 
 1. Re-read the active feature doc and the relevant skill.
