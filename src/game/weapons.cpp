@@ -8,6 +8,8 @@
 #include <renderer.h>
 #include <sokol_app.h>
 #include <glm/gtc/quaternion.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/component_wise.hpp>
 #include <cmath>
 
 // ---------------------------------------------------------------------------
@@ -45,7 +47,7 @@ static float sphere_intersect_t(const glm::vec3& ro, const glm::vec3& rd,
 // Called every frame from weapon_update() for all entities with LaserBeam.
 // ---------------------------------------------------------------------------
 
-static void laser_update(entt::entity player_e, float dt) {
+static void laser_update(entt::entity /*player_e*/, float dt) {
     auto& reg = engine_registry();
     auto  view = reg.view<LaserBeam, Transform>();
 
@@ -67,59 +69,70 @@ static void laser_update(entt::entity player_e, float dt) {
             const float offset = k_ship_half + 0.1f;
             const glm::vec3 muzzle_origin = t.position + ship_forward * offset;
 
-            // Get cursor ray direction for raycast.
+            // Get cursor ray from camera — origin + direction define the world aim ray.
             glm::vec3 ray_origin, ray_dir;
             camera_rig_cursor_ray(ray_origin, ray_dir);
-            (void)ray_origin;
 
-            // Raycast from muzzle along cursor direction.
-            const auto hit = engine_raycast(muzzle_origin, ray_dir, constants::laser_max_range);
+            // Default: short fixed-distance endpoint from the muzzle along cursor direction.
+            lb.end = muzzle_origin + ray_dir * constants::laser_default_range;
+            lb.last_hit_entity = entt::null;
 
-            if (hit.has_value() && hit->entity != player_e) {
-                // Apply DPS-scaled damage.
-                apply_damage(hit->entity, constants::laser_dps * dt);
+            // Find nearest enemy under cursor using direct AABB slab test — the same
+            // approach the HUD uses. engine_raycast is not used here because it returns
+            // the first obstacle in the scene (usually one of the 600 asteroids), making
+            // the enemy check on the result always fail.
+            {
+                auto ev = reg.view<EnemyTag, Transform, Collider>();
+                entt::entity hit_enemy = entt::null;
+                float hit_t = constants::laser_max_range;
 
-                // Apply asteroid impulse.
-                if (engine_has_component<AsteroidTag>(hit->entity))
-                    engine_apply_impulse(hit->entity, ray_dir * constants::laser_impulse_per_second * dt);
-
-                // Check for active shield on hit entity (Section 3.7.1).
-                auto* target_sh = engine_try_get_component<Shield>(hit->entity);
-                const auto* target_col = engine_try_get_component<Collider>(hit->entity);
-                const auto* target_t  = engine_try_get_component<Transform>(hit->entity);
-
-                glm::vec3 hit_point;
-                bool shielded = false;
-
-                if (target_sh && target_sh->current > 0.f && target_col && target_t) {
-                    float shield_r = target_col->half_extents.x * constants::shield_sphere_scale;
-                    float shield_t = sphere_intersect_t(muzzle_origin, ray_dir, target_t->position, shield_r);
-                    if (shield_t > 0.0f) {
-                        hit_point = muzzle_origin + ray_dir * shield_t;
-                        shielded  = true;
-                    } else {
-                        hit_point = muzzle_origin + ray_dir * hit->distance;
+                for (auto ee : ev) {
+                    const auto& et = ev.get<Transform>(ee);
+                    const auto& ec = ev.get<Collider>(ee);
+                    const glm::vec3 inv_d = 1.f / ray_dir;
+                    const glm::vec3 t_min = (et.position - ec.half_extents - ray_origin) * inv_d;
+                    const glm::vec3 t_max = (et.position + ec.half_extents - ray_origin) * inv_d;
+                    const glm::vec3 t1    = glm::min(t_min, t_max);
+                    const glm::vec3 t2    = glm::max(t_min, t_max);
+                    const float t_near    = glm::compMax(t1);
+                    const float t_far     = glm::compMin(t2);
+                    if (t_far >= t_near && t_near > 0.f && t_near < hit_t) {
+                        hit_t = t_near;
+                        hit_enemy = ee;
                     }
-                } else {
-                    hit_point = muzzle_origin + ray_dir * hit->distance;
                 }
 
-                lb.end = hit_point;
+                if (hit_enemy != entt::null) {
+                    apply_damage(hit_enemy, constants::laser_dps * dt);
 
-                // Spawn impact VFX on new target contact.
-                if (hit->entity != lb.last_hit_entity) {
-                    if (shielded) {
-                        spawn_shield_impact(hit_point);
-                    } else {
-                        spawn_laser_impact(hit_point);
+                    const auto* target_t   = engine_try_get_component<Transform>(hit_enemy);
+                    auto*       target_sh  = engine_try_get_component<Shield>(hit_enemy);
+                    const auto* target_col = engine_try_get_component<Collider>(hit_enemy);
+
+                    glm::vec3 hit_point = ray_origin + ray_dir * hit_t;
+                    bool shielded = false;
+
+                    if (target_sh && target_sh->current > 0.f && target_col && target_t) {
+                        float shield_r     = target_col->half_extents.x * constants::shield_sphere_scale;
+                        float shield_t_val = sphere_intersect_t(ray_origin, ray_dir, target_t->position, shield_r);
+                        if (shield_t_val > 0.0f) {
+                            hit_point = ray_origin + ray_dir * shield_t_val;
+                            shielded  = true;
+                        }
                     }
-                    lb.last_hit_entity = hit->entity;
+
+                    lb.end = hit_point;
+
+                    if (hit_enemy != lb.last_hit_entity) {
+                        if (shielded) spawn_shield_impact(hit_point);
+                        else          spawn_laser_impact(hit_point);
+                    }
+                    lb.last_hit_entity = hit_enemy;
                 }
-            } else {
-                // No hit — extend to max range.
-                lb.end = muzzle_origin + ray_dir * constants::laser_max_range;
-                lb.last_hit_entity = entt::null;
             }
+
+            // Track current muzzle position so fading phase starts from the right spot.
+            lb.origin = muzzle_origin;
 
             // Submit full-brightness beam (two additive line quads).
             float opacity = std::min(1.0f, static_cast<float>(fire_age) * 8.0f)
@@ -169,7 +182,7 @@ static void laser_update(entt::entity player_e, float dt) {
 // Called every frame from weapon_update() for all entities with LaserCharge.
 // ---------------------------------------------------------------------------
 
-static void laser_charging(entt::entity player_e, WeaponState& ws) {
+static void laser_charging(entt::entity /*player_e*/, WeaponState& ws) {
     auto& reg = engine_registry();
     auto  view = reg.view<LaserCharge, Transform>();
 
@@ -193,15 +206,29 @@ static void laser_charging(entt::entity player_e, WeaponState& ws) {
         const float offset = k_ship_half + 0.1f;
         const glm::vec3 muzzle_origin = t.position + ship_forward * offset;
 
-        // Raycast from muzzle along cursor direction.
+        // Cursor ray for aim preview. Default to fixed short range; snap to enemy if found.
         glm::vec3 ray_origin, ray_dir;
         camera_rig_cursor_ray(ray_origin, ray_dir);
-        (void)ray_origin;
 
-        glm::vec3 beam_end = muzzle_origin + ray_dir * constants::laser_max_range;
-        const auto hit = engine_raycast(muzzle_origin, ray_dir, constants::laser_max_range);
-        if (hit.has_value() && hit->entity != player_e) {
-            beam_end = muzzle_origin + ray_dir * hit->distance;
+        glm::vec3 beam_end = muzzle_origin + ray_dir * constants::laser_default_range;
+        {
+            auto ev = reg.view<EnemyTag, Transform, Collider>();
+            float hit_t = constants::laser_max_range;
+            for (auto ee : ev) {
+                const auto& et = ev.get<Transform>(ee);
+                const auto& ec = ev.get<Collider>(ee);
+                const glm::vec3 inv_d = 1.f / ray_dir;
+                const glm::vec3 t_min = (et.position - ec.half_extents - ray_origin) * inv_d;
+                const glm::vec3 t_max = (et.position + ec.half_extents - ray_origin) * inv_d;
+                const glm::vec3 t1    = glm::min(t_min, t_max);
+                const glm::vec3 t2    = glm::max(t_min, t_max);
+                const float t_near    = glm::compMax(t1);
+                const float t_far     = glm::compMin(t2);
+                if (t_far >= t_near && t_near > 0.f && t_near < hit_t) {
+                    hit_t  = t_near;
+                    beam_end = ray_origin + ray_dir * t_near;
+                }
+            }
         }
 
         // Submit dim aiming beam (two additive line quads).

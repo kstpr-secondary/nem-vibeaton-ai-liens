@@ -47,6 +47,7 @@ constexpr float  boost_regen_rate      = 5.0f;     // units/sec (~20s full regen
 
 constexpr float  laser_cooldown        = 5.0f;     // seconds
 constexpr float  laser_max_range       = 800.0f;   // units
+constexpr float  laser_default_range   = 200.0f;   // no-hit beam length (units)
 constexpr float  laser_line_width      = 0.15f;    // visual quad width (units)
 constexpr float  laser_charge_time             = 0.8f;   // hold duration before firing
 constexpr float  laser_fire_duration             = 3.0f;   // active damage window
