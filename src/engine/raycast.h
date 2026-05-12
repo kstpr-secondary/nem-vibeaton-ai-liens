@@ -1,6 +1,8 @@
 #pragma once
 
 #include "collider.h"
+#include "convex_hull.h"
+
 #include <glm/glm.hpp>
 
 // Result from a single ray-vs-AABB slab test.
@@ -18,3 +20,13 @@ RayHit ray_vs_aabb(const glm::vec3& origin,
                    const glm::vec3& direction,
                    float            max_distance,
                    const WorldAABB& aabb);
+
+// Half-plane slab method for ray-vs-convex-hull intersection.
+// Tests the ray against each face plane of the hull; returns the nearest hit.
+// If the ray origin is inside the hull, returns hit=true at distance=0 (origin
+// passes the inside-verification step with tmin clamped to 0).
+RayHit ray_vs_hull(const glm::vec3& origin,
+                   const glm::vec3& direction,
+                   float            max_distance,
+                   const ConvexHull& hull,
+                   const glm::vec3& hull_pos);

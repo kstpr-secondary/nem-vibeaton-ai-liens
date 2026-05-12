@@ -7,6 +7,63 @@
 #include <vector>
 
 // ---------------------------------------------------------------------------
+// Ray-vs-ConvexHull half-plane slab method (T021)
+// ---------------------------------------------------------------------------
+
+RayHit ray_vs_hull(const glm::vec3& origin, const glm::vec3& direction,
+                   float max_distance, const ConvexHull& hull,
+                   const glm::vec3& hull_pos) {
+    RayHit result{};
+
+    if (hull.vertices.empty() || hull.face_normals.empty()) return result;
+
+    // Interior-origin: entry slabs give t<0, tmin stays at 0 → hit=true at distance=0.
+    float tmin = 0.f;
+    float tmax = max_distance;
+    int   hit_face = -1;
+    glm::vec3 hit_normal(0, 0, 0);
+
+    for (size_t i = 0; i < hull.faces.size(); ++i) {
+        auto& f = hull.faces[i];
+        glm::vec3 plane_pt = hull.vertices[f[0]] + hull_pos;
+        const glm::vec3& fn = hull.face_normals[i];
+
+        float dist = glm::dot(origin - plane_pt, fn);
+        float ddot = glm::dot(direction, fn);
+
+        if (std::fabs(ddot) < 1e-8f) {
+            // Parallel to this face: if origin is outside its half-space the ray
+            // can never enter the hull through this face — miss immediately.
+            if (dist > 1e-6f) return result;
+            continue;
+        }
+
+        float t = -dist / ddot;
+
+        if (ddot < 0.f) {
+            // Ray toward interior → entry slab.
+            if (t > tmin) { tmin = t; hit_face = (int)i; hit_normal = fn; }
+        } else {
+            // Ray toward exterior → exit slab.
+            tmax = std::min(tmax, t);
+        }
+
+        if (tmin > tmax) return result;
+    }
+
+    // For a convex hull, tmin ≤ tmax with tmin ≥ 0 is sufficient to guarantee
+    // the hit point is inside all half-spaces; no redundant per-face check needed.
+    if (tmin <= tmax && tmin >= 0.f && tmin <= max_distance) {
+        result.hit      = true;
+        result.distance = tmin;
+        result.point    = origin + direction * tmin;
+        result.normal   = (hit_face >= 0) ? hit_normal : glm::vec3(0, 0, -1);
+    }
+
+    return result;
+}
+
+// ---------------------------------------------------------------------------
 // Ray-vs-AABB slab method (T021)
 // ---------------------------------------------------------------------------
 
