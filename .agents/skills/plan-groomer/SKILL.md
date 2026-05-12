@@ -59,6 +59,11 @@ Run all checks. Flag every violation.
 16. If the feature produces visual output, is the Human Checkpoint "Look for" criteria stated in observable human terms ("blue Fresnel rim visible on sphere edges") not algorithmic terms ("Fresnel calculation is correct")?
 17. If the feature changes gameplay feel, does the checkpoint explicitly require a playtest, not just a build?
 
+### Algorithmic and math-heavy tasks
+18. If the plan names a specific algorithm (slab intersection, SAT, gift-wrapping, Euler integration, etc.), are the standard degenerate-input cases for that algorithm class called out in the task description or acceptance criteria? If not, flag as vague (re: check 9). Examples: slab intersection → parallel-ray / origin-on-face; SAT → zero cross-products, containment; gift-wrapping → initial edge validity, colinear candidates.
+19. If the plan specifies a data structure **and** describes operations over that structure in the same plan, verify that the struct contains all fields those operations need without per-call reconstruction. Flag any gap as a structural defect — retrofitting struct fields during implementation is not an implementor decision, it is a plan defect.
+20. If any task describes hot-path code (narrowphase collision, per-tick physics, per-frame queries), is a complexity bound or allocation budget stated? "Tests pass" is insufficient as the sole acceptance criterion for hot-path tasks; flag the absence of an explicit performance requirement.
+
 ---
 
 ## Checks: Exploratory Roadmap

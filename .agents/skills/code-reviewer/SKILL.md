@@ -20,11 +20,22 @@ The current feature docs may be a structured feature folder or a single markdown
 Given a diff and the current feature spec or phase:
 
 1. Read the relevant markdown docs and the diff.
-2. Scan for crashers, logic bugs, missing functionality, lifetime issues, and hot-path cliffs.
-3. Note any spec mismatch that creates a real defect.
-4. For each defect, propose a brief fix — a short prose or inline-code description of what the implementor should do to resolve it. Fixes are advice in the report, not file edits.
-5. Return a concise verdict with `file:line` citations and fix suggestions.
-6. If scope is unclear, stop and ask for clarification instead of guessing.
+2. Run all five review axes below **in order and to completion** — a defect in an earlier axis does not abort the pass. Record every defect found across all axes.
+3. For each defect, propose a brief fix — a short prose or inline-code description of what the implementor should do to resolve it. Fixes are advice in the report, not file edits.
+4. Return a concise verdict grouped by axis with `file:line` citations and fix suggestions.
+5. If scope is unclear, stop and ask for clarification instead of guessing.
+
+### Review axes (run all five, every pass)
+
+**Axis 1 — Mathematical and algorithmic correctness**: formula errors, wrong conditions, missing edge cases. For geometric/physical code, explicitly check the standard degenerate inputs for the algorithm class (see feature-planner skill for class lists: slab intersection, SAT, gift-wrapping, etc.).
+
+**Axis 2 — Spec and algorithm fidelity**: does the implementation use the algorithm the plan named, not just produce equivalent output on happy-path inputs? A brute-force alternative that passes the same tests is a spec defect if the plan specified a different algorithm. Flag algorithm substitution.
+
+**Axis 3 — Memory safety, ownership, lifetime**: crashers, use-after-free, dangling pointers, iterator invalidation, uninitialized reads.
+
+**Axis 4 — Hot-path performance**: heap allocations per call in narrowphase/physics loops, per-call reconstruction of data that could be precomputed, O(N log N) or worse where O(1) or O(N) is achievable and the struct supports it.
+
+**Axis 5 — Data structure adequacy**: does the struct contain everything the described operations need? Any operation that forces a per-call rebuild of derived data (edge lists, sorted arrays, centroid) is a struct design defect, not an implementation choice.
 
 ## Scope
 

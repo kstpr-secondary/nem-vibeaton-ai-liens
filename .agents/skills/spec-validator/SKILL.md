@@ -22,11 +22,12 @@ The current feature docs may be a structured folder under `specs/<feature>/` or 
 Given a feature spec, phase, or task:
 
 1. Read the relevant markdown docs.
-2. Turn each concrete requirement into a short checklist.
+2. Turn each concrete requirement into a short checklist. For tasks that name a specific algorithm, add two implicit requirements to the checklist even if the spec doesn't state them explicitly: (a) the implementation uses the named algorithm, not a functionally-equivalent substitute that would fail on the algorithm's known degenerate inputs; (b) the standard edge cases for that algorithm class are handled.
 3. Inspect the code only enough to map each requirement to `file:line`, or note `MISSING`, `PARTIAL`, or `UNCLEAR`.
 4. For each gap, propose a brief fix — a short prose or inline-code description of what the implementor should add or change to close it. Fixes are advice in the report, not file edits.
-5. Return a concise verdict with the gaps and fix suggestions.
-6. If the writing is ambiguous, stop and ask for clarification instead of guessing.
+5. **Complete the full checklist in a single pass** — do not stop after finding the first defect. All gaps across all requirements must appear in one report. Incremental passes that each surface a subset of the defects multiply the review cycle without improving coverage.
+6. Return a concise verdict with the gaps and fix suggestions.
+7. If the writing is ambiguous, stop and ask for clarification instead of guessing.
 
 ## Scope
 

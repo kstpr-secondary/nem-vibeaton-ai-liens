@@ -95,6 +95,15 @@ Use `templates/phase-plan.md.template`. Key discipline:
 
 **The planner is the architect; the implementor fills in the details.** For Quick and Phased features, task descriptions should sketch the implementation path: name the key functions, methods, or data structures to add or change, specify which algorithm to use, and flag dangerous spots the implementor should watch for (e.g., "sokol_gfx finalizes the pipeline at `sg_make_pipeline` — do not mutate the descriptor after that point"). The implementor resolves call sites, writes the boilerplate, and integrates with existing code. A useful test: a capable implementor who reads the task should not be able to take the wrong architectural approach, but the actual code is theirs to write.
 
+**Algorithm pitfall annotation.** If a task names a geometric or physical algorithm, enumerate the standard degenerate-input cases for that class in the task description before finalizing. These are not optional notes — they become acceptance requirements. A task that names an algorithm but lists no edge cases is incomplete. Common classes to consult:
+- Slab intersection (ray vs. AABB, ray vs. hull): parallel ray to a slab face; ray origin exactly on a face plane.
+- SAT: near-zero cross-product axes (skip threshold must be stated); full-containment case (overlap formula differs from gap test).
+- Convex hull / gift-wrapping: colinear or coplanar candidate set; initial seed-edge validity (arbitrary index pick is fragile; requires a direction-based pivot).
+- Euler physics: variable-dt tunnelling; zero-mass bodies in impulse math.
+If you are unsure which edge cases apply to an algorithm, treat the task as requiring a spike before the plan is finalized.
+
+**Interface/operation compatibility.** If a task defines a data structure and a later task (or the same task) describes operations over it, cross-check before finalizing: for each described operation, list the data it needs and verify it is present in the struct without per-call reconstruction. Write this check inline in the plan as a brief note ("SAT axis set 3 needs unique edge list — verify ConvexHull.unique_edges exists"). Any gap found here is a plan defect to fix before the plan goes to grooming, not a decision left to the implementor.
+
 For Exploratory phase plans, keep "how" lighter — the approach is still being validated by spikes. The "how" sharpens progressively as unknowns are resolved and each phase plan is written in sequence.
 
 **Acceptance criteria are observable.** Each task row's acceptance must be something a human or a build step can verify in under 30 seconds. "Compiles" is acceptable only for pure structural tasks (adding a struct, creating a file). Any task that touches behavior needs a behavioral criterion.
