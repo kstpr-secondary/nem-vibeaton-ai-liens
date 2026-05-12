@@ -1,6 +1,6 @@
 # Engine Interface Spec
 
-> **Status:** `FROZEN — v1.2` (promoted from Engine SpecKit `contracts/engine-api.md`)  
+> **Status:** `FROZEN — v1.3` (promoted from Engine SpecKit `contracts/engine-api.md`)  
 > **Source**: Promoted from `specs/002-ecs-physics-engine/contracts/engine-api.md`  
 > **Upstream dependency**: Renderer interface spec (`renderer-interface-spec.md`, FROZEN v1.1).
 
@@ -8,7 +8,7 @@
 
 ## Version
 
-`v1.2-frozen`
+`v1.3-frozen`
 
 ### Changelog
 
@@ -16,6 +16,7 @@
 - **v1.0-frozen**: First frozen release after E-M1–E-M3 implementation.
 - **v1.1-frozen**: Added input bridge and raycast/collision query APIs (E-M3).
 - **v1.2-frozen**: Added Phase 6 physics: `ForceAccum` component, `make_box_inv_inertia_body()`, `make_sphere_inv_inertia_body()`, `update_world_inertia()`, fixed-timestep substep loop at 120 Hz, impulse-based elastic collision response with Baumgarte correction (E-M4).
+- **v1.3-frozen**: Added `ConvexCollider` component for convex-hull narrowphase collision detection against glTF mesh geometry. Hulls are precomputed at asset load time and shared per-model across entity instances.
 
 ---
 
@@ -104,6 +105,14 @@ struct DestroyPending {};
 struct ForceAccum {
     glm::vec3 force  = glm::vec3(0.0f);
     glm::vec3 torque = glm::vec3(0.0f);
+};
+
+// Convex hull collider — attached to entities with glTF mesh geometry for convex-hull narrowphase.
+// Hull pointer is into a per-model cache (stable address); scale is the entity's uniform render scale.
+// If hull is null, degenerate, or scale <= 0, the entity falls through to AABB collision everywhere.
+struct ConvexCollider {
+    const void* hull = nullptr;   // pointer into internal convex hull cache (per-model, shared)
+    float       scale = 1.0f;     // uniform scale applied to hull at collision time
 };
 
 // =========================================================================

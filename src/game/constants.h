@@ -9,7 +9,7 @@ namespace constants {
 // WeaponState defaults — must be first so components.h can reference them
 // ---------------------------------------------------------------------------
 
-constexpr float  laser_dps                      = 20.0f;  // damage per second while firing
+constexpr float  laser_dps             = 20.0f;  // damage per second while firing
 constexpr float  player_health_max     = 100.0f;
 constexpr float  player_shield_max     = 100.0f;
 constexpr float  boost_max             = 100.0f;
@@ -20,14 +20,14 @@ constexpr float  boost_max             = 100.0f;
 
 constexpr float  field_radius          = 350.0f;   // spherical play boundary (units)
 constexpr int    asteroid_count        = 600;
-constexpr float  max_asteroid_speed    = 50.0f;    // post-reflection speed cap (units/sec)
+constexpr float  max_asteroid_speed    = 100.0f;    // post-reflection speed cap (units/sec)
 
 // ---------------------------------------------------------------------------
 // Player flight
 // ---------------------------------------------------------------------------
 
-constexpr float  player_thrust         = 60.0f;    // forward/backward acceleration (units/sec²)
-constexpr float  player_strafe         = 40.0f;    // lateral acceleration (units/sec²)
+constexpr float  player_thrust         = 40.0f;    // forward/backward acceleration (units/sec²)
+constexpr float  player_strafe         = 20.0f;    // lateral acceleration (units/sec²)
 constexpr float  player_drag_coeff     = 23.4f;    // continuous drag force coefficient (F = -c*v)
 constexpr float  player_turn_speed     = 0.002f;   // mouse look sensitivity (radians/pixel, no dt factor)
 constexpr float  boost_multiplier      = 2.0f;     // thrust scale while boost active
@@ -72,8 +72,8 @@ constexpr float  plasma_sphere_radius  = 0.4f;     // projectile mesh radius (un
 // ---------------------------------------------------------------------------
 
 constexpr float  enemy_health_max      = 100.0f;
-constexpr float  enemy_shield_max      = 50.0f;
-constexpr float  enemy_pursuit_speed   = 12.0f;    // units/sec seek velocity
+constexpr float  enemy_shield_max      = 100.0f;
+constexpr float  enemy_pursuit_speed   = 16.0f;    // units/sec seek velocity
 constexpr float  enemy_fire_range      = 300.0f;   // units — fire only within this distance
 constexpr float  enemy_fire_cooldown   = 0.5f;     // seconds between enemy plasma shots
 

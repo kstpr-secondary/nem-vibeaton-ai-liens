@@ -1,7 +1,7 @@
 # Game Workstream Design
 
 > **Status:** Populated from Game SpecKit (`docs/planning/speckit/game/`) on 2026-04-26.
-> **Upstream**: Engine interface spec (`engine-interface-spec.md`, **FROZEN v1.2**). Renderer interface spec (`renderer-interface-spec.md`, **FROZEN v1.1**). Game design document (`GAME_DESIGN.md`).
+> **Upstream**: Engine interface spec (`engine-interface-spec.md`, **FROZEN v1.3**). Renderer interface spec (`renderer-interface-spec.md`, **FROZEN v1.1**). Game design document (`GAME_DESIGN.md`).
 
 ---
 
@@ -71,7 +71,7 @@ Full schema in `docs/planning/speckit/game/data-model.md`.
 | ImGui setup / event forward / new_frame / render | Renderer | Game emits widgets only; no second context |
 | Entity lifecycle (`create_entity`, `destroy_entity`) | Engine | Game uses `engine_*` wrappers; deferred destruction via `DestroyPending` |
 | Component attach / get / view / iterate | Engine | Game uses `engine_add/get/has_component<T>()` and `engine_registry().view<...>()` |
-| AABB collision detection | Engine | Game gets contact events from physics, not from raw geometry |
+| Collision detection (AABB broadphase + convex hull narrowphase) | Engine | Game gets contact events from physics, not from raw geometry. Hull narrowphase active for entities carrying `ConvexCollider` component (asteroids).
 | Rigid-body integration (linear + angular Euler) | Engine | Game applies forces/impulses via `engine_apply_*` |
 | Raycast / overlap_aabb | Engine | Game uses for laser hits, AI line-of-sight |
 | Asset import (glTF/OBJ → mesh handle) | Engine | Game calls `engine_load_gltf` / `engine_load_obj` / `engine_spawn_from_asset` |

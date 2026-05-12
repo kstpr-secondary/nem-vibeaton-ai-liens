@@ -13,7 +13,7 @@ Three C++17 static libraries and executables built in one repo:
 |---|---|---|---|
 | `renderer` | static lib | Window, GPU context, sokol_app loop, input pump, shaders, pipelines, Dear ImGui | sokol_gfx, sokol_app, sokol_time, GLM, Dear ImGui, stb_image |
 | `renderer_app` | executable | Standalone renderer demo; acceptance vehicle for renderer milestones | `renderer` |
-| `engine` | static lib | ECS (entt), asset import (cgltf/tinyobjloader), Euler physics, AABB, raycasting | `renderer`, entt, cgltf, tinyobjloader, GLM |
+| `engine` | static lib | ECS (entt), asset import (cgltf/tinyobjloader), Euler physics, AABB broadphase + convex hull narrowphase, raycasting | `renderer`, entt, cgltf, tinyobjloader, GLM |
 | `engine_app` | executable | Standalone engine demo; acceptance vehicle for engine milestones | `engine`, `renderer` |
 | `game` | executable | 3D space shooter gameplay | `engine`, `renderer` |
 | `renderer_tests` | executable | Catch2 unit tests for renderer math/builders | `renderer`, Catch2 |
@@ -100,7 +100,7 @@ sokol_app main loop (owned by renderer)
 
 - **Owns**: player flight controller, third-person camera rig, asteroid field + spherical containment, weapon systems (laser raycast + plasma projectile), HP/Shield/Boost resources + regen, game-local seek+shoot enemy AI, Dear ImGui HUD widgets, 4-state match flow (Playing → PlayerDead/Victory → Restarting → Playing), restart/quit flow, all game-layer ECS components.
 - **Does not own**: window, GPU context, sokol_app loop, ImGui lifecycle, shader pipelines (renderer); ECS registry, physics, collision detection, raycast, asset import, input pump (engine).
-- **Consumes**: `engine.h` (FROZEN v1.2) and `renderer.h` (FROZEN v1.1) only.
+- **Consumes**: `engine.h` (FROZEN v1.3) and `renderer.h` (FROZEN v1.1) only.
 - **Tick contract**: 11-step `game_tick(dt)` — see `docs/interfaces/game-interface-spec.md` for the full order and rationale.
 
 ### Game Milestones
@@ -150,5 +150,5 @@ sokol_app main loop (owned by renderer)
 | Workstream | File | Status |
 |---|---|---|
 | Renderer | `docs/architecture/renderer-architecture.md` | **FROZEN** |
-| Engine | `docs/architecture/engine-architecture.md` | **Populated** (from Engine SpecKit; FROZEN v1.2) |
+| Engine | `docs/architecture/engine-architecture.md` | **Populated** (from Engine SpecKit; collision-fidelity feature added convex hull narrowphase) |
 | Game | `docs/architecture/game-architecture.md` | **Populated** (from Game SpecKit, 2026-04-26) |

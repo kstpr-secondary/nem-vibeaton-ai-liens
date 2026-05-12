@@ -10,7 +10,7 @@
 | Interface | File | Status | Frozen By | Downstream May Start |
 |---|---|---|---|---|
 | Renderer public API | `docs/interfaces/renderer-interface-spec.md` | **FROZEN — v1.1** | Human supervisor (2026-04-23) | ✅ Engine + Game SpecKit complete |
-| Engine public API | `docs/interfaces/engine-interface-spec.md` | **FROZEN — v1.2** | Human supervisor (post E-M4) | ✅ Game SpecKit complete |
+| Engine public API | `docs/interfaces/engine-interface-spec.md` | **FROZEN — v1.3** | Human supervisor (post E-M4) | ✅ Game SpecKit complete |
 | Game public API | `docs/interfaces/game-interface-spec.md` | **DRAFT — v0.1** (promoted from Game SpecKit, 2026-04-26) | — | N/A — game is final consumer |
 
 ---
@@ -50,12 +50,12 @@ See `docs/interfaces/renderer-interface-spec.md` for the full C++ header.
 ## Engine Interface — Summary
 
 **File**: `docs/interfaces/engine-interface-spec.md`  
-**Status**: **FROZEN — v1.2** (post E-M4 — Phase 6 physics added: `ForceAccum`, `make_box_inv_inertia_body`, `make_sphere_inv_inertia_body`, `update_world_inertia`, fixed-timestep substep loop, impulse-based elastic response with Baumgarte correction)
+**Status**: **FROZEN — v1.3** (post E-M4 — Phase 6 physics added: `ForceAccum`, `make_box_inv_inertia_body`, `make_sphere_inv_inertia_body`, `update_world_inertia`, fixed-timestep substep loop, impulse-based elastic response with Baumgarte correction; collision-fidelity: `ConvexCollider` component)
 **Frozen after**: E-M1–E-M4 implemented and human-reviewed
 
 Key contracts:
 
-- **Component types**: `Transform`, `Mesh`, `EntityMaterial`, `RigidBody`, `Collider`, `Camera`, `Light` + tag markers (`Static`, `Dynamic`, `Interactable`, `CameraActive`, `DestroyPending`).
+- **Component types**: `Transform`, `Mesh`, `EntityMaterial`, `RigidBody`, `Collider`, `Camera`, `Light`, `ConvexCollider` + tag markers (`Static`, `Dynamic`, `Interactable`, `CameraActive`, `DestroyPending`).
 - **Lifecycle**: `engine_init(config)` → `engine_tick(dt)` (inside renderer FrameCallback) → `engine_shutdown()`.
 - **Scene API**: `engine_create_entity()`, `engine_destroy_entity(e)` (deferred), template `engine_add/get/remove/has_component<T>()`, `engine_registry()` for direct view access.
 - **Procedural spawners**: `engine_spawn_sphere()`, `engine_spawn_cube()` — create entities with Transform + Mesh + EntityMaterial.

@@ -79,6 +79,18 @@ void damage_resolve() {
                               at.position, ac.half_extents))
                 continue;
 
+            {
+                const auto* acc = engine_try_get_component<ConvexCollider>(ae);
+                if (acc && acc->hull && !acc->hull->vertices.empty() && acc->scale > 0.f) {
+                    float inv_s = 1.0f / acc->scale;
+                    glm::vec3 lo = (pt.position - at.position) * inv_s;
+                    glm::vec3 lbh = pc.half_extents * inv_s;
+                    HullContact hc = hull_vs_aabb_sat(*acc->hull, {0, 0, 0}, lo, lbh);
+                    if (!hc.hit)
+                        continue;
+                }
+            }
+
             // Only apply damage on approach — prevents repeated hits while
             // the physics engine holds the bodies in contact for one tick.
             const glm::vec3 sep     = at.position - pt.position;
@@ -158,6 +170,18 @@ void damage_resolve() {
             if (!aabb_overlap(pt.position, pc.half_extents,
                               tt.position, tc.half_extents))
                 continue;
+
+            {
+                const auto* tcc = engine_try_get_component<ConvexCollider>(te);
+                if (tcc && tcc->hull && !tcc->hull->vertices.empty() && tcc->scale > 0.f) {
+                    float inv_s = 1.0f / tcc->scale;
+                    glm::vec3 lo = (pt.position - tt.position) * inv_s;
+                    glm::vec3 lbh = pc.half_extents * inv_s;
+                    HullContact hc = hull_vs_aabb_sat(*tcc->hull, {0, 0, 0}, lo, lbh);
+                    if (!hc.hit)
+                        continue;
+                }
+            }
 
             // Apply damage only to entities that have health.
             auto* hp = engine_try_get_component<Health>(te);

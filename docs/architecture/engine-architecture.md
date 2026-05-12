@@ -68,6 +68,7 @@ sokol_app main loop (owned by renderer)
 | `raycast.h/cpp` | Ray-vs-AABB slab method, overlap_aabb query | E-M3 |
 | `physics.h/cpp` | Euler integration (linear + angular), force/impulse API | E-M4 |
 | `collision_response.h/cpp` | Impulse-based elastic collision response | E-M4 |
+| `convex_hull.h/cpp` | Convex hull computation from vertex cloud; ray-vs-convex and AABB-vs-convex (SAT) narrowphase | collision-fidelity
 | `app/main.cpp` | engine_app driver — updated each milestone | E-M1+ |
 | `mocks/engine_mock.cpp` | Mock stubs (USE_ENGINE_MOCKS=ON) | E-M1 |
 | `tests/test_ecs.cpp` | Entity lifecycle, component attach/detach | E-M1 |
@@ -112,8 +113,8 @@ E-M2 and E-M3 are independent after E-M1; both must complete before E-M4.
 
 - **Integration**: Semi-implicit Euler, 6-DOF (linear + angular)
 - **Substep**: Fixed 120 Hz accumulator with dt-cap (100ms max)
-- **Collision geometry**: AABB-only (MVP); rotation/scale ignored for collision
-- **Detection**: Brute-force all-pairs O(N²), acceptable for ≤200 entities
+- **Collision geometry**: AABB broadphase for all entities; convex hull narrowphase for entities carrying `ConvexCollider` component (asteroids). Asteroid-to-asteroid physics stays AABB-only.
+- **Detection**: Brute-force all-pairs O(N²) broadphase; convex-hull SAT narrowphase for mixed pairs (player/enemy/projectile ↔ asteroid). Acceptable for ≤600 entities with per-model hull caching (4 hulls total for all asteroids).
 - **Response**: Impulse-based elastic (restitution=1.0), min-penetration SAT normal
 - **Correction**: Baumgarte stabilization (k_slop=0.005, k_baumgarte=0.3)
 - **Inertia**: Uniform-density box approximation from AABB half-extents

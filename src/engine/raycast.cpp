@@ -128,9 +128,23 @@ std::optional<RaycastHit> engine_raycast(const glm::vec3& origin,
     // entt does not pass empty tag types (Interactable) to .each() lambdas
     reg.view<Transform, Collider, Interactable>().each(
         [&](auto e, const Transform& t, const Collider& c) {
-            WorldAABB aabb = compute_world_aabb(t.position, c.half_extents);
-            RayHit    h    = ray_vs_aabb(origin, direction, max_distance, aabb);
-            if (!h.hit) return;
+            const auto* cc = reg.try_get<ConvexCollider>(e);
+            RayHit h{};
+
+            if (cc && cc->hull && !cc->hull->vertices.empty() && cc->scale > 0.f) {
+                float inv_s = 1.0f / cc->scale;
+                glm::vec3 lo = (origin - t.position) * inv_s;
+                glm::vec3 ld = direction * inv_s;
+                h = ray_vs_hull(lo, ld, max_distance, *cc->hull, {0.f, 0.f, 0.f});
+                if (h.hit) {
+                    h.point = origin + direction * h.distance;
+                }
+            } else {
+                WorldAABB aabb = compute_world_aabb(t.position, c.half_extents);
+                h = ray_vs_aabb(origin, direction, max_distance, aabb);
+                if (!h.hit) return;
+            }
+
             if (!best || h.distance < best->distance) {
                 best = RaycastHit{e, h.point, h.normal, h.distance};
             }

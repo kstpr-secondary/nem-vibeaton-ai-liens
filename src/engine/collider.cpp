@@ -51,6 +51,7 @@ std::vector<CollisionPair> detect_collisions() {
         entt::entity e;
         WorldAABB    aabb;
         bool         is_static;
+        const ConvexCollider* cc = nullptr;
     };
 
     std::vector<Entry> entries;
@@ -58,7 +59,8 @@ std::vector<CollisionPair> detect_collisions() {
 
     reg.view<Transform, Collider>().each([&](auto e, const Transform& t, const Collider& c) {
         entries.push_back({e, compute_world_aabb(t.position, c.half_extents),
-                           reg.all_of<Static>(e)});
+                           reg.all_of<Static>(e),
+                           reg.try_get<ConvexCollider>(e)});
     });
 
     std::vector<CollisionPair> pairs;
@@ -66,8 +68,41 @@ std::vector<CollisionPair> detect_collisions() {
         for (size_t j = i + 1; j < entries.size(); ++j) {
             if (entries[i].is_static && entries[j].is_static) continue;
             if (!aabb_overlap(entries[i].aabb, entries[j].aabb)) continue;
-            pairs.push_back(compute_contact(entries[i].e, entries[i].aabb,
-                                            entries[j].e, entries[j].aabb));
+
+            bool a_hull = entries[i].cc && entries[i].cc->hull && !entries[i].cc->hull->vertices.empty() && entries[i].cc->scale > 0.f;
+            bool b_hull = entries[j].cc && entries[j].cc->hull && !entries[j].cc->hull->vertices.empty() && entries[j].cc->scale > 0.f;
+
+            if (a_hull ^ b_hull) {
+                const auto& hull_entry = a_hull ? entries[i] : entries[j];
+                const auto& box_entry  = a_hull ? entries[j] : entries[i];
+
+                glm::vec3 hull_pos = (hull_entry.aabb.min + hull_entry.aabb.max) * 0.5f;
+                glm::vec3 box_center = (box_entry.aabb.min + box_entry.aabb.max) * 0.5f;
+                glm::vec3 box_half = (box_entry.aabb.max - box_entry.aabb.min) * 0.5f;
+
+                float inv_s = 1.f / hull_entry.cc->scale;
+                glm::vec3 lbc = (box_center - hull_pos) * inv_s;
+                glm::vec3 lbh = box_half * inv_s;
+
+                HullContact hc = hull_vs_aabb_sat(*hull_entry.cc->hull, {0.f, 0.f, 0.f}, lbc, lbh);
+                if (!hc.hit) continue;
+
+                float depth = hc.depth * hull_entry.cc->scale;
+                glm::vec3 point = hull_pos + hc.point * hull_entry.cc->scale;
+
+                CollisionPair pair{entries[i].e, entries[j].e, {}, depth, point};
+
+                if (a_hull) {
+                    pair.normal = -hc.normal;
+                } else {
+                    pair.normal = hc.normal;
+                }
+
+                pairs.push_back(pair);
+            } else {
+                pairs.push_back(compute_contact(entries[i].e, entries[i].aabb,
+                                                entries[j].e, entries[j].aabb));
+            }
         }
     }
     return pairs;
