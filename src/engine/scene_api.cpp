@@ -163,6 +163,18 @@ RendererMeshHandle engine_load_gltf(const char* relative_path,
         fprintf(stderr, "[ENGINE] engine_load_gltf: failed to load %s\n", relative_path);
         return {};
     }
+    if (!mesh.positions.empty()) {
+        if (hull_cache_get(relative_path) == nullptr) {
+            ConvexHull h = compute_convex_hull(mesh.positions.data(), mesh.positions.size() / 3);
+            if (h.vertices.empty()) {
+                fprintf(stderr, "[ENGINE] convex_hull: degenerate mesh %s, hull disabled\n", relative_path);
+            } else {
+                hull_cache_insert(relative_path, std::move(h));
+                fprintf(stderr, "[ENGINE] convex_hull: %zu vertices for %s\n",
+                        mesh.positions.size() / 3, relative_path);
+            }
+        }
+    }
     RendererMeshHandle handle = asset_bridge_upload(mesh);
     AssetEntry entry;
     entry.mesh_handle = handle;

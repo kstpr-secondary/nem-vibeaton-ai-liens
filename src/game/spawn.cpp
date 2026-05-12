@@ -4,6 +4,7 @@
 #include "vfx.h"
 #include "game_shaders.h"
 #include <engine.h>
+#include <convex_hull.h>
 #include <physics.h>
 #include <renderer.h>
 #include <glm/gtc/quaternion.hpp>
@@ -337,6 +338,14 @@ entt::entity spawn_asteroid(const glm::vec3& position,
 
     auto& col            = engine_add_component<Collider>(e);
     col.half_extents     = glm::vec3(radius);
+
+    const ConvexHull* hull = hull_cache_get(model);
+    if (hull != nullptr && !hull->vertices.empty()) {
+        engine_add_component<ConvexCollider>(e) = {hull, scale};
+        col.half_extents = hull->half_extents * scale;
+    } else {
+        fprintf(stderr, "[GAME] spawn_asteroid: no hull for %s, using radius AABB\n", model);
+    }
 
     engine_registry().emplace<Dynamic>(e);
     engine_registry().emplace<ForceAccum>(e);

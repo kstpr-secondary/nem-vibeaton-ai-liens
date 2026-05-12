@@ -3,6 +3,7 @@
 #include <renderer.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include "convex_hull.h"
 
 // ---------------------------------------------------------------------------
 // Core components
@@ -58,6 +59,11 @@ struct Interactable {};   // Visible to raycast() and overlap_aabb() queries
 struct CameraActive {};   // Marks the one active camera entity per scene
 struct DestroyPending {}; // Queued for end-of-tick registry.destroy() sweep
 struct SpawnTarget {};    // Spawner-created entity (for stress-test cleanup)
+
+struct ConvexCollider {
+    const ConvexHull* hull = nullptr;
+    float             scale  = 1.0f;
+};
 
 struct CollisionFlash {
     float              timer       = 0.f;
