@@ -28,7 +28,7 @@ src/game/
 ├── damage.h / damage.cpp  # Kinetic-energy + weapon damage pipeline
 ├── weapons.h / .cpp       # Laser raycast + plasma spawn + cooldowns + Q/E switch
 ├── projectile.h / .cpp    # Plasma lifetime + collision despawn
-├── enemy_ai.h / .cpp      # Game-local seek + LOS + shoot
+├── enemy_ai.h / .cpp      # Game-local seek + LOS + shoot + peer-separation steering
 └── hud.h / hud.cpp        # ImGui HUD + win/death overlays
 ```
 
@@ -80,7 +80,7 @@ Full schema in `docs/planning/speckit/game/data-model.md`.
 | Spherical containment + speed cap | **Game** | Engine has only AABB colliders; sphere stays game-side |
 | Weapons (laser raycast, plasma projectiles, cooldowns) | **Game** | Engine provides primitives (raycast, RigidBody) |
 | Damage pipeline (energy → shield → HP) | **Game** | Reads engine collision results, applies game rules |
-| Enemy AI (seek + LOS + shoot) | **Game** | MVP is game-local; E-M5 swap is Desirable (G-M5) |
+| Enemy AI (seek + LOS + shoot + peer-separation steering) | **Game** | MVP is game-local; E-M5 swap is Desirable (G-M5) |
 | HUD widgets, overlays, restart flow | **Game** | Renderer renders; game emits |
 | Match state machine | **Game** | Four-state machine in `game.cpp` |
 
@@ -93,7 +93,7 @@ The order is contractual (see `docs/interfaces/game-interface-spec.md`). Every g
 1. `engine_tick(dt)` — physics, collision, DestroyPending sweep
 2. `containment_update()` — boundary reflection + asteroid speed cap
 3. `player_update(dt)` — input → thrust/strafe/rotation, boost drain, shield regen
-4. `enemy_ai_update(dt)` — seek + LOS check
+4. `enemy_ai_update(dt)` — seek + peer-separation steering + LOS check
 5. `weapon_update(dt)` — fire processing, cooldown advance, raycast / projectile spawn
 6. `projectile_update(dt)` — lifetime expiry / despawn
 7. `damage_resolve()` — collision energy + weapon hits → shield → HP, mark deaths

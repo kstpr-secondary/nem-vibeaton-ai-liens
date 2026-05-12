@@ -64,6 +64,33 @@ void enemy_ai_update(float /*dt*/) {
         rb.angular_velocity = glm::vec3(0.f);
 
         // -------------------------------------------------------------------
+        // Peer-separation steering: back off any enemy that gets too close.
+        // -------------------------------------------------------------------
+        static constexpr float k_min_separation   = 12.0f;
+        static constexpr float k_separation_speed = 20.0f;
+
+        glm::vec3 delta_v{0.f};
+        auto peer_view = reg.view<EnemyTag, Transform>();
+        for (auto peer : peer_view) {
+            if (peer == e)
+                continue;
+            const auto& peer_t = peer_view.get<Transform>(peer);
+            glm::vec3 away = t.position - peer_t.position;
+            float peer_dist = glm::length(away);
+            if (peer_dist < 1e-6f)
+                continue;
+            if (peer_dist < k_min_separation) {
+                float weight = 1.0f - peer_dist / k_min_separation;
+                delta_v += (away / peer_dist) * k_separation_speed * weight;
+            }
+        }
+        float delta_v_len = glm::length(delta_v);
+        if (delta_v_len > k_separation_speed) {
+            delta_v *= k_separation_speed / delta_v_len;
+        }
+        rb.linear_velocity += delta_v;
+
+        // -------------------------------------------------------------------
         // Fire: range + LOS check + cooldown.
         // -------------------------------------------------------------------
         if (dist > ai.fire_range)
@@ -80,8 +107,8 @@ void enemy_ai_update(float /*dt*/) {
         // Start ray from just outside the enemy's own collider to avoid self-hit.
         const float ray_offset = k_ship_half + 0.1f;
         const auto hit = engine_raycast(t.position + ship_forward * ray_offset, ship_forward, dist - ray_offset);
-        if (hit.has_value() && hit->entity != player_e)
-            continue;  // something blocks the shot
+        if (hit.has_value() && hit->distance < dist - ray_offset)
+            continue;  // something closer than player blocks the shot
 
         // Spawn projectile from just outside the enemy's own collider.
         const glm::vec3 spawn_pos = t.position

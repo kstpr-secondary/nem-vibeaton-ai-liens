@@ -9,7 +9,7 @@
 
 The game is a single C++17 executable (`game`) that hosts a Freelancer-style third-person space shooter inside a contained asteroid field. It consumes only the public headers `engine.h` and `renderer.h`. The game owns no second `entt::registry`, no second window, no second ImGui context, and no second sokol context — every shared resource is borrowed from upstream.
 
-The game owns: player flight controller, third-person camera rig, asteroid field placement + spherical containment, weapon systems (laser raycast + plasma projectile), HP/Shield/Boost resources + regeneration, game-local seek+shoot enemy AI, Dear ImGui HUD widgets, and the 4-state match flow (Playing → PlayerDead/Victory → Restarting → Playing).
+The game owns: player flight controller, third-person camera rig, asteroid field placement + spherical containment, weapon systems (laser raycast + plasma projectile), HP/Shield/Boost resources + regeneration, game-local seek+shoot enemy AI with peer-separation steering, Dear ImGui HUD widgets, and the 4-state match flow (Playing → PlayerDead/Victory → Restarting → Playing).
 
 ---
 
@@ -74,7 +74,7 @@ sokol_app main loop (renderer)
 | `damage.h` / `damage.cpp` | Damage pipeline: collision kinetic-energy damage, weapon hit damage, shield → HP cascade, last-damage timestamping for shield-regen gate, death detection | G-M2 / G-M3 |
 | `weapons.h` / `weapons.cpp` | Weapon definitions, cooldown tracking, Q/E switch (edge-triggered), laser raycast + line visual, plasma projectile spawn | G-M3 |
 | `projectile.h` / `projectile.cpp` | Plasma projectile lifetime + first-collision despawn | G-M3 |
-| `enemy_ai.h` / `enemy_ai.cpp` | Game-local seek vector + line-of-sight raycast + cooldown-gated plasma fire | G-M3 |
+| `enemy_ai.h` / `enemy_ai.cpp` | Game-local seek vector + line-of-sight raycast + cooldown-gated plasma fire + peer-separation steering | G-M3 |
 | `hud.h` / `hud.cpp` | ImGui HUD: HP/Shield/Boost bars, crosshair, weapon indicator, cooldown display, win/death overlays | G-M4 |
 
 **Structure decision**: single executable, flat layout. The game has no static-lib boundary because nothing consumes it. There is no `game/app/` subdir; `main.cpp` lives directly in `src/game/`.
@@ -131,7 +131,7 @@ The eleven-step order is part of the public game contract (see `docs/interfaces/
 1. `engine_tick(dt)` — physics + collision + DestroyPending sweep
 2. `containment_update()` — boundary reflection + asteroid speed cap
 3. `player_update(dt)` — input → thrust/strafe/rotation, boost drain, shield regen
-4. `enemy_ai_update(dt)` — seek + line-of-sight check
+4. `enemy_ai_update(dt)` — seek + peer-separation steering + line-of-sight check
 5. `weapon_update(dt)` — fire processing, cooldown advance, laser raycast / plasma spawn
 6. `projectile_update(dt)` — lifetime expiry / despawn
 7. `damage_resolve()` — collision energy + weapon hits → shield → HP, mark deaths

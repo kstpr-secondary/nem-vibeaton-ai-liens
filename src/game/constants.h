@@ -156,7 +156,7 @@ constexpr float  collision_roll_spring  = 3.5f;    // spring rate for collision 
 // Match state / timers
 // ---------------------------------------------------------------------------
 
-constexpr int    enemies_at_start      = 1;
+constexpr int    enemies_at_start      = 3;
 constexpr float  restart_delay_death   = 2.0f;     // seconds before auto-restart after death
 constexpr float  restart_delay_win     = 3.0f;     // seconds before auto-restart after win
 

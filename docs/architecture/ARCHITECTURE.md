@@ -98,7 +98,7 @@ sokol_app main loop (owned by renderer)
 
 > Full detail: `docs/architecture/game-architecture.md` (populated 2026-04-26 from Game SpecKit `docs/planning/speckit/game/`)
 
-- **Owns**: player flight controller, third-person camera rig, asteroid field + spherical containment, weapon systems (laser raycast + plasma projectile), HP/Shield/Boost resources + regen, game-local seek+shoot enemy AI, Dear ImGui HUD widgets, 4-state match flow (Playing → PlayerDead/Victory → Restarting → Playing), restart/quit flow, all game-layer ECS components.
+- **Owns**: player flight controller, third-person camera rig, asteroid field + spherical containment, weapon systems (laser raycast + plasma projectile), HP/Shield/Boost resources + regen, game-local seek+shoot enemy AI with peer-separation steering, Dear ImGui HUD widgets, 4-state match flow (Playing → PlayerDead/Victory → Restarting → Playing), restart/quit flow, all game-layer ECS components.
 - **Does not own**: window, GPU context, sokol_app loop, ImGui lifecycle, shader pipelines (renderer); ECS registry, physics, collision detection, raycast, asset import, input pump (engine).
 - **Consumes**: `engine.h` (FROZEN v1.3) and `renderer.h` (FROZEN v1.1) only.
 - **Tick contract**: 11-step `game_tick(dt)` — see `docs/interfaces/game-interface-spec.md` for the full order and rationale.

@@ -34,7 +34,7 @@ These three points override any earlier ambiguity in the seed concept and are pa
 - Asteroid field (200 asteroids) inside a spherical containment boundary
 - Physics-driven asteroid motion, ship-asteroid collisions, containment reflection
 - Two weapons: **laser (railgun)** and **plasma gun**, switchable (Q/E)
-- One enemy ship with simple "seek + shoot" behavior (AI lives in game code for MVP)
+- Three enemy ships with simple "seek + shoot + peer-separation" behavior (AI lives in game code for MVP)
 - HP + shield + boost resources on player; HP + shield on enemy
 - Minimal explosion VFX (simple primitive flash or expanding sphere with basic alpha blending) on death
 - ImGui HUD: HP / shield / boost bars + crosshair + weapon cooldowns
@@ -44,7 +44,6 @@ These three points override any earlier ambiguity in the seed concept and are pa
 ### Desirable (if time)
 
 - Asteroid-asteroid collisions (elastic response)
-- Scale enemy count from 1 to 3 (up to 8 for demo)
 - Swap game-local AI for engine E-M5 steering
 - Explosion VFX via renderer R-M5 custom shader hook
 - Laser hit-flash on asteroid surface
@@ -77,9 +76,9 @@ These three points override any earlier ambiguity in the seed concept and are pa
 
 ## Enemies (MVP)
 
-- 1 enemy ship in scene for MVP (scale to 3–8 in Desirable/Polish)
+- 3 enemy ships in scene for MVP, spawned evenly around the origin at match start
 - Same HP + shield as player; no boost
-- Simple game-local AI: steer toward player at fixed speed, fire plasma when within range + line-of-sight
+- Simple game-local AI: steer toward player at fixed speed, fire plasma when within range + line-of-sight; peer-separation steering (8.0 f min separation, 20.0 f max repulsion) prevents stacking
 - Enemies do not attack each other
 - On death: entity despawned + minimal explosion VFX
 - Win condition: enemy count == 0

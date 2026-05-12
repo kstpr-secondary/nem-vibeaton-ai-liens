@@ -18,6 +18,7 @@
 #include <sokol_app.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <cmath>
 
 // ---------------------------------------------------------------------------
 // MatchState singleton
@@ -222,9 +223,16 @@ void game_init() {
     // Player ship at field centre.
     spawn_player(glm::vec3(0.f));
 
-    // Enemy ship — spawn at offset from player.
-    spawn_enemy(glm::vec3(50.f, 10.f, -50.f));
-    s_match_state.enemies_remaining = 1;
+    // Enemy ships — spawn evenly on a circle of radius 70 at height 10.
+    {
+        const float k_radius = 70.f;
+        for (int i = 0; i < constants::enemies_at_start; ++i) {
+            const float angle = 2.f * 3.14159265358979f * static_cast<float>(i) / static_cast<float>(constants::enemies_at_start);
+            glm::vec3 pos{k_radius * std::cos(angle), 10.f, k_radius * std::sin(angle)};
+            spawn_enemy(pos);
+        }
+        s_match_state.enemies_remaining = constants::enemies_at_start;
+    }
 
     // 200 asteroids placed randomly throughout the field.
     asteroid_field_init();
