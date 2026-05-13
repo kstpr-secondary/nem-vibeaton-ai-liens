@@ -11,6 +11,8 @@ metadata:
 
 # Test Author
 
+Supporting skill for implementing agents (`renderer-specialist`, `engine-specialist`, `game-developer`). It is invoked by the workstream specialist that owns the code being tested, during the Execute phase of a plan — not as a separate pipeline role.
+
 Write small, fast Catch2 tests for deterministic code that is worth testing. Focus on pure math, physics, ECS logic, mesh builders, parsers, and other helper code that can be checked without a live renderer or game loop.
 
 Rendering correctness, gameplay feel, shader output, and live GL behavior stay with human checks.

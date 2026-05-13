@@ -37,6 +37,8 @@ Templates for all artifacts: `.agents/skills/feature-planner/templates/`
 
 ## Process Flows
 
+> **Optional pre-checkpoint validation.** Before any Human Checkpoint, `spec-validator` and `code-reviewer` are available as pre-verification steps. Invoke them when the phase includes: (a) a frozen-interface touch, (b) a named algorithm where a brute-force substitute would pass the same tests (code-reviewer Axis 2), or (c) hot-path or math-heavy code. For Quick features, skip unless one of those criteria applies. For Phased and Exploratory, the criteria apply often enough that invoking both before the Human Checkpoint is the recommended default. These tools surface spec gaps and risk before the human spends time testing.
+
 ### Quick Feature
 
 ```
@@ -100,6 +102,8 @@ Templates for all artifacts: `.agents/skills/feature-planner/templates/`
 **Frozen interfaces are approval gates.** If a Phase Plan requires a change to `docs/interfaces/*-interface-spec.md`, human approval must be explicitly noted in the plan as a GATE before any dependent tasks. Do not implement dependents speculatively.
 
 **Implementing agents stop at phase boundaries.** When all tasks in a phase plan are complete, the implementing agent outputs a handoff (summary + quoted Human Checkpoint criteria) and stops. It does not write `checkpoint-pN.md` and does not begin or sketch the next phase plan. The human runs the verification and provides feedback; Feature Planner drafts the checkpoint from that feedback and writes the file once the human confirms. Feature Planner then writes the next phase plan. The checkpoint requires human-observed behavior — an agent can format it, but cannot substitute for the human having actually run the check.
+
+**Stop means Evaluate, not Fail Forward.** When a Human Checkpoint returns Stop, the human chooses between two paths: **(a) Retry** — Feature Planner produces a revised `plan-pN.md` (same filename, revision note in the header, Groomer Verdict reset to PENDING), Plan Groomer reviews before re-execution, and a new `checkpoint-pN.md` replaces the prior one after re-verification; or **(b) Pivot** — if the failing behavior is a bounded gap that a subsequent phase will address, the human records the gap in `checkpoint-pN.md` and Feature Planner writes `plan-p(N+1).md` scoped to fix it. The human decides: if the unmet criteria would make the next phase's assumptions unsound, retry; if the gap is isolated and bounded, pivot.
 
 ---
 

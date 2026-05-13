@@ -43,4 +43,4 @@ The planner is the architect. Descriptions sketch the implementation path: key f
 **Run**: `cmake --build build --target [X] && ./build/[X]`
 **Look for**: [specific observable criteria — name what to see, hear, or measure]
 **Pass**: [what "good" looks like in concrete terms]
-**Stop**: [what "not good enough" looks like — triggers re-plan of Phase N+1, not a retry]
+**Stop**: [what "not good enough" looks like — human decides: retry this phase (Feature Planner revises plan-pN and re-grooms) or pivot (document gap in checkpoint-pN and plan Phase N+1 to address it)]

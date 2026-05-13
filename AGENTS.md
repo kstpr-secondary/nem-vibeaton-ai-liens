@@ -83,7 +83,7 @@ Do not move behavior across workstreams unless the feature explicitly requires i
 **Phase-completion handoff** (output when all tasks are `[x]`):
 1. Briefly summarize what was implemented in this phase.
 2. Quote the Human Checkpoint section verbatim from the plan (Run / Look for / Pass / Stop).
-3. Tell the human to run the verification and write `features/active/<feature-name>/checkpoint-pN.md` using the template at `.agents/skills/feature-planner/templates/checkpoint.md.template`.
+3. Tell the human to run the verification. When they report results back, ask them to provide: **Result** (PASS or STOP), **What they observed** (specific, not "it works"), and **Anything unexpected or that should inform the next phase**. These map directly to the checkpoint fields and prevent ambiguity when Feature Planner drafts the checkpoint. Tell them to write `features/active/<feature-name>/checkpoint-pN.md` using the template at `.agents/skills/feature-planner/templates/checkpoint.md.template`.
 4. Tell the human to invoke Feature Planner once the checkpoint is written (for the next phase), or Doc Updater if this was the final phase.
 5. State explicitly: next-phase planning belongs to Feature Planner, not to this agent.
 
@@ -93,6 +93,8 @@ Do not move behavior across workstreams unless the feature explicitly requires i
 - Use human behavioral checks for rendering correctness, gameplay feel, and live demo behavior.
 - Use spec validation when the question is “did this match the feature docs?”
 - Use code review when the question is “is this diff risky or obviously broken?”
+
+Implementing agents (`renderer-specialist`, `engine-specialist`, `game-developer`) invoke `test-author` during the Execute phase to write any tests required by the phase plan. `test-author` is not a separate pipeline role that follows implementation — it is a supporting skill owned by the workstream specialist.
 
 **Validation roles are read-only.** plan-groomer, code-reviewer, and spec-validator produce reports, never edits. Implementing agents fix what those reports name.
 

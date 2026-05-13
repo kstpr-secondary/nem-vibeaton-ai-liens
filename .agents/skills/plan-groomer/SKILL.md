@@ -43,7 +43,7 @@ Run all checks. Flag every violation.
 
 ### Scope and size
 8. Is the phase executable in one contiguous session without a feedback loop longer than ~90 minutes? If tasks total more than that, flag for splitting.
-9. Are any tasks vague to the point where the implementing agent would have to make significant design decisions not captured here? Flag each such task.
+9. Are any tasks vague to the point where the implementing agent would have to make significant design decisions not captured here? Flag each such task. If three or more tasks are flagged as vague, OR if vagueness spans both a data-structure definition and the operations over that structure, add a recommendation to the defect list: "Systemic vagueness — Feature Planner should write `design.md` before revising the task decomposition (see feature-planner SKILL.md Step 4)."
 
 ### Project-specific: API and platform
 10. Does the plan reference any `sg_*`, `sapp_*`, or `simgui_*` function that does not appear in the project's sokol header wrappers or in the `.agents/skills/sokol-api/` references? Flag any unverified API claim.

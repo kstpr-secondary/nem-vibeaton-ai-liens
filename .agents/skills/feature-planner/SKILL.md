@@ -24,6 +24,8 @@ Before writing anything, establish the feature type. If the human hasn't stated 
 
 When in doubt, default to Phased.
 
+**Cross-workstream features**: Before drafting the brief for any feature that touches code in two or more workstreams, or that may require changes to `docs/interfaces/*-interface-spec.md`, consult `systems-architect` first. It owns the seam definitions and the frozen interface contracts. A cross-workstream scope cannot be safely drawn without that input.
+
 ---
 
 ## Step 1: Feature Brief (`brief.md`)
@@ -83,6 +85,8 @@ Optional document for Phased and Exploratory features when the implementation ap
 
 No fixed template. Include: proposed data structures or API additions, module interactions, shader design (if applicable), key algorithms. This document informs Phase Plans but does not replace them.
 
+**When to write it.** The Feature Planner decides. The signal is: if writing task descriptions forces entries like "determine the approach", "figure out the data structure", or "decide which algorithm to use", stop and write `design.md` first. This is especially true when vagueness spans both a data structure definition and the operations over it — that combination cannot be resolved by the implementor without design authority the plan hasn't given them.
+
 ---
 
 ## Step 5: Phase Plan (`plan-pN.md`)
@@ -140,17 +144,34 @@ After a phase executes, `checkpoint-pN.md` must exist before the next phase plan
 **When the human provides feedback after a phase** (e.g., "all pass but the shield bar flickers on low HP" or "physics task fails — asteroids clip the boundary"):
 
 1. Read the current phase plan's **Human Checkpoint** section (Run / Look for / Pass / Stop).
-2. Read the human's feedback and map it to the checkpoint fields:
+2. If the human's feedback is ambiguous about outcome (e.g., "it's janky", "mostly works", "not quite right"), ask one explicit follow-up before drafting: "Should this be **PASS** (you want to proceed, with these observations noted) or **STOP** (you want this fixed before the next phase)?" Do not infer Result from tone.
+3. Read the human's feedback and map it to the checkpoint fields:
    - **Result**: PASS if all Pass criteria met (minor observations don't block); STOP if any Stop condition triggered.
    - **What was tested**: infer from the plan's "Run" field plus any specifics the human mentioned.
    - **Observations**: the human's verbatim feedback, lightly structured. Include surprises, deviations, and anything that should inform the next phase.
    - **Roadmap impact**: fill only for Exploratory features; leave blank or omit otherwise.
    - **Next step**: infer from Result — PASS → `generate plan-p(N+1).md`; STOP → `stop and re-examine`; final phase → `feature complete → update docs/ and archive`.
-3. Draft the full `checkpoint-pN.md` and show it to the human.
-4. Ask: *"Does this accurately reflect what you observed? I'll write the file once you confirm."*
-5. On confirmation, write `features/active/<feature-name>/checkpoint-pN.md`.
+4. Draft the full `checkpoint-pN.md` and show it to the human.
+5. Ask: *"Does this accurately reflect what you observed? I'll write the file once you confirm."*
+6. On confirmation, write `features/active/<feature-name>/checkpoint-pN.md`.
 
 **Do not draft a checkpoint if the human has not run the verification.** If the human asks for the checkpoint without having tested, prompt them to run the Human Checkpoint steps from the plan first.
+
+---
+
+## Revision Mode (NEEDS WORK from Plan Groomer)
+
+When invoked to fix a plan that Plan Groomer returned as NEEDS WORK:
+
+1. Read the existing `plan-pN.md` in full.
+2. Read the Groomer's numbered defect list.
+3. Address **each numbered defect** in sequence. Edit only what the defect names — do not rewrite sections the Groomer left uncontested.
+4. Add a revision note below the `Groomer Verdict` field, e.g.: `**Revision**: r2 — addressed groomer defects 1, 3, 5`.
+5. Reset `Groomer Verdict` to `PENDING` — the revised plan requires a fresh grooming pass.
+6. The plan filename does not change (`plan-pN.md`, not `plan-pN-r2.md`). Git carries the revision history.
+7. Tell the human to invoke Plan Groomer again before implementation starts.
+
+Do not rewrite the whole plan. The Groomer's silence on a section is implicit approval of that section.
 
 ---
 
