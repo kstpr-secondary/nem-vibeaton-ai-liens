@@ -2,3 +2,6 @@ build/
 build.copilot-check/
 build-mock/
 tools/
+graphify-out/cache/
+graphify-out/manifest.json
+graphify-out/cost.json
