@@ -105,10 +105,14 @@ void enemy_ai_update(float /*dt*/) {
 
         // Line-of-sight via engine_raycast.
         // Start ray from just outside the enemy's own collider to avoid self-hit.
+        // Block only if the closest hit is NOT the player — an asteroid or peer
+        // between us and the player. Comparing by distance against dist-ray_offset
+        // is wrong because the ray hits the player's near AABB face, which is
+        // always player_half_extent closer than the player's center.
         const float ray_offset = k_ship_half + 0.1f;
         const auto hit = engine_raycast(t.position + ship_forward * ray_offset, ship_forward, dist - ray_offset);
-        if (hit.has_value() && hit->distance < dist - ray_offset)
-            continue;  // something closer than player blocks the shot
+        if (hit.has_value() && hit->entity != player_e)
+            continue;  // a non-player obstacle blocks LOS
 
         // Spawn projectile from just outside the enemy's own collider.
         const glm::vec3 spawn_pos = t.position

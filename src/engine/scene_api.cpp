@@ -187,6 +187,10 @@ RendererMeshHandle engine_load_gltf(const char* relative_path,
     return handle;
 }
 
+void engine_mesh_ref_inc(RendererMeshHandle h) {
+    mesh_store_ref_inc(h.id);
+}
+
 RendererMeshHandle engine_load_obj(const char* relative_path) {
     auto it = s_obj_cache.find(relative_path);
     if (it != s_obj_cache.end())

@@ -114,6 +114,11 @@ RendererMeshHandle engine_load_gltf(const char* relative_path,
                                      RendererTextureHandle* out_texture = nullptr);
 RendererMeshHandle engine_load_obj(const char* relative_path);
 
+// Increment the mesh store ref count for a handle returned by engine_load_gltf
+// or engine_load_obj. Must be called once per entity that stores the handle in
+// a Mesh component; scene_flush_pending_destroys decrements on entity destroy.
+void engine_mesh_ref_inc(RendererMeshHandle h);
+
 entt::entity engine_spawn_from_asset(
     const char*      relative_path,
     const glm::vec3& position,

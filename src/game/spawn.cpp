@@ -115,6 +115,7 @@ static entt::entity spawn_from_model(const char* model_path,
 
     RendererTextureHandle texture_handle = {};
     RendererMeshHandle handle = engine_load_gltf(model_path, &texture_handle);
+    engine_mesh_ref_inc(handle);  // balance scene_flush_pending_destroys' ref_dec on entity death
 
     const float* base_color;
     float shininess;
