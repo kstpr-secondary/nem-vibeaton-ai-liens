@@ -64,6 +64,9 @@ Run all checks. Flag every violation.
 19. If the plan specifies a data structure **and** describes operations over that structure in the same plan, verify that the struct contains all fields those operations need without per-call reconstruction. Flag any gap as a structural defect — retrofitting struct fields during implementation is not an implementor decision, it is a plan defect.
 20. If any task describes hot-path code (narrowphase collision, per-tick physics, per-frame queries), is a complexity bound or allocation budget stated? "Tests pass" is insufficient as the sole acceptance criterion for hot-path tasks; flag the absence of an explicit performance requirement.
 
+### Cross-workstream consultation
+21. If the plan includes tasks spanning two or more workstreams, or the feature brief lists non-empty "Frozen interfaces affected", does the feature's `brief.md` show `Architecture consult: Completed`? Cross-workstream features must have recorded systems-architect consultation before any plan passes grooming.
+
 ---
 
 ## Checks: Exploratory Roadmap

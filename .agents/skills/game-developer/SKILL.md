@@ -40,7 +40,9 @@ Priorities: behavioral correctness → scope discipline → integration → spee
 - Pipeline creation, shaders, sokol_app init, line-quad impl, skybox → **renderer-specialist**.
 - `entt::registry` ownership, Euler integrator, AABB/ray math, asset import, mesh-upload bridge, camera matrix computation → **engine-specialist**.
 - Cross-workstream planning, build-topology, top-level CMake changes → **systems-architect**.
-- Unit-test authoring → **test-author**. Diff reviews → **code-reviewer**. Spec audits → **spec-validator**.
+- Diff reviews → **code-reviewer**. Spec audits → **spec-validator**.
+
+**During execution**: invoke `test-author` skill for any unit tests required by the phase plan (damage pipeline, cooldown math, containment reflection). This is not a hand-off — it is a supporting skill called inline during the Execute phase.
 
 ---
 

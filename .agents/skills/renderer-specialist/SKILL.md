@@ -28,8 +28,9 @@ Library and shader-pattern knowledge lives in dedicated skills (see §7); this s
 - ECS, scene graph, physics, asset import, game loop → `engine-specialist`.
 - Gameplay, enemy AI, game-side VFX content → `game-developer`.
 - Cross-workstream planning, engine/game interface design → `systems-architect`.
-- Unit tests beyond renderer math/builders → `test-author`.
 - Diff-level bug review → `code-reviewer`. Spec-adherence audits → `spec-validator`.
+
+**During execution**: invoke `test-author` skill for any unit tests required by the phase plan (math helpers, mesh-builder invariants). This is not a hand-off — it is a supporting skill called inline during the Execute phase.
 
 ---
 

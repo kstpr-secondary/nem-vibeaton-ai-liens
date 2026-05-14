@@ -10,7 +10,7 @@ Classify the feature before planning. The type determines the artifact set and p
 
 | Type | Characteristics | Examples |
 |------|----------------|---------|
-| **Quick** | ~4–8 tasks, known API surface, deterministic outcome. Build correctness is sufficient proof. | Gameplay constant, HUD element, shader uniform, spawning variant |
+| **Quick** | ~4–8 tasks, known API surface, deterministic outcome. Build correctness is sufficient proof — the Human Checkpoint may be a build-only check when no behavioral verification is needed. The checkpoint file is still written. | Gameplay constant, HUD element, shader uniform, spawning variant |
 | **Phased** | 1–3 phases, some unknowns or visual subjectivity. Human judgment required at checkpoints. | New visual effect, weapon behavior rework, new physics interaction |
 | **Exploratory** | Significant unknowns, subjective quality gates, approach may change. Spikes required. | Deferred rendering, GPU-driven culling, advanced post-processing |
 
@@ -37,7 +37,7 @@ Templates for all artifacts: `.agents/skills/feature-planner/templates/`
 
 ## Process Flows
 
-> **Optional pre-checkpoint validation.** Before any Human Checkpoint, `spec-validator` and `code-reviewer` are available as pre-verification steps. Invoke them when the phase includes: (a) a frozen-interface touch, (b) a named algorithm where a brute-force substitute would pass the same tests (code-reviewer Axis 2), or (c) hot-path or math-heavy code. For Quick features, skip unless one of those criteria applies. For Phased and Exploratory, the criteria apply often enough that invoking both before the Human Checkpoint is the recommended default. These tools surface spec gaps and risk before the human spends time testing.
+> **Optional pre-checkpoint validation.** Before any Human Checkpoint, `spec-validator` and `code-reviewer` are available as pre-verification steps. Invoke them when the phase includes: (a) a frozen-interface touch, (b) a named algorithm where a brute-force substitute would pass the same tests, or (c) hot-path or math-heavy code. For Quick features, skip unless one of those criteria applies. For Phased and Exploratory, the criteria apply often enough that invoking both before the Human Checkpoint is the recommended default. These tools surface spec gaps and risk before the human spends time testing. **If either tool reports blockers, the implementing agent fixes them before the Human Checkpoint.** A re-run after fixes is optional but recommended for changed code.
 
 ### Quick Feature
 
@@ -46,8 +46,8 @@ Templates for all artifacts: `.agents/skills/feature-planner/templates/`
 2. Feature Planner creates brief.md + plan-p1.md (together, same session)
 3. Plan Groomer reviews plan-p1.md → PASS | NEEDS WORK → fix → re-groom
 4. Execute
-5. Human verifies → writes checkpoint-p1.md
-6. If feature complete: update docs/ → move to features/archive/
+5. Human verifies → Feature Planner drafts checkpoint-p1.md from human feedback → human confirms → Feature Planner writes checkpoint-p1.md
+6. If feature complete: invoke Doc Updater → human confirms report → human moves to features/archive/
 ```
 
 ### Phased Feature
@@ -58,12 +58,12 @@ Templates for all artifacts: `.agents/skills/feature-planner/templates/`
 3. Feature Planner creates plan-p1.md
 4. Plan Groomer reviews plan-p1.md → PASS | NEEDS WORK
 5. Execute Phase 1
-6. Human verifies → checkpoint-p1.md
+6. Human verifies → Feature Planner drafts checkpoint-p1.md from human feedback → human confirms → Feature Planner writes checkpoint-p1.md
 7. Feature Planner creates plan-p2.md (informed by checkpoint-p1 learnings)
 8. Plan Groomer reviews plan-p2.md → PASS | NEEDS WORK
-9. Execute Phase 2 → checkpoint-p2.md
+9. Execute Phase 2 → (same checkpoint process as step 6)
    ... repeat per phase ...
-10. All phases done: update docs/ → move to features/archive/
+10. All phases done: invoke Doc Updater → human confirms report → human moves to features/archive/
 ```
 
 ### Exploratory Feature
@@ -79,10 +79,10 @@ Templates for all artifacts: `.agents/skills/feature-planner/templates/`
 5. Feature Planner creates plan-p1.md (constrained by spike results, aligned with Roadmap)
 6. Plan Groomer reviews plan-p1.md → PASS | NEEDS WORK
 7. Execute Phase 1
-8. Human verifies → checkpoint-p1.md (also annotates the Roadmap decision point)
+8. Human verifies → Feature Planner drafts checkpoint-p1.md from human feedback → human confirms → Feature Planner writes checkpoint-p1.md (also annotates the Roadmap decision point)
 9. Feature Planner creates plan-p2.md — only now, informed by checkpoint-p1
    ... repeat per phase, always oriented toward the Roadmap goal ...
-10. All phases done: update docs/ → move to features/archive/
+10. All phases done: invoke Doc Updater → human confirms report → human moves to features/archive/
 ```
 
 ---
@@ -99,9 +99,11 @@ Templates for all artifacts: `.agents/skills/feature-planner/templates/`
 
 **Acceptance criteria for named algorithms must discriminate.** If a task names a specific algorithm (gift-wrapping, SAT, slab intersection, etc.), at least one acceptance criterion must be observable that would *fail* for the plausible wrong alternative (e.g., a brute-force substitute). "Tests pass" is insufficient if a brute-force implementation would also pass the same tests. The Feature Planner is responsible for writing this discriminating criterion; the Plan Groomer must flag its absence (see groomer check 20).
 
-**Frozen interfaces are approval gates.** If a Phase Plan requires a change to `docs/interfaces/*-interface-spec.md`, human approval must be explicitly noted in the plan as a GATE before any dependent tasks. Do not implement dependents speculatively.
+**Frozen interfaces have two distinct moments.** (1) Pre-implementation gate: if a Phase Plan requires a change to `docs/interfaces/*-interface-spec.md`, human approval must be explicitly noted in the plan as a GATE before any dependent tasks. Do not implement dependents speculatively. (2) Post-feature doc sync: after the final checkpoint passes, Doc Updater updates interface specs to reflect what was actually built. These are separate steps — do not conflate them.
 
-**Implementing agents stop at phase boundaries.** When all tasks in a phase plan are complete, the implementing agent outputs a handoff (summary + quoted Human Checkpoint criteria) and stops. It does not write `checkpoint-pN.md` and does not begin or sketch the next phase plan. The human runs the verification and provides feedback; Feature Planner drafts the checkpoint from that feedback and writes the file once the human confirms. Feature Planner then writes the next phase plan. The checkpoint requires human-observed behavior — an agent can format it, but cannot substitute for the human having actually run the check.
+**Checkpoint ownership is Feature Planner, not the human or the implementing agent.** The human runs the verification and provides free-form feedback. Feature Planner drafts `checkpoint-pN.md` from that feedback, shows the draft for confirmation, and writes the file only after the human confirms it accurately reflects what was observed. The implementing agent does not write the checkpoint. The human does not write the checkpoint file directly — their role is to verify, provide feedback, and confirm the draft. Feature Planner then writes the next phase plan.
+
+**Implementing agents stop at phase boundaries.** When all tasks in a phase plan are complete, the implementing agent outputs a handoff (summary + quoted Human Checkpoint criteria) and stops. It does not write `checkpoint-pN.md` and does not begin or sketch the next phase plan.
 
 **Stop means Evaluate, not Fail Forward.** When a Human Checkpoint returns Stop, the human chooses between two paths: **(a) Retry** — Feature Planner produces a revised `plan-pN.md` (same filename, revision note in the header, Groomer Verdict reset to PENDING), Plan Groomer reviews before re-execution, and a new `checkpoint-pN.md` replaces the prior one after re-verification; or **(b) Pivot** — if the failing behavior is a bounded gap that a subsequent phase will address, the human records the gap in `checkpoint-pN.md` and Feature Planner writes `plan-p(N+1).md` scoped to fix it. The human decides: if the unmet criteria would make the next phase's assumptions unsound, retry; if the gap is isolated and bounded, pivot.
 

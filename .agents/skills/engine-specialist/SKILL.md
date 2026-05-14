@@ -36,6 +36,8 @@ Maintain and extend the engine as a C++17 static library (`engine`) that provide
 - Gameplay, enemy AI behavior, weapon/shield logic, HUD, game-side VFX → `game-developer`.
 - Cross-workstream planning, build-topology arbitration → `systems-architect`.
 
+**During execution**: invoke `test-author` skill for any unit tests required by the phase plan (physics, AABB/ray math, ECS lifecycle, collision helpers). This is not a hand-off — it is a supporting skill called inline during the Execute phase.
+
 ---
 
 ## 3. Engine-specific facts

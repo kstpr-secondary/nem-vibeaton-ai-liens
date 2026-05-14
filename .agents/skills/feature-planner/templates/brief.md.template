@@ -4,6 +4,7 @@
 **Branch**: feature/[name]
 **Workstreams**: renderer | engine | game
 **Frozen interfaces affected**: none | [list which specs]
+**Architecture consult**: N/A (single workstream, no interface changes) | Required | Completed YYYY-MM-DD
 
 ## Goal
 

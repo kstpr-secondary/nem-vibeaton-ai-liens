@@ -117,7 +117,7 @@ These are architectural constants. Do not relitigate unless the human explicitly
 
 ## 7. Output templates
 
-**Cross-workstream feature plan** → `docs/planning/<feature>/`:
+**Cross-workstream feature plan** → `features/active/<feature>/`:
 ```
 # <Feature Name>
 ## Overview

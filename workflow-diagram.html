@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feature Development Workflow</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1d23;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 2rem;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #f0f0f0;
+      margin-bottom: 0.25rem;
+      letter-spacing: 0.01em;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 1.5rem;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem 1.2rem;
+      margin-bottom: 2rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.78rem;
+      color: #bbb;
+    }
+
+    .legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .diagram-wrapper {
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 2rem 1rem;
+      overflow-x: auto;
+    }
+
+    .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Feature Development Workflow</h1>
+  <p class="subtitle">Canonical process from feature description to archive. See <code>WORKFLOW.md</code> for the authoritative text.</p>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:#3498db"></div> Human action</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#27ae60"></div> Feature Planner</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#e67e22"></div> Plan Groomer</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#8e44ad"></div> Implementing Agent</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#7f8c8d"></div> spec-validator / code-reviewer</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#16a085"></div> Doc Updater</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#f5f0d0; border:1px solid #c9a800"></div> Decision</div>
+  </div>
+
+  <div class="diagram-wrapper">
+    <div class="mermaid">
+flowchart TD
+
+    START(["Human: describe feature"])
+
+    CLASSIFY["Feature Planner\nclassifies feature type"]
+    MWCHECK{"Multi-workstream\nor interface change?"}
+    SA["Consult systems-architect\nRecord Architecture consult: Completed\nin brief.md"]
+    FTYPE{"Feature Type?"}
+
+    Q_BRIEFPLAN["Feature Planner\nbrief.md + plan-p1.md\n(together, one step)"]
+
+    P_BRIEF["Feature Planner\nbrief.md"]
+    P_PLAN["Feature Planner\nplan-pN.md"]
+
+    E_BRIEF["Human\nbrief.md with unknowns table"]
+    E_ROADMAP["Feature Planner\nroadmap.md"]
+    E_RGROOM{"Plan Groomer\nreviews roadmap"}
+    E_SPIKES["Execute Spikes\nWrite spike-name.md\nAnnotate roadmap decision points"]
+    E_PLAN["Feature Planner\nplan-pN.md"]
+
+    GROOMER{"Plan Groomer\nreviews plan-pN.md"}
+    REVISE["Feature Planner\nrevises plan"]
+    EXECUTE["Implementing Agent\nexecutes tasks\nmarks each task done as completed"]
+
+    OPTVAL{"Optional: invoke\npre-checkpoint validators?"}
+    FIXBLOCKS["spec-validator and/or code-reviewer\nImplementing Agent fixes blockers\nRe-run optional"]
+
+    HUMAN_VFY["Human verifies\nruns checkpoint steps from plan"]
+    FP_DRAFT["Feature Planner\ndrafts checkpoint-pN.md\nfrom human feedback"]
+    HUMAN_CONF["Human confirms draft is accurate"]
+    FP_WRITE["Feature Planner\nwrites checkpoint-pN.md"]
+
+    MORE{"More phases?"}
+
+    DOC_UPDATE["Doc Updater\nupdates docs/interfaces, docs/architecture,\ndocs/game-design as needed"]
+    HUMAN_DOCCONF["Human confirms\nDoc Updater report"]
+    ARCHIVE(["Human archives\nfeatures/active/ → features/archive/"])
+
+    %% ── Start ──────────────────────────────────────────────────────────────
+    START --> CLASSIFY
+    CLASSIFY --> MWCHECK
+    MWCHECK -->|Yes| SA --> FTYPE
+    MWCHECK -->|No| FTYPE
+
+    %% ── Feature-type divergence ────────────────────────────────────────────
+    FTYPE -->|Quick| Q_BRIEFPLAN
+    FTYPE -->|Phased| P_BRIEF
+    FTYPE -->|Exploratory| E_BRIEF
+
+    %% Phased setup
+    P_BRIEF --> P_PLAN
+
+    %% Exploratory setup
+    E_BRIEF --> E_ROADMAP
+    E_ROADMAP --> E_RGROOM
+    E_RGROOM -->|NEEDS WORK| E_ROADMAP
+    E_RGROOM -->|PASS| E_SPIKES
+    E_SPIKES --> E_PLAN
+
+    %% ── Converge at Plan Groomer ──────────────────────────────────────────
+    Q_BRIEFPLAN --> GROOMER
+    P_PLAN --> GROOMER
+    E_PLAN --> GROOMER
+
+    GROOMER -->|NEEDS WORK| REVISE
+    REVISE --> GROOMER
+    GROOMER -->|PASS| EXECUTE
+
+    %% ── Execute → optional validation → checkpoint ────────────────────────
+    EXECUTE --> OPTVAL
+    OPTVAL -->|"Yes — invoke\nspec-validator and/or\ncode-reviewer"| FIXBLOCKS
+    FIXBLOCKS --> HUMAN_VFY
+    OPTVAL -->|No| HUMAN_VFY
+
+    HUMAN_VFY --> FP_DRAFT
+    FP_DRAFT --> HUMAN_CONF
+    HUMAN_CONF --> FP_WRITE
+    FP_WRITE --> MORE
+
+    %% ── Phase loop or finalize ────────────────────────────────────────────
+    MORE -->|"Yes — Phased:\nnext phase plan"| P_PLAN
+    MORE -->|"Yes — Exploratory:\nnext phase plan"| E_PLAN
+    MORE -->|No — all phases done| DOC_UPDATE
+
+    DOC_UPDATE --> HUMAN_DOCCONF
+    HUMAN_DOCCONF --> ARCHIVE
+
+    %% ── Styling ───────────────────────────────────────────────────────────
+    classDef human     fill:#3498db,color:#fff,stroke:#2471a3,stroke-width:2px
+    classDef planner   fill:#27ae60,color:#fff,stroke:#1e8449,stroke-width:2px
+    classDef groomer   fill:#e67e22,color:#fff,stroke:#ca6f1e,stroke-width:2px
+    classDef agent     fill:#8e44ad,color:#fff,stroke:#6c3483,stroke-width:2px
+    classDef validator fill:#7f8c8d,color:#fff,stroke:#616a6b,stroke-width:2px
+    classDef docupd    fill:#16a085,color:#fff,stroke:#117a65,stroke-width:2px
+    classDef decision  fill:#fef9e7,color:#333,stroke:#f1c40f,stroke-width:2px
+    classDef terminal  fill:#2c3e50,color:#fff,stroke:#1a252f,stroke-width:2px
+
+    class START,HUMAN_VFY,HUMAN_CONF,HUMAN_DOCCONF,E_BRIEF human
+    class CLASSIFY,Q_BRIEFPLAN,P_BRIEF,P_PLAN,E_ROADMAP,E_PLAN,REVISE,FP_DRAFT,FP_WRITE,SA planner
+    class GROOMER,E_RGROOM groomer
+    class EXECUTE agent
+    class FIXBLOCKS validator
+    class DOC_UPDATE docupd
+    class MWCHECK,FTYPE,MORE,OPTVAL decision
+    class ARCHIVE terminal
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        background: '#ffffff',
+        primaryColor: '#27ae60',
+        primaryTextColor: '#fff',
+        primaryBorderColor: '#1e8449',
+        lineColor: '#555',
+        secondaryColor: '#3498db',
+        tertiaryColor: '#f0f0f0',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontSize: '13px',
+      },
+      flowchart: {
+        curve: 'basis',
+        padding: 20,
+        nodeSpacing: 40,
+        rankSpacing: 50,
+        useMaxWidth: false,
+      },
+    });
+  </script>
+
+</body>
+</html>
