@@ -104,3 +104,7 @@ Implementing agents (`renderer-specialist`, `engine-specialist`, `game-developer
 2. Open only the minimal supporting reference needed.
 3. If the task appears to require a frozen interface change, stop and flag it.
 4. If a skill is stale or missing key project facts, update the skill instead of inventing policy.
+
+## 9. Excluded directories
+
+- **Do not** perform file searches in `.agents-ignore` and `.specify` directories.
