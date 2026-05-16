@@ -203,9 +203,9 @@ Use this structure:
 Revisit after workflow automation begins.
 
 Likely future splits:
-- `planning-loop-retrospector` for planner↔groomer only,
-- `review-loop-retrospector` for implementor↔reviewer loops,
-- `checkpoint-loop-retrospector` for human rejection and retry/pivot handling.
+- `planning-loop-retrospector` for planner↔groomer only (this skill — in use),
+- `review-loop-retrospector` for implementor↔reviewer loops (see [[review-loop-retrospector]] — created),
+- `checkpoint-loop-retrospector` for human rejection and retry/pivot handling (not yet created).
 
 Likely future upgrades:
 - direct planner↔groomer handoff rules,

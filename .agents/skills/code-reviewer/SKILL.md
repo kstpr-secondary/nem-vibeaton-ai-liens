@@ -58,6 +58,12 @@ Given a diff and the current feature spec or phase:
 
 ---
 
+## After your report
+
+Once the implementing agent has applied your fixes: the agent writes one structured finding entry per defect that has process implications to `features/active/<feature-name>/review-findings.md`. That file is the input for `review-loop-retrospector`, which runs at phase completion to improve the workflow. You do not write to that file.
+
+---
+
 ## What this role does NOT do
 
 - **Does not edit code** — not patches, not diffs, not reformatting. Fix suggestions live in the report as prose or short inline snippets; the implementing agent applies them.

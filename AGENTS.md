@@ -23,6 +23,7 @@ Key artifacts per feature:
 - `design.md` — technical design when needed
 - `plan-pN.md` — phase plan, one per phase, written before execution
 - `checkpoint-pN.md` — human-written after verification; gates the next phase plan
+- `review-findings.md` — append-mode log of reviewer defects with process implications; read by `review-loop-retrospector` at phase end; archived with the feature
 
 **Before starting implementation**: read `brief.md`, the current `plan-pN.md`, and any `checkpoint` files for context on prior phases. Do not read phase plans that have not yet been reached.
 
@@ -84,8 +85,9 @@ Do not move behavior across workstreams unless the feature explicitly requires i
 1. Briefly summarize what was implemented in this phase.
 2. Quote the Human Checkpoint section verbatim from the plan (Run / Look for / Pass / Stop).
 3. Tell the human to run the verification. When they report results back, ask them to provide: **Result** (PASS or STOP), **What they observed** (specific, not "it works"), and **Anything unexpected or that should inform the next phase**. These map directly to the checkpoint fields and prevent ambiguity when Feature Planner drafts the checkpoint. Tell them to write `features/active/<feature-name>/checkpoint-pN.md` using the template at `.agents/skills/feature-planner/templates/checkpoint.md.template`.
-4. Tell the human to invoke Feature Planner once the checkpoint is written (for the next phase), or Doc Updater if this was the final phase.
-5. State explicitly: next-phase planning belongs to Feature Planner, not to this agent.
+4. If `features/active/<feature-name>/review-findings.md` exists and contains entries from this phase, tell the human to invoke `review-loop-retrospector` before the Human Checkpoint draft. The retrospector reads the accumulated findings, corrects any responsible workflow docs or skills, and marks entries as retrospected. This step completes the review loop before the next phase begins.
+5. Tell the human to invoke Feature Planner once the checkpoint is written (for the next phase), or Doc Updater if this was the final phase.
+6. State explicitly: next-phase planning belongs to Feature Planner, not to this agent.
 
 ## 7. Validation expectations
 
@@ -97,6 +99,8 @@ Do not move behavior across workstreams unless the feature explicitly requires i
 Implementing agents (`renderer-specialist`, `engine-specialist`, `game-developer`) invoke `test-author` during the Execute phase to write any tests required by the phase plan. `test-author` is not a separate pipeline role that follows implementation — it is a supporting skill owned by the workstream specialist.
 
 **Validation roles are read-only.** plan-groomer, code-reviewer, and spec-validator produce reports, never edits. Implementing agents fix what those reports name.
+
+**Finding entries after reviewer fixes.** When an implementing agent applies a fix from code-reviewer or spec-validator output, it must assess whether the defect has process implications (not a one-off typo). If yes, append one structured entry to `features/active/<feature-name>/review-findings.md` using the format in `.agents/skills/review-loop-retrospector/SKILL.md`. Assign: the abstract defect class, the suspected responsible party (planner/groomer | implementor-skill | reviewer | shared-docs), and a one-line abstract evidence note. This file is the input for `review-loop-retrospector` at phase completion.
 
 ## 8. If stuck
 

@@ -30,6 +30,7 @@ All feature work lives under `features/active/<feature-name>/` while in progress
 | Technical Design | `design.md` | When needed | Phased, Exploratory |
 | Phase Plan | `plan-p1.md`, `plan-p2.md`, … | One per phase, before execution | All |
 | Phase Checkpoint | `checkpoint-p1.md`, `checkpoint-p2.md`, … | After human verification | All |
+| Review Findings | `review-findings.md` | Append-mode per task when a reviewer defect has process implications; read by retrospector at phase end | Phased, Exploratory (optional for Quick) |
 
 Templates for all artifacts: `.agents/skills/feature-planner/templates/`
 
@@ -38,6 +39,8 @@ Templates for all artifacts: `.agents/skills/feature-planner/templates/`
 ## Process Flows
 
 > **Optional pre-checkpoint validation.** Before any Human Checkpoint, `spec-validator` and `code-reviewer` are available as pre-verification steps. Invoke them when the phase includes: (a) a frozen-interface touch, (b) a named algorithm where a brute-force substitute would pass the same tests, or (c) hot-path or math-heavy code. For Quick features, skip unless one of those criteria applies. For Phased and Exploratory, the criteria apply often enough that invoking both before the Human Checkpoint is the recommended default. These tools surface spec gaps and risk before the human spends time testing. **If either tool reports blockers, the implementing agent fixes them before the Human Checkpoint.** A re-run after fixes is optional but recommended for changed code.
+>
+> **Review findings and retrospection.** When a reviewer finds defects, the implementing agent records an abstract finding entry in `features/active/<feature-name>/review-findings.md` after applying the fix (see `review-loop-retrospector` skill for entry format). At phase completion — after all tasks are done and all review cycles are closed, before the Human Checkpoint draft — invoke `review-loop-retrospector` to consolidate the phase's findings and edit any responsible workflow docs or skills. This step is optional for Quick features (too few tasks to establish a pattern) and recommended for Phased and Exploratory features. The retrospector never edits code; it edits only process artifacts.
 
 ### Quick Feature
 
@@ -130,6 +133,7 @@ When all phase checkpoints pass and the human signs off:
 | Feature Planner | `.agents/skills/feature-planner/SKILL.md` | Creates and structures feature artifacts | Start of feature / after each checkpoint |
 | Plan Groomer | `.agents/skills/plan-groomer/SKILL.md` | Adversarial review before execution | After every Phase Plan or Roadmap |
 | Planning Loop Retrospector | `.agents/skills/planning-loop-retrospector/SKILL.md` | Analyzes repeated planner↔groomer failures and fixes the responsible workflow docs or skills | After repeated grooming failures, groomer disagreement, or a missed blocker after PASS |
+| Review Loop Retrospector | `.agents/skills/review-loop-retrospector/SKILL.md` | Analyzes defects surfaced by code-reviewer or spec-validator, attributes them to planners/groomers, implementors, or reviewers, and fixes the responsible workflow artifact | At phase completion after review cycles, when a defect class appears across tasks, or when a single finding is unambiguously structural |
 | Doc Updater | `.agents/skills/doc-updater/SKILL.md` | Updates `docs/` to reflect what was built | Once, after final checkpoint, before archive |
 
 Existing skills that remain active:
