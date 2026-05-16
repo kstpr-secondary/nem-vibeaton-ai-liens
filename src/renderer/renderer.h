@@ -116,6 +116,9 @@ struct BlinnPhongFSParams {
     glm::vec4 flags;             // .x = use_texture
 };
 
+// BlinnPhongShadowedFSParams — identical to BlinnPhongFSParams (same layout).
+// Shadow data is passed via renderer-internal bindings (binding=2), not through Material::uniforms.
+
 // ---------------------------------------------------------------------------
 // Directional light — one per frame maximum
 // ---------------------------------------------------------------------------
@@ -166,7 +169,7 @@ void renderer_shutdown();
 RendererShaderHandle renderer_create_shader(const sg_shader_desc* desc);
 
 // Retrieve handles to the built-in shaders (no GPU work — just returns a stored handle).
-enum class BuiltinShader : uint8_t { Unlit = 0, BlinnPhong, Lambertian };
+enum class BuiltinShader : uint8_t { Unlit = 0, BlinnPhong = 1, Lambertian = 2, BlinnPhongShadowed = 3 };
 RendererShaderHandle renderer_builtin_shader(BuiltinShader s);
 
 // ---------------------------------------------------------------------------
@@ -256,4 +259,10 @@ RendererTextureHandle renderer_upload_cubemap(
 Material renderer_make_unlit_material(const float rgba[4]);
 Material renderer_make_lambertian_material(const float rgb[3]);
 Material renderer_make_blinnphong_material(const float rgb[3], float shininess,
-                                            RendererTextureHandle texture = {});
+                                             RendererTextureHandle texture = {});
+
+// Shadowed variant — reuses BlinnPhongFSParams for FS uniforms (identical layout).
+// Shadow data (light_view_proj + shadow_map/sampler) is set internally by the renderer
+// at binding=2/view=0/sampler=0 during the main draw pass; game code never touches these.
+Material renderer_make_blinnphong_shadowed_material(const float rgb[3], float shininess,
+                                                     RendererTextureHandle texture = {});

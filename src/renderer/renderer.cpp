@@ -23,6 +23,7 @@
 #include "debug_draw.h"
 #include "texture.h"
 #include "skybox.h"
+#include "pipeline_shadow.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -107,7 +108,7 @@ struct RendererState {
     int pipeline_cache_count_ = 0;
 
     // Built-in shader handles — populated in renderer_internal_init()
-    RendererShaderHandle builtin_shaders[3];
+    RendererShaderHandle builtin_shaders[4];
 
     // sg_shader handles indexed by shader ID (0=magenta sentinel, 1-3=built-ins, 4+=custom)
     sg_shader shader_handles[256];
@@ -122,6 +123,9 @@ struct RendererState {
 
     // Skybox
     sg_pipeline pipeline_skybox;
+
+    // Shadow depth (Phase 1 hard shadows)
+    sg_pipeline pipeline_shadow;
 
     // Mesh GPU resources are managed by mesh_builders.cpp
     // Texture GPU resources are managed by texture.cpp
@@ -474,6 +478,14 @@ void renderer_internal_init() {
     state.pipeline_skybox = skybox_create_pipeline(pipeline_cache[0].pipeline);
     skybox_init_resources();
 
+    // Shadow depth pipeline (T-2: infrastructure only — actual shadow-receiving draws wired in T-6)
+    state.pipeline_shadow = create_pipeline_shadow(pipeline_cache[0].pipeline);
+    if (sg_query_pipeline_state(state.pipeline_shadow) != SG_RESOURCESTATE_VALID) {
+        printf("[renderer] WARNING: shadow depth pipeline creation failed — shadows disabled\n");
+    } else {
+        printf("[renderer] shadow depth pipeline created\n");
+    }
+
     // Line-quad pipelines (opaque + additive)
     make_line_quad_pipelines();
 
@@ -569,6 +581,7 @@ void renderer_shutdown() {
     if (state.pipeline_line_quad.id != 0)       { sg_destroy_pipeline(state.pipeline_line_quad); state.pipeline_line_quad = {}; }
     if (state.pipeline_line_quad_additive.id != 0) { sg_destroy_pipeline(state.pipeline_line_quad_additive); state.pipeline_line_quad_additive = {}; }
     if (state.pipeline_skybox.id != 0)          { sg_destroy_pipeline(state.pipeline_skybox); state.pipeline_skybox = {}; }
+    if (state.pipeline_shadow.id != 0)          { sg_destroy_pipeline(state.pipeline_shadow); state.pipeline_shadow = {}; }
 
     // Destroy dummy BlinnPhong resources
     if (state.dummy_blinnphong_tex.id != 0)     { sg_destroy_image(state.dummy_blinnphong_tex); state.dummy_blinnphong_tex = {}; }

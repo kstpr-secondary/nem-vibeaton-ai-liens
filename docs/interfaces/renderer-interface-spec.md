@@ -1,17 +1,17 @@
 # Renderer Interface Spec
 
-> **Status:** `FROZEN — v1.2`
+> **Status:** `FROZEN — v1.3`
 > **Source**: Promoted from `specs/001-sokol-render-engine/contracts/renderer-api.md`
 
 ---
 
 ## Version
 
-`FROZEN — v1.2`
+`FROZEN — v1.3`
 
 ### Changelog
 
-- **v1.2**: Full Material redesign (Section 3.1 of visual-improvements.md). Removed `ShadingModel` enum. Added `RendererShaderHandle`, `PipelineState`, `BlendMode`, `CullMode`. Replaced flat `Material` fields with pipeline-cache-backed `shader` + `pipeline` + generic `uniforms` blob (256 bytes). Added `renderer_create_shader()`, `renderer_builtin_shader(BuiltinShader)`, `renderer_set_time(float)`. Updated `renderer_enqueue_line_quad` with optional `BlendMode` parameter. Published `UnlitFSParams` / `BlinnPhongFSParams` for game-side uniform casting. Convenience factories (`renderer_make_unlit_material`, etc.) now fill the uniforms blob and set `shader = builtin_shader(...)`. Approved by human supervisor via visual-improvements.md (2026-05-03).
+- **v1.3**: Added `BlinnPhongShadowed` to `BuiltinShader` enum and `renderer_make_blinnphong_shadowed_material()` factory for shadow-mapping support (shadow-mapping feature, approved 2026-05-16). BlinnPhongShadowed reuses `BlinnPhongFSParams` for FS uniforms; shadow data is set internally by the renderer at binding=2.
 - **v1.1**: Added `FrameCallback` type and `renderer_set_frame_callback()` — required for engine/game to inject per-frame tick logic into the renderer-owned sokol_app loop. Approved by human supervisor.
 
 ---
@@ -195,7 +195,7 @@ void renderer_shutdown();
 RendererShaderHandle renderer_create_shader(const sg_shader_desc* desc);
 
 // Retrieve handles to the built-in shaders (no GPU work — just returns a stored handle).
-enum class BuiltinShader : uint8_t { Unlit = 0, BlinnPhong, Lambertian };
+enum class BuiltinShader : uint8_t { Unlit = 0, BlinnPhong = 1, Lambertian = 2, BlinnPhongShadowed = 3 };
 RendererShaderHandle renderer_builtin_shader(BuiltinShader s);
 
 // ---------------------------------------------------------------------------
@@ -285,7 +285,12 @@ RendererTextureHandle renderer_upload_cubemap(
 Material renderer_make_unlit_material(const float rgba[4]);
 Material renderer_make_lambertian_material(const float rgb[3]);
 Material renderer_make_blinnphong_material(const float rgb[3], float shininess,
-                                            RendererTextureHandle texture = {});
+                                             RendererTextureHandle texture = {});
+
+// Shadowed variant — reuses BlinnPhongFSParams for FS uniforms.
+// Shadow data is set internally by the renderer at binding=2.
+Material renderer_make_blinnphong_shadowed_material(const float rgb[3], float shininess,
+                                                     RendererTextureHandle texture = {});
 ```
 
 ---
