@@ -112,7 +112,9 @@ For Exploratory phase plans, keep "how" lighter — the approach is still being 
 
 **Acceptance criteria are observable.** Each task row's acceptance must be something a human or a build step can verify in under 30 seconds. "Compiles" is acceptable only for pure structural tasks (adding a struct, creating a file). Any task that touches behavior needs a behavioral criterion.
 
-**Parallel tasks must name their files.** Two tasks with `‖` must touch disjoint files. Write the specific files in the task description or acceptance notes.
+**The Files column must be exhaustive.** List every file the task modifies — not only files where new code is written, but also existing files that receive call-site additions (new function calls, new includes, new field assignments). A task that says "call X() from renderer_init()" must list renderer.cpp in its Files column even if renderer.cpp is primarily touched by a different task. If the Files column is incomplete, the parallelism check is unreliable and the implementing agent will discover the missing edit without a plan reference.
+
+**Parallel tasks must have strictly disjoint Files.** Two tasks with `‖` must touch no file in common. Apply this after confirming the Files columns are exhaustive — an incomplete Files column can make a conflict invisible.
 
 **The Human Checkpoint ends every phase.** It must include all four fields: what to run, what to look for, what "pass" looks like, and what "stop" means. The stop condition gates the next phase plan.
 
@@ -166,6 +168,7 @@ When invoked to fix a plan that Plan Groomer returned as NEEDS WORK:
 1. Read the existing `plan-pN.md` in full.
 2. Read the Groomer's numbered defect list.
 3. Address **each numbered defect** in sequence. Edit only what the defect names — do not rewrite sections the Groomer left uncontested.
+   - **If Feature Planner judges that a defect should not be addressed** (e.g., the suggested fix requires disproportionate restructuring), **stop**. Do not add a revision note, do not reset the Groomer Verdict, and do not tell the human to re-groom. Instead, present the defect and the rejection rationale to the human and wait for their explicit decision: either implement the fix as the Groomer suggested, or accept the risk and provide a note to embed in the plan. Resume revision only after the human has responded. Feature Planner may not unilaterally decline a groomer defect — doing so silently creates unchecked risk and will cause the same defect to be raised by the next Groomer.
 4. Add a revision note below the `Groomer Verdict` field, e.g.: `**Revision**: r2 — addressed groomer defects 1, 3, 5`.
 5. Reset `Groomer Verdict` to `PENDING` — the revised plan requires a fresh grooming pass.
 6. The plan filename does not change (`plan-pN.md`, not `plan-pN-r2.md`). Git carries the revision history.

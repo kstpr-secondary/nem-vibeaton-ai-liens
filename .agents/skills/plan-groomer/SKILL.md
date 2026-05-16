@@ -38,11 +38,11 @@ Run all checks. Flag every violation.
 5. Is the Gate condition stated? (Which prior checkpoint or brief approval enables this phase?)
 
 ### Parallelism correctness
-6. Do all `‖` tasks declare specific files, and are those files confirmed disjoint? Two tasks editing the same file cannot be `‖`.
+6. Do all `‖` tasks declare specific files, and are those files confirmed disjoint? Two tasks editing the same file cannot be `‖`. **Before checking disjointness, verify the Files columns are exhaustive**: scan each `‖` task's *description* for any mention of an edit to an existing file (e.g., "call X() from renderer_init()", "add ImGui checkbox in shadow_demo.cpp", "register with renderer_end_frame()"). If the description implies modifying a file that is absent from the Files column, flag the incomplete Files column first — disjointness cannot be reliably checked until it is corrected.
 7. Does every `GATE` task have at least one dependent task that follows it? A GATE with no dependents is just a sequential task.
 
 ### Scope and size
-8. Is the phase executable in one contiguous session without a feedback loop longer than ~90 minutes? If tasks total more than that, flag for splitting.
+8. Is the phase executable in one contiguous session without a feedback loop longer than ~90 minutes? If tasks total more than that, flag for splitting. **Structural heuristic**: a plan with more than 6 active tasks is likely too large. A plan that simultaneously spans (a) interface/spec changes, (b) multiple new shaders or pipelines, (c) frame-loop integration, AND (d) a new demo scene or debug tool almost certainly exceeds one session regardless of individual task size — flag for splitting at the natural code-seam boundary and suggest where the seam should fall.
 9. Are any tasks vague to the point where the implementing agent would have to make significant design decisions not captured here? Flag each such task. If three or more tasks are flagged as vague, OR if vagueness spans both a data-structure definition and the operations over that structure, add a recommendation to the defect list: "Systemic vagueness — Feature Planner should write `design.md` before revising the task decomposition (see feature-planner SKILL.md Step 4)."
 
 ### Project-specific: API and platform
@@ -61,7 +61,7 @@ Run all checks. Flag every violation.
 
 ### Algorithmic and math-heavy tasks
 18. If the plan names a specific algorithm (slab intersection, SAT, gift-wrapping, Euler integration, etc.), are the standard degenerate-input cases for that algorithm class called out in the task description or acceptance criteria? If not, flag as vague (re: check 9). Examples: slab intersection → parallel-ray / origin-on-face; SAT → zero cross-products, containment; gift-wrapping → initial edge validity, colinear candidates.
-19. If the plan specifies a data structure **and** describes operations over that structure in the same plan, verify that the struct contains all fields those operations need without per-call reconstruction. Flag any gap as a structural defect — retrofitting struct fields during implementation is not an implementor decision, it is a plan defect.
+19. If the plan specifies a data structure **and** describes operations over that structure in the same plan, verify that the struct contains all fields those operations need without per-call reconstruction. Flag any gap as a structural defect — retrofitting struct fields during implementation is not an implementor decision, it is a plan defect. **To execute this check**: for each struct defined or modified in any task, collect every field reference to that struct across ALL other tasks (e.g., `shadow_state.pass`, `state.attachments`, `body.angular_velocity`). Compare the union of referenced field names against the struct's declared fields. Any field referenced but not present in the struct definition is a plan defect that must be called out by name.
 20. If any task describes hot-path code (narrowphase collision, per-tick physics, per-frame queries), is a complexity bound or allocation budget stated? "Tests pass" is insufficient as the sole acceptance criterion for hot-path tasks; flag the absence of an explicit performance requirement.
 
 ### Cross-workstream consultation

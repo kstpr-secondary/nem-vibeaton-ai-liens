@@ -129,6 +129,7 @@ When all phase checkpoints pass and the human signs off:
 |-------|------|---------|------|
 | Feature Planner | `.agents/skills/feature-planner/SKILL.md` | Creates and structures feature artifacts | Start of feature / after each checkpoint |
 | Plan Groomer | `.agents/skills/plan-groomer/SKILL.md` | Adversarial review before execution | After every Phase Plan or Roadmap |
+| Planning Loop Retrospector | `.agents/skills/planning-loop-retrospector/SKILL.md` | Analyzes repeated planner↔groomer failures and fixes the responsible workflow docs or skills | After repeated grooming failures, groomer disagreement, or a missed blocker after PASS |
 | Doc Updater | `.agents/skills/doc-updater/SKILL.md` | Updates `docs/` to reflect what was built | Once, after final checkpoint, before archive |
 
 Existing skills that remain active:

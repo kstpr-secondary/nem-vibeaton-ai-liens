@@ -35,11 +35,11 @@ Subsequent phases will expand to full Cascaded Shadow Maps (Phase 2) and PCF sof
 - Auto-cast: all `render_queue=0` draws are re-rendered in the shadow pass without API change.
 - `BlinnPhongShadowed` builtin shader variant: opaque geometry that receives shadows uses this shader; `light_view_proj` and shadow map binding are renderer-internal.
 - `renderer_make_blinnphong_shadowed_material()` convenience factory (mirrors `renderer_make_blinnphong_material()`).
-- Shadow map debug overlay (small corner quad, toggled via ImGui).
-- Renderer demo scene for shadow validation.
 - Fixed orthographic light projection sized to cover the ~1 km game arena (hardcoded constants, architecture supports future `renderer_set_shadow_config()` without restructuring).
 
 **Out (Phase 1, deferred)**:
+- Shadow map debug overlay (small corner quad, toggled via ImGui) - Phase 2.
+- Renderer demo scene for shadow validation - Phase 2.
 - PCF (soft shadow edges) — Phase 3.
 - CSM (multiple cascades, frustum partitioning, cascade blend bands, texel snapping) — Phase 2.
 - `renderer_set_shadow_config()` runtime API — Phase 3.
