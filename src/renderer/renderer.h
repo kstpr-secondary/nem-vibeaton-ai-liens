@@ -1,4 +1,4 @@
-// FROZEN — v1.2
+// FROZEN — v1.3
 // Source of truth: docs/interfaces/renderer-interface-spec.md
 // Do NOT edit without human supervisor approval and version bump.
 
