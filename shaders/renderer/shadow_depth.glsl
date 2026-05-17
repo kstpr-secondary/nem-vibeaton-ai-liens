@@ -15,7 +15,9 @@ void main() {
 @end
 
 @fs fs_shadow
+out vec4 frag_color;
 void main() {
+    frag_color = vec4(gl_FragDepth, gl_FragDepth, gl_FragDepth, 1.0);
 }
 @end
 

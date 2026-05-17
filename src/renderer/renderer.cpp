@@ -24,6 +24,7 @@
 #include "texture.h"
 #include "skybox.h"
 #include "pipeline_shadow.h"
+#include "pipeline_shadow_debug.h"
 #include "shadow_pass.h"
 
 #include <glm/glm.hpp>
@@ -48,6 +49,7 @@
 #include "pipeline_blinnphong_shadowed.h"
 #include "shaders/blinnphong_shadowed.glsl.h"
 #include "shaders/shadow_depth.glsl.h"
+#include "shaders/shadow_debug.glsl.h"
 #include "shadow_pass.h"
 #include "mesh_internal.h"
 
@@ -131,6 +133,9 @@ struct RendererState {
 
     // Shadow depth (Phase 1 hard shadows)
     sg_pipeline pipeline_shadow;
+
+    // Shadow debug overlay (Phase 2 — greyscale depth visualization)
+    sg_pipeline pipeline_shadow_debug;
 
     // Blinn-Phong Shadowed (Phase 1 hard shadows — shader + pipeline + factory, T-4)
     sg_pipeline pipeline_blinnphong_shadowed;
@@ -462,6 +467,8 @@ void renderer_internal_init() {
     state.pass_action.colors[0].clear_value.g = state.config.clear_g;
     state.pass_action.colors[0].clear_value.b = state.config.clear_b;
     state.pass_action.colors[0].clear_value.a = state.config.clear_a;
+    state.pass_action.depth.load_action = SG_LOADACTION_CLEAR;
+    state.pass_action.depth.clear_value = 1.0f;
 
     // Dummy 1×1 white texture for untextured BlinnPhong draws.
     {
@@ -514,6 +521,14 @@ void renderer_internal_init() {
         printf("[renderer] shadow depth pipeline created\n");
     }
 
+    // Shadow debug overlay pipeline (Phase 2 — greyscale depth visualization)
+    state.pipeline_shadow_debug = create_pipeline_shadow_debug(pipeline_cache[0].pipeline);
+    if (sg_query_pipeline_state(state.pipeline_shadow_debug) != SG_RESOURCESTATE_VALID) {
+        printf("[renderer] WARNING: shadow debug pipeline creation failed — debug overlay disabled\n");
+    } else {
+        printf("[renderer] shadow_debug pipeline created\n");
+    }
+
     // Blinn-Phong Shadowed pipeline (T-4: Phase 1)
     state.pipeline_blinnphong_shadowed = create_pipeline_blinnphong_shadowed(pipeline_cache[0].pipeline);
     if (sg_query_pipeline_state(state.pipeline_blinnphong_shadowed) != SG_RESOURCESTATE_VALID) {
@@ -526,6 +541,9 @@ void renderer_internal_init() {
     if (!shadow_pass_init()) {
         printf("[renderer] WARNING: shadow map resource init failed — shadows disabled\n");
     }
+
+    // Shadow debug overlay buffers (Phase 2 — initialized once at startup, after shadow_pass)
+    shadow_debug_init();
 
     // Line-quad pipelines (opaque + additive)
     make_line_quad_pipelines();
@@ -623,12 +641,16 @@ void renderer_shutdown() {
     if (state.pipeline_line_quad_additive.id != 0) { sg_destroy_pipeline(state.pipeline_line_quad_additive); state.pipeline_line_quad_additive = {}; }
     if (state.pipeline_skybox.id != 0)          { sg_destroy_pipeline(state.pipeline_skybox); state.pipeline_skybox = {}; }
     if (state.pipeline_shadow.id != 0)                   { sg_destroy_pipeline(state.pipeline_shadow); state.pipeline_shadow = {}; }
+    if (state.pipeline_shadow_debug.id != 0)             { sg_destroy_pipeline(state.pipeline_shadow_debug); state.pipeline_shadow_debug = {}; }
     if (state.pipeline_blinnphong_shadowed.id != 0)     { sg_destroy_pipeline(state.pipeline_blinnphong_shadowed); state.pipeline_blinnphong_shadowed = {}; }
 
     // Destroy dummy BlinnPhong resources
     if (state.dummy_blinnphong_tex.id != 0)     { sg_destroy_image(state.dummy_blinnphong_tex); state.dummy_blinnphong_tex = {}; }
     if (state.dummy_blinnphong_view.id != 0)    { sg_destroy_view(state.dummy_blinnphong_view); state.dummy_blinnphong_view = {}; }
     if (state.dummy_blinnphong_smp.id != 0)     { sg_destroy_sampler(state.dummy_blinnphong_smp); state.dummy_blinnphong_smp = {}; }
+
+    // Shadow debug overlay buffers
+    shadow_debug_shutdown();
 
     // Shadow map GPU resources (T-3)
     shadow_pass_shutdown();
@@ -1116,18 +1138,25 @@ void renderer_end_frame() {
         }
     }
 
-    // Compute triangle count for the frame
-    {
-        int total = 0;
-        for (int i = 0; i < state.draw_count; ++i) {
-            total += static_cast<int>(mesh_index_count_get(state.draw_queue[i].mesh.id)) / 3;
+   // --- Shadow debug overlay (Phase 2) -----------------------------------------
+    if (shadow_debug_is_visible()) {
+        if (state.pipeline_shadow_debug.id != 0) {
+            shadow_debug_draw(state.pipeline_shadow_debug);
         }
-        state.triangle_count = total;
     }
 
-    simgui_render();
+    // Compute triangle count for the frame
+     {
+         int total = 0;
+         for (int i = 0; i < state.draw_count; ++i) {
+             total += static_cast<int>(mesh_index_count_get(state.draw_queue[i].mesh.id)) / 3;
+         }
+         state.triangle_count = total;
+     }
 
-    // Log cull count once per 60 frames
+     simgui_render();
+
+     // Log cull count once per 60 frames
     {
         static int log_frame = 0;
         if (state.cull_count > 0 && ++log_frame >= 60) {

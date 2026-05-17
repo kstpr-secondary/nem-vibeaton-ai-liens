@@ -38,8 +38,10 @@ sg_pipeline create_pipeline_shadow(sg_pipeline magenta_fallback) {
     desc.depth.pixel_format  = SG_PIXELFORMAT_DEPTH;
     desc.depth.compare       = SG_COMPAREFUNC_LESS_EQUAL;
     desc.depth.write_enabled = true;
-    // No color attachment — depth-only pass.
-    desc.colors[0].pixel_format = SG_PIXELFORMAT_NONE;
+    // R32F color attachment — captures depth as RGBA for debug visualization.
+    // Required because OpenGL 3.3 doesn't allow non-comparison sampling of depth-stencil textures.
+    desc.color_count         = 1;
+    desc.colors[0].pixel_format = SG_PIXELFORMAT_R32F;
     desc.label                  = "shadow-depth-pipeline";
 
     s_shadow_pip = sg_make_pipeline(&desc);

@@ -1,5 +1,6 @@
 #include "renderer.h"
 #include "paths.h"
+#include "shadow_pass.h"
 #include "sokol_app.h"
 
 #include "stb_image.h"
@@ -21,11 +22,20 @@
 
 enum class ShadingOverride { Mixed, AllUnlit, AllLambertian };
 
+struct ShadowDemo {
+    bool   initialized = false;
+    float  time        = 0.0f;
+};
+
 struct AppState {
     bool               initialized = false;
     ShadingOverride    override    = ShadingOverride::Mixed;
     float              time        = 0.0f;
     bool               culling_on  = true;
+    bool               shadow_demo_active = false;
+    bool               show_shadow_map = false;
+
+    ShadowDemo shadow_demo;
 
     // Meshes
     RendererMeshHandle sphere_8;      // low-poly (transparent)
@@ -116,6 +126,99 @@ static glm::vec3 ring_pos(float radius, float angle, float y_offset) {
     return glm::vec3(radius * cosf(angle), y_offset, radius * sinf(angle));
 }
 
+// ---------------------------------------------------------------------------
+// Shadow demo scene
+// ---------------------------------------------------------------------------
+
+static void render_shadow_demo(AppState& app, float dt) {
+    app.shadow_demo.time += dt;
+
+    // Orbit camera: eye = (12*cos(t*2pi/15), 8, 12*sin(t*2pi/15)) looking at (0, 0.5, 0)
+    const float period = 15.0f;
+    const float angle = app.shadow_demo.time * (6.2831853f / period);
+    glm::vec3 eye(12.0f * cosf(angle), 8.0f, 12.0f * sinf(angle));
+    glm::vec3 target(0.0f, 0.5f, 0.0f);
+
+    glm::mat4 view = glm::lookAt(eye, target, glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 proj = glm::perspective(glm::radians(60.0f),
+                                       1280.0f / 720.0f,
+                                       0.1f, 300.0f);
+    RendererCamera cam;
+    std::memcpy(cam.view,       glm::value_ptr(view), sizeof(cam.view));
+    std::memcpy(cam.projection, glm::value_ptr(proj), sizeof(cam.projection));
+    renderer_set_camera(cam);
+
+    // Directional light: direction = {0.5f, 1.0f, 0.3f}, color = {1,1,1}, intensity = 1.8
+    DirectionalLight light;
+    light.direction[0] = 0.5f; light.direction[1] = 1.0f; light.direction[2] = 0.3f;
+    light.color[0]     = 1.0f; light.color[1]     = 1.0f; light.color[2]     = 1.0f;
+    light.intensity    = 1.8f;
+    renderer_set_directional_light(light);
+
+    // Ground plane: scale(translate(I, {0,-0.15,0}), {20,0.3,20})
+    {
+        glm::mat4 model = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.15f, 0.0f)), glm::vec3(20.0f, 0.3f, 20.0f));
+        float transform[16];
+        std::memcpy(transform, glm::value_ptr(model), sizeof(transform));
+        float ground_rgb[] = {0.5f, 0.45f, 0.4f};
+        Material mat = renderer_make_blinnphong_shadowed_material(ground_rgb, 16.0f);
+        renderer_enqueue_draw(app.cube, transform, mat);
+    }
+
+    // Tall post: scale(translate(I, {0,2,0}), {0.8,4,0.8})
+    {
+        glm::mat4 model = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f)), glm::vec3(0.8f, 4.0f, 0.8f));
+        float transform[16];
+        std::memcpy(transform, glm::value_ptr(model), sizeof(transform));
+        float post_rgb[] = {0.9f, 0.9f, 0.9f};
+        Material mat = renderer_make_blinnphong_shadowed_material(post_rgb, 32.0f);
+        renderer_enqueue_draw(app.cube, transform, mat);
+    }
+
+    // Floating slab: scale(translate(I, {-2,4.5,0}), {3,0.4,1.5})
+    {
+        glm::mat4 model = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 4.5f, 0.0f)), glm::vec3(3.0f, 0.4f, 1.5f));
+        float transform[16];
+        std::memcpy(transform, glm::value_ptr(model), sizeof(transform));
+        float slab_rgb[] = {0.6f, 0.55f, 0.5f};
+        Material mat = renderer_make_blinnphong_shadowed_material(slab_rgb, 16.0f);
+        renderer_enqueue_draw(app.cube, transform, mat);
+    }
+
+    // Receiver sphere: sphere_12 at {3, 0.5, 0}, scale {1,1,1}
+    {
+        glm::mat4 model = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, 0.5f, 0.0f)), glm::vec3(1.0f, 1.0f, 1.0f));
+        float transform[16];
+        std::memcpy(transform, glm::value_ptr(model), sizeof(transform));
+        float receiver_rgb[] = {0.3f, 0.4f, 0.9f};
+        Material mat = renderer_make_blinnphong_shadowed_material(receiver_rgb, 64.0f);
+        renderer_enqueue_draw(app.sphere_12, transform, mat);
+    }
+
+    // Comparison sphere (non-shadow-receiving): sphere_12 at {-5, 0.5, 2}
+    {
+        glm::mat4 model = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-5.0f, 0.5f, 2.0f)), glm::vec3(1.0f, 1.0f, 1.0f));
+        float transform[16];
+        std::memcpy(transform, glm::value_ptr(model), sizeof(transform));
+        float comp_rgb[] = {0.95f, 0.85f, 0.2f};
+        Material mat = renderer_make_blinnphong_material(comp_rgb, 64.0f);
+        renderer_enqueue_draw(app.sphere_12, transform, mat);
+    }
+
+    // Transparent sphere: sphere_8 at {1, 2.5, 3}, scale {0.6, 0.6, 0.6}
+    {
+        glm::mat4 model = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 2.5f, 3.0f)), glm::vec3(0.6f, 0.6f, 0.6f));
+        float transform[16];
+        std::memcpy(transform, glm::value_ptr(model), sizeof(transform));
+        float trans_rgba[] = {1.0f, 0.25f, 0.25f, 0.35f};
+        Material mat = renderer_make_unlit_material(trans_rgba);
+        mat.pipeline.blend = BlendMode::AlphaBlend;
+        mat.pipeline.depth_write = false;
+        mat.pipeline.render_queue = 2;
+        renderer_enqueue_draw(app.sphere_8, transform, mat);
+    }
+}
+
 static void on_frame(float dt, void*) {
     if (!g_app.initialized) {
         // ---- Meshes ----
@@ -190,275 +293,279 @@ static void on_frame(float dt, void*) {
     light.intensity    = 1.8f;
     renderer_set_directional_light(light);
 
-    // =====================================================================
-    // SECTION 1: Center display — 8 showcase shapes (1 per material)
-    // =====================================================================
-    {
-        const float center_y = 0.0f;
-
-        // 1. Unlit red cube (center)
+    if (g_app.shadow_demo_active) {
+        render_shadow_demo(g_app, dt);
+    } else {
+        // =====================================================================
+        // SECTION 1: Center display — 8 showcase shapes (1 per material)
+        // =====================================================================
         {
-            float rgb[3] = {1.0f, 0.2f, 0.2f};
-            spawn_shape(g_app.cube, glm::vec3(0.0f, center_y, 0.0f), 1.5f, rgb, 1.0f, 0);
-        }
+            const float center_y = 0.0f;
 
-        // 2. Lambertian green sphere (left)
-        {
-            float rgb[3] = {0.2f, 1.0f, 0.3f};
-            spawn_shape(g_app.sphere_12, glm::vec3(-5.0f, center_y, 0.0f), 1.0f, rgb, 1.0f, 1);
-        }
-
-        // 3. Lambertian blue sphere (right)
-        {
-            float rgb[3] = {0.2f, 0.4f, 1.0f};
-            spawn_shape(g_app.sphere_12, glm::vec3(5.0f, center_y, 0.0f), 1.0f, rgb, 1.0f, 1);
-        }
-
-        // 4. Blinn-Phong textured sphere (front-left) — uses first available texture
-        {
-            float rgb[3] = {1.0f, 1.0f, 1.0f};
-            RendererTextureHandle tex = {};
-            if (g_app.tex_count > 0) tex = g_app.textures[0];
-            spawn_shape(g_app.sphere_16, glm::vec3(-2.5f, center_y, 4.0f), 1.2f, rgb, 1.0f, 2, tex);
-        }
-
-        // 5. Blinn-Phong textured sphere (front-right) — second texture, high shininess
-        {
-            float rgb[3] = {1.0f, 1.0f, 1.0f};
-            RendererTextureHandle tex = {};
-            if (g_app.tex_count > 1) tex = g_app.textures[1];
-            spawn_shape(g_app.sphere_16, glm::vec3(2.5f, center_y, 4.0f), 1.2f, rgb, 1.0f, 2, tex);
-        }
-
-        // 6. Blinn-Phong untextured gold sphere (back-left) — very shiny
-        {
-            float rgb[3] = {1.0f, 0.85f, 0.2f};
-            spawn_shape(g_app.sphere_16, glm::vec3(-4.0f, center_y, -5.0f), 1.1f, rgb, 1.0f, 2, {});
-        }
-
-        // 7. Transparent red sphere (floating above)
-        {
-            float rgb[3] = {1.0f, 0.3f, 0.3f};
-            spawn_shape(g_app.sphere_8, glm::vec3(0.0f, center_y + 4.0f, 2.0f), 0.6f, rgb, 0.35f, 0);
-        }
-
-        // 8. Transparent blue sphere (floating above)
-        {
-            float rgb[3] = {0.3f, 0.6f, 1.0f};
-            spawn_shape(g_app.sphere_8, glm::vec3(0.0f, center_y + 5.5f, -2.0f), 0.5f, rgb, 0.45f, 0);
-        }
-    }
-
-    // =====================================================================
-    // SECTION 2: Ring of Lambertian spheres — 36 shapes at medium distance
-    // =====================================================================
-    {
-        const float radius = 18.0f;
-        int count = 0;
-        for (int i = 0; i < 36; ++i) {
-            float a = (float)i / 36.0f * 6.2831853f;
-            float y = (static_cast<float>(i % 3) - 1.0f) * 2.5f;
-
-            // Color varies by index
-            float r = 0.3f + 0.7f * static_cast<float>((i * 7) % 11) / 11.0f;
-            float g = 0.3f + 0.7f * static_cast<float>((i * 13) % 11) / 11.0f;
-            float b = 0.3f + 0.7f * static_cast<float>((i * 19) % 11) / 11.0f;
-            float rgb[3] = {r, g, b};
-
-            spawn_shape(g_app.sphere_12, ring_pos(radius, a, y), 0.6f + (i % 5) * 0.1f,
-                        rgb, 1.0f, 1);
-            ++count;
-        }
-        printf("[info] Section 2: %d Lambertian spheres at radius %.1f\n", count, radius);
-    }
-
-    // =====================================================================
-    // SECTION 3: Ring of Blinn-Phong textured spheres — 24 shapes far out
-    // =====================================================================
-    {
-        const float radius = 25.0f;
-        int count = 0;
-        for (int i = 0; i < 24; ++i) {
-            float a = (float)i / 24.0f * 6.2831853f;
-            float y = (static_cast<float>(i % 2)) * 3.0f;
-
-            // Cycle through textures
-            RendererTextureHandle tex = {};
-            if (g_app.tex_count > 0) {
-                tex = g_app.textures[i % g_app.tex_count];
+            // 1. Unlit red cube (center)
+            {
+                float rgb[3] = {1.0f, 0.2f, 0.2f};
+                spawn_shape(g_app.cube, glm::vec3(0.0f, center_y, 0.0f), 1.5f, rgb, 1.0f, 0);
             }
 
-            float rgb[3] = {1.0f, 1.0f, 1.0f}; // white base color — texture drives appearance
-
-            spawn_shape(g_app.sphere_16, ring_pos(radius, a, y), 0.8f,
-                        rgb, 1.0f, 2, tex);
-            ++count;
-        }
-        printf("[info] Section 3: %d Blinn-Phong textured spheres at radius %.1f\n", count, radius);
-    }
-
-    // =====================================================================
-    // SECTION 4: Ring of transparent spheres — 20 shapes
-    // =====================================================================
-    {
-        const float radius = 12.0f;
-        int count = 0;
-        for (int i = 0; i < 20; ++i) {
-            float a = (float)i / 20.0f * 6.2831853f;
-            float y = static_cast<float>(i % 4) * 1.5f - 2.0f;
-
-            // Varying alpha: 0.15 to 0.55
-            float alpha = 0.15f + static_cast<float>(i % 8) * 0.05f;
-
-            // Rainbow-ish colors
-            float hue = (float)i / 20.0f;
-            float r = sinf(hue * 6.28f);
-            float g = sinf(hue * 6.28f + 2.094f);
-            float b = sinf(hue * 6.28f + 4.188f);
-            float rgb[3] = {fabsf(r), fabsf(g), fabsf(b)};
-
-            spawn_shape(g_app.sphere_8, ring_pos(radius, a, y), 0.4f + (i % 3) * 0.1f,
-                        rgb, alpha, 0);
-            ++count;
-        }
-        printf("[info] Section 4: %d transparent spheres at radius %.1f\n", count, radius);
-    }
-
-    // =====================================================================
-    // SECTION 5: Distant cubes — 20 unlit shapes at far range (culling test)
-    // =====================================================================
-    {
-        const float radius = 40.0f;
-        int count = 0;
-        for (int i = 0; i < 20; ++i) {
-            float a = (float)i / 20.0f * 6.2831853f;
-            float y = static_cast<float>(i % 3 - 1) * 4.0f;
-
-            // Muted earthy colors
-            float v = 0.3f + static_cast<float>((i * 3) % 7) * 0.1f;
-            float rgb[3] = {v, v * 0.8f, v * 0.6f};
-
-            spawn_shape(g_app.cube, ring_pos(radius, a, y), 0.8f + (i % 4) * 0.2f,
-                        rgb, 1.0f, 0);
-            ++count;
-        }
-        printf("[info] Section 5: %d unlit cubes at radius %.1f\n", count, radius);
-    }
-
-    // =====================================================================
-    // SECTION 6: Scatter of mixed shapes — ~50 random positions
-    // =====================================================================
-    {
-        srand(12345);
-        int count = 0;
-
-        for (int i = 0; i < 50; ++i) {
-            float r = 8.0f + static_cast<float>(rand() % 35) * 0.8f;
-            float theta = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 6.2831853f;
-            float phi = (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 2.5f;
-
-            glm::vec3 pos(
-                r * cosf(phi) * cosf(theta),
-                r * sinf(phi) * 0.6f,
-                r * cosf(phi) * sinf(theta)
-            );
-
-            float scale = 0.3f + static_cast<float>(rand() % 25) * 0.1f;
-
-            // Pick material type
-            int type = rand() % 5;
-            float r_c = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-            float g_c = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-            float b_c = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-            float rgb[3] = {r_c, g_c, b_c};
-
-            if (type < 2) {
-                // Lambertian sphere
-                spawn_shape(g_app.sphere_12, pos, scale, rgb, 1.0f, 1);
-            } else if (type == 2) {
-                // Unlit cube
-                spawn_shape(g_app.cube, pos, scale * 0.8f, rgb, 1.0f, 0);
-            } else if (type == 3) {
-                // Transparent sphere
-                float alpha = 0.2f + static_cast<float>(rand() % 30) * 0.02f;
-                spawn_shape(g_app.sphere_8, pos, scale * 0.6f, rgb, alpha, 0);
-            } else {
-                // Blinn-Phong sphere (untextured)
-                float shininess = 32.0f + static_cast<float>(rand() % 4) * 64.0f;
-                glm::mat4 model = glm::scale(glm::translate(glm::mat4(1.0f), pos), glm::vec3(scale));
-                float transform[16];
-                std::memcpy(transform, glm::value_ptr(model), sizeof(transform));
-
-                Material mat = renderer_make_blinnphong_material(rgb, shininess, {});
-                renderer_enqueue_draw(g_app.sphere_12, transform, mat);
-            }
-            ++count;
-        }
-        printf("[info] Section 6: %d random mixed shapes\n", count);
-    }
-
-    // =====================================================================
-    // SECTION 7: Extra distant ring — 30 Blinn-Phong spheres at very far range
-    //          Tests frustum culling edge cases
-    // =====================================================================
-    {
-        const float radius = 55.0f;
-        int count = 0;
-        for (int i = 0; i < 30; ++i) {
-            float a = (float)i / 30.0f * 6.2831853f;
-            float y = static_cast<float>(i % 5 - 2) * 2.0f;
-
-            // Darker colors at distance
-            float brightness = 0.4f + static_cast<float>((i * 5) % 7) * 0.1f;
-            float rgb[3] = {brightness, brightness * 0.8f, brightness * 0.6f};
-
-            // Cycle textures
-            RendererTextureHandle tex = {};
-            if (g_app.tex_count > 0) {
-                tex = g_app.textures[i % g_app.tex_count];
+            // 2. Lambertian green sphere (left)
+            {
+                float rgb[3] = {0.2f, 1.0f, 0.3f};
+                spawn_shape(g_app.sphere_12, glm::vec3(-5.0f, center_y, 0.0f), 1.0f, rgb, 1.0f, 1);
             }
 
-            spawn_shape(g_app.sphere_12, ring_pos(radius, a, y), 0.5f,
-                        rgb, 1.0f, 2, tex);
-            ++count;
+            // 3. Lambertian blue sphere (right)
+            {
+                float rgb[3] = {0.2f, 0.4f, 1.0f};
+                spawn_shape(g_app.sphere_12, glm::vec3(5.0f, center_y, 0.0f), 1.0f, rgb, 1.0f, 1);
+            }
+
+            // 4. Blinn-Phong textured sphere (front-left) — uses first available texture
+            {
+                float rgb[3] = {1.0f, 1.0f, 1.0f};
+                RendererTextureHandle tex = {};
+                if (g_app.tex_count > 0) tex = g_app.textures[0];
+                spawn_shape(g_app.sphere_16, glm::vec3(-2.5f, center_y, 4.0f), 1.2f, rgb, 1.0f, 2, tex);
+            }
+
+            // 5. Blinn-Phong textured sphere (front-right) — second texture, high shininess
+            {
+                float rgb[3] = {1.0f, 1.0f, 1.0f};
+                RendererTextureHandle tex = {};
+                if (g_app.tex_count > 1) tex = g_app.textures[1];
+                spawn_shape(g_app.sphere_16, glm::vec3(2.5f, center_y, 4.0f), 1.2f, rgb, 1.0f, 2, tex);
+            }
+
+            // 6. Blinn-Phong untextured gold sphere (back-left) — very shiny
+            {
+                float rgb[3] = {1.0f, 0.85f, 0.2f};
+                spawn_shape(g_app.sphere_16, glm::vec3(-4.0f, center_y, -5.0f), 1.1f, rgb, 1.0f, 2, {});
+            }
+
+            // 7. Transparent red sphere (floating above)
+            {
+                float rgb[3] = {1.0f, 0.3f, 0.3f};
+                spawn_shape(g_app.sphere_8, glm::vec3(0.0f, center_y + 4.0f, 2.0f), 0.6f, rgb, 0.35f, 0);
+            }
+
+            // 8. Transparent blue sphere (floating above)
+            {
+                float rgb[3] = {0.3f, 0.6f, 1.0f};
+                spawn_shape(g_app.sphere_8, glm::vec3(0.0f, center_y + 5.5f, -2.0f), 0.5f, rgb, 0.45f, 0);
+            }
         }
-        printf("[info] Section 7: %d Blinn-Phong spheres at radius %.1f (far)\n", count, radius);
-    }
 
-    // =====================================================================
-    // SECTION 8: Near-field cubes — 10 close cubes for parallax test
-    // =====================================================================
-    {
-        int count = 0;
-        for (int i = 0; i < 10; ++i) {
-            float a = (float)i / 10.0f * 3.1415926f; // half-circle in front
-            float r = 6.0f + static_cast<float>(i % 3) * 1.5f;
-            glm::vec3 pos(r * cosf(a), (static_cast<float>(i % 3) - 1) * 2.0f, r * sinf(a));
+        // =====================================================================
+        // SECTION 2: Ring of Lambertian spheres — 36 shapes at medium distance
+        // =====================================================================
+        {
+            const float radius = 18.0f;
+            int count = 0;
+            for (int i = 0; i < 36; ++i) {
+                float a = (float)i / 36.0f * 6.2831853f;
+                float y = (static_cast<float>(i % 3) - 1.0f) * 2.5f;
 
-            float v = 0.5f + static_cast<float>(i % 4) * 0.15f;
-            float rgb[3] = {v, v * 0.7f, v * 0.9f};
+                // Color varies by index
+                float r = 0.3f + 0.7f * static_cast<float>((i * 7) % 11) / 11.0f;
+                float g = 0.3f + 0.7f * static_cast<float>((i * 13) % 11) / 11.0f;
+                float b = 0.3f + 0.7f * static_cast<float>((i * 19) % 11) / 11.0f;
+                float rgb[3] = {r, g, b};
 
-            spawn_shape(g_app.cube, pos, 0.6f, rgb, 1.0f, 0);
-            ++count;
+                spawn_shape(g_app.sphere_12, ring_pos(radius, a, y), 0.6f + (i % 5) * 0.1f,
+                            rgb, 1.0f, 1);
+                ++count;
+            }
+            printf("[info] Section 2: %d Lambertian spheres at radius %.1f\n", count, radius);
         }
-        printf("[info] Section 8: %d near-field cubes\n", count);
-    }
 
-    // =====================================================================
-    // Total shape count
-    // =====================================================================
-    int total_shapes = 8 + 36 + 24 + 20 + 20 + 50 + 30 + 10; // = 208
-    printf("[info] Total shapes in scene: %d\n", total_shapes);
+        // =====================================================================
+        // SECTION 3: Ring of Blinn-Phong textured spheres — 24 shapes far out
+        // =====================================================================
+        {
+            const float radius = 25.0f;
+            int count = 0;
+            for (int i = 0; i < 24; ++i) {
+                float a = (float)i / 24.0f * 6.2831853f;
+                float y = (static_cast<float>(i % 2)) * 3.0f;
 
-    // ---- Laser line-quads (subtle ambient lines) ----
-    {
-        struct LaserBeam { float p0[3]; float p1[3]; float width; float color[4]; };
-        const LaserBeam lasers[] = {
-            { {-15.0f, 8.0f, -10.0f}, {15.0f, -2.0f, 10.0f}, 0.04f, {0.3f, 0.1f, 0.5f, 0.3f} },
-            { {-10.0f, -3.0f, 12.0f}, {10.0f,  3.0f, -8.0f}, 0.05f, {0.1f, 0.4f, 0.5f, 0.25f} },
-        };
-        for (const auto& laser : lasers) {
-            renderer_enqueue_line_quad(laser.p0, laser.p1, laser.width, laser.color);
+                // Cycle through textures
+                RendererTextureHandle tex = {};
+                if (g_app.tex_count > 0) {
+                    tex = g_app.textures[i % g_app.tex_count];
+                }
+
+                float rgb[3] = {1.0f, 1.0f, 1.0f}; // white base color — texture drives appearance
+
+                spawn_shape(g_app.sphere_16, ring_pos(radius, a, y), 0.8f,
+                            rgb, 1.0f, 2, tex);
+                ++count;
+            }
+            printf("[info] Section 3: %d Blinn-Phong textured spheres at radius %.1f\n", count, radius);
+        }
+
+        // =====================================================================
+        // SECTION 4: Ring of transparent spheres — 20 shapes
+        // =====================================================================
+        {
+            const float radius = 12.0f;
+            int count = 0;
+            for (int i = 0; i < 20; ++i) {
+                float a = (float)i / 20.0f * 6.2831853f;
+                float y = static_cast<float>(i % 4) * 1.5f - 2.0f;
+
+                // Varying alpha: 0.15 to 0.55
+                float alpha = 0.15f + static_cast<float>(i % 8) * 0.05f;
+
+                // Rainbow-ish colors
+                float hue = (float)i / 20.0f;
+                float r = sinf(hue * 6.28f);
+                float g = sinf(hue * 6.28f + 2.094f);
+                float b = sinf(hue * 6.28f + 4.188f);
+                float rgb[3] = {fabsf(r), fabsf(g), fabsf(b)};
+
+                spawn_shape(g_app.sphere_8, ring_pos(radius, a, y), 0.4f + (i % 3) * 0.1f,
+                            rgb, alpha, 0);
+                ++count;
+            }
+            printf("[info] Section 4: %d transparent spheres at radius %.1f\n", count, radius);
+        }
+
+        // =====================================================================
+        // SECTION 5: Distant cubes — 20 unlit shapes at far range (culling test)
+        // =====================================================================
+        {
+            const float radius = 40.0f;
+            int count = 0;
+            for (int i = 0; i < 20; ++i) {
+                float a = (float)i / 20.0f * 6.2831853f;
+                float y = static_cast<float>(i % 3 - 1) * 4.0f;
+
+                // Muted earthy colors
+                float v = 0.3f + static_cast<float>((i * 3) % 7) * 0.1f;
+                float rgb[3] = {v, v * 0.8f, v * 0.6f};
+
+                spawn_shape(g_app.cube, ring_pos(radius, a, y), 0.8f + (i % 4) * 0.2f,
+                            rgb, 1.0f, 0);
+                ++count;
+            }
+            printf("[info] Section 5: %d unlit cubes at radius %.1f\n", count, radius);
+        }
+
+        // =====================================================================
+        // SECTION 6: Scatter of mixed shapes — ~50 random positions
+        // =====================================================================
+        {
+            srand(12345);
+            int count = 0;
+
+            for (int i = 0; i < 50; ++i) {
+                float r = 8.0f + static_cast<float>(rand() % 35) * 0.8f;
+                float theta = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 6.2831853f;
+                float phi = (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 2.5f;
+
+                glm::vec3 pos(
+                    r * cosf(phi) * cosf(theta),
+                    r * sinf(phi) * 0.6f,
+                    r * cosf(phi) * sinf(theta)
+                );
+
+                float scale = 0.3f + static_cast<float>(rand() % 25) * 0.1f;
+
+                // Pick material type
+                int type = rand() % 5;
+                float r_c = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+                float g_c = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+                float b_c = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+                float rgb[3] = {r_c, g_c, b_c};
+
+                if (type < 2) {
+                    // Lambertian sphere
+                    spawn_shape(g_app.sphere_12, pos, scale, rgb, 1.0f, 1);
+                } else if (type == 2) {
+                    // Unlit cube
+                    spawn_shape(g_app.cube, pos, scale * 0.8f, rgb, 1.0f, 0);
+                } else if (type == 3) {
+                    // Transparent sphere
+                    float alpha = 0.2f + static_cast<float>(rand() % 30) * 0.02f;
+                    spawn_shape(g_app.sphere_8, pos, scale * 0.6f, rgb, alpha, 0);
+                } else {
+                    // Blinn-Phong sphere (untextured)
+                    float shininess = 32.0f + static_cast<float>(rand() % 4) * 64.0f;
+                    glm::mat4 model = glm::scale(glm::translate(glm::mat4(1.0f), pos), glm::vec3(scale));
+                    float transform[16];
+                    std::memcpy(transform, glm::value_ptr(model), sizeof(transform));
+
+                    Material mat = renderer_make_blinnphong_material(rgb, shininess, {});
+                    renderer_enqueue_draw(g_app.sphere_12, transform, mat);
+                }
+                ++count;
+            }
+            printf("[info] Section 6: %d random mixed shapes\n", count);
+        }
+
+        // =====================================================================
+        // SECTION 7: Extra distant ring — 30 Blinn-Phong spheres at very far range
+        //          Tests frustum culling edge cases
+        // =====================================================================
+        {
+            const float radius = 55.0f;
+            int count = 0;
+            for (int i = 0; i < 30; ++i) {
+                float a = (float)i / 30.0f * 6.2831853f;
+                float y = static_cast<float>(i % 5 - 2) * 2.0f;
+
+                // Darker colors at distance
+                float brightness = 0.4f + static_cast<float>((i * 5) % 7) * 0.1f;
+                float rgb[3] = {brightness, brightness * 0.8f, brightness * 0.6f};
+
+                // Cycle textures
+                RendererTextureHandle tex = {};
+                if (g_app.tex_count > 0) {
+                    tex = g_app.textures[i % g_app.tex_count];
+                }
+
+                spawn_shape(g_app.sphere_12, ring_pos(radius, a, y), 0.5f,
+                            rgb, 1.0f, 2, tex);
+                ++count;
+            }
+            printf("[info] Section 7: %d Blinn-Phong spheres at radius %.1f (far)\n", count, radius);
+        }
+
+        // =====================================================================
+        // SECTION 8: Near-field cubes — 10 close cubes for parallax test
+        // =====================================================================
+        {
+            int count = 0;
+            for (int i = 0; i < 10; ++i) {
+                float a = (float)i / 10.0f * 3.1415926f; // half-circle in front
+                float r = 6.0f + static_cast<float>(i % 3) * 1.5f;
+                glm::vec3 pos(r * cosf(a), (static_cast<float>(i % 3) - 1) * 2.0f, r * sinf(a));
+
+                float v = 0.5f + static_cast<float>(i % 4) * 0.15f;
+                float rgb[3] = {v, v * 0.7f, v * 0.9f};
+
+                spawn_shape(g_app.cube, pos, 0.6f, rgb, 1.0f, 0);
+                ++count;
+            }
+            printf("[info] Section 8: %d near-field cubes\n", count);
+        }
+
+        // =====================================================================
+        // Total shape count
+        // =====================================================================
+        int total_shapes = 8 + 36 + 24 + 20 + 20 + 50 + 30 + 10; // = 208
+        printf("[info] Total shapes in scene: %d\n", total_shapes);
+
+        // ---- Laser line-quads (subtle ambient lines) ----
+        {
+            struct LaserBeam { float p0[3]; float p1[3]; float width; float color[4]; };
+            const LaserBeam lasers[] = {
+                { {-15.0f, 8.0f, -10.0f}, {15.0f, -2.0f, 10.0f}, 0.04f, {0.3f, 0.1f, 0.5f, 0.3f} },
+                { {-10.0f, -3.0f, 12.0f}, {10.0f,  3.0f, -8.0f}, 0.05f, {0.1f, 0.4f, 0.5f, 0.25f} },
+            };
+            for (const auto& laser : lasers) {
+                renderer_enqueue_line_quad(laser.p0, laser.p1, laser.width, laser.color);
+            }
         }
     }
 
@@ -485,6 +592,18 @@ static void on_frame(float dt, void*) {
                 g_app.override == ShadingOverride::Mixed ? "Mixed" :
                 g_app.override == ShadingOverride::AllUnlit ? "AllUnlit" : "AllLambertian");
             ImGui::TextUnformatted(buf);
+        }
+        ImGui::End();
+    }
+
+    // ---- Shadow Demo Controls ----
+    {
+        ImGui::SetNextWindowPos(ImVec2(10.0f, 300.0f), ImGuiCond_Once);
+        ImGui::Begin("Shadow Demo Controls", nullptr, ImGuiWindowFlags_NoDecoration);
+        {
+            ImGui::Checkbox("Enable Shadow Demo mode", &g_app.shadow_demo_active);
+            ImGui::Checkbox("Show shadow map", &g_app.show_shadow_map);
+            shadow_debug_set_visible(g_app.show_shadow_map);
         }
         ImGui::End();
     }

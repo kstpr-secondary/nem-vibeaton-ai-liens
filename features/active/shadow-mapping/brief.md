@@ -23,7 +23,7 @@ Subsequent phases will expand to full Cascaded Shadow Maps (Phase 2) and PCF sof
 - [ ] **Visual — shadow receiver opt-out**: Objects using the standard `BlinnPhong` shader render identically to before — no shadow darkening on them, confirming backward compatibility.
 - [ ] **Visual — transparent geometry unaffected**: Alpha-blended objects in the demo scene do not participate in shadow casting or receiving and render correctly.
 - [ ] **Visual — camera stability**: Shadows remain spatially stable as the orbiting demo camera moves. No per-frame crawl or severe flicker.
-- [ ] **Demo scene**: The renderer shadow demo is accessible via ImGui tab in `renderer_app` and shows: plane, multiple spheres/cubes (opaque, shadow-receiving), one comparison non-shadowed object, one transparent object, orbiting camera, directional light from above slightly tilted.
+- [ ] **Demo scene**: The renderer shadow demo is accessible via a standalone ImGui window ("Shadow Demo Controls") in `renderer_app` and shows: plane, multiple spheres/cubes (opaque, shadow-receiving), one comparison non-shadowed object, one transparent object, orbiting camera, directional light from above slightly tilted.
 - [ ] **Build**: `cmake --build build --target renderer_app` exits 0 with no new warnings.
 
 ---
@@ -73,6 +73,7 @@ Subsequent phases will expand to full Cascaded Shadow Maps (Phase 2) and PCF sof
 
 | Phase | Name | Key Deliverable |
 |-------|------|-----------------|
-| **1** | Hard Shadows | Single-cascade depth map, BlinnPhongShadowed shader, renderer demo scene |
-| **2** | Cascaded Shadow Maps | N-cascade frustum partitioning, texture array, cascade selection shader, texel snapping |
-| **3** | PCF + Config API | Hardware PCF via `sampler2DShadow`, `renderer_set_shadow_config()` for cascade count/resolution/bias/kernel |
+| **1** | Hard Shadows | Single-cascade depth map, BlinnPhongShadowed shader, pipeline infrastructure ✓ (complete) |
+| **2** | Visual Validation | Shadow demo scene (standalone ImGui window, orbiting camera, BlinnPhongShadowed objects), shadow map debug overlay — closes all visual success criteria |
+| **3** | Cascaded Shadow Maps | N-cascade frustum partitioning, texture array, cascade selection shader, texel snapping |
+| **4** | PCF + Config API | Hardware PCF via `sampler2DShadow`, `renderer_set_shadow_config()` for cascade count/resolution/bias/kernel |
