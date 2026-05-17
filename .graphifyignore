@@ -1,3 +1,9 @@
 _coordination.archive/
 .specify/
+external/
 build/
+.claude/
+.gemini/
+.opencode/
+.vscode/
+.agents-ignore/

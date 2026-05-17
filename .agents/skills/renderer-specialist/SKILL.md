@@ -81,6 +81,17 @@ AGENTS.md §3 already fixes: OpenGL 3.3 Core backend, sokol-shdc precompilation,
 9. **Verify magenta fallback** — intentionally break a shader; confirm it triggers without crashing.
 10. **Phase complete — hand off.** When all tasks are `[x]`, output the phase-completion handoff per AGENTS.md §6. Do not write the checkpoint or begin next-phase planning.
 
+**Adding a new builtin shader** — must wire into ALL four locations, not just create shader/pipeline/factory:
+  (a) Reserve its integer ID in `next_custom_shader_id` (bump past highest builtin).
+  (b) Create `sg_shader` handle and store in `state.shader_handles[id]` during `renderer_internal_init()`.
+  (c) Add an `if (shader.id == <id>)` case in `apply_draw_uniforms()` that patches light fields from `state.light` into the material's FS uniform blob and calls `sg_apply_uniforms(binding_1, &r)`.
+  (d) Add a case in the draw-loop bindings section (inside `draw_batch`) that binds albedo texture/sampler from the material plus any renderer-internal resources (shadow map, shadow sampler) — these come from their respective state objects, not from the material.
+
+**GPU resource init/teardown pattern** — every function that creates multiple GPU resources must:
+  (a) Have a single `cleanup_*` helper (called by both the failure path and shutdown) that destroys all resources in reverse ownership order: dependents first (views → buffers), then roots (images, samplers).
+  (b) Call `cleanup_*` on every mid-init error return — never early-return without cleanup.
+  (c) In shutdown, destroy in the same reverse ownership order as the cleanup helper.
+
 ---
 
 ## 4. Decision rules

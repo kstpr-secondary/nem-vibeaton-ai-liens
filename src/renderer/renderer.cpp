@@ -24,6 +24,7 @@
 #include "texture.h"
 #include "skybox.h"
 #include "pipeline_shadow.h"
+#include "shadow_pass.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -44,6 +45,10 @@
 #include "pipeline_unlit.h"
 #include "pipeline_lambertian.h"
 #include "pipeline_blinnphong.h"
+#include "pipeline_blinnphong_shadowed.h"
+#include "shaders/blinnphong_shadowed.glsl.h"
+#include "shaders/shadow_depth.glsl.h"
+#include "shadow_pass.h"
 #include "mesh_internal.h"
 
 // ---------------------------------------------------------------------------
@@ -126,6 +131,9 @@ struct RendererState {
 
     // Shadow depth (Phase 1 hard shadows)
     sg_pipeline pipeline_shadow;
+
+    // Blinn-Phong Shadowed (Phase 1 hard shadows — shader + pipeline + factory, T-4)
+    sg_pipeline pipeline_blinnphong_shadowed;
 
     // Mesh GPU resources are managed by mesh_builders.cpp
     // Texture GPU resources are managed by texture.cpp
@@ -275,6 +283,24 @@ static void apply_draw_uniforms(RendererShaderHandle shader,
     // --- Binding 1: fragment shader uniforms ---
     if (shader.id == 2) {
         // BlinnPhong: 6×vec4 = 96 bytes. Patch light fields into local copy.
+        auto* fs = material_uniforms_as<BlinnPhongFSParams>(const_cast<Material&>(mat));
+        glm::mat4 cam_view = state.camera_set ? glm::make_mat4(state.camera.view) : glm::mat4(1.0f);
+        glm::mat4 cam_world = glm::inverse(cam_view);
+        glm::vec3 cam_pos = glm::vec3(cam_world[3][0], cam_world[3][1], cam_world[3][2]);
+        BlinnPhongFSParams patched;
+        patched.base_color        = fs->base_color;
+        patched.light_dir_ws      = glm::vec4(state.light.direction[0], state.light.direction[1],
+                                              state.light.direction[2], 0.0f);
+        patched.light_color_inten = glm::vec4(state.light.color[0], state.light.color[1],
+                                              state.light.color[2], state.light.intensity);
+        patched.view_pos_w        = glm::vec4(cam_pos.x, cam_pos.y, cam_pos.z, 0.0f);
+        patched.spec_shin         = fs->spec_shin;
+        patched.flags             = fs->flags;
+        sg_range r = { &patched, sizeof(patched) };
+        sg_apply_uniforms(1, &r);
+    } else if (shader.id == 4) {
+        // BlinnPhongShadowed: same FS params as BlinnPhong (binding 1), plus
+        // shadow frame params at binding 2. Patch light fields into local copy.
         auto* fs = material_uniforms_as<BlinnPhongFSParams>(const_cast<Material&>(mat));
         glm::mat4 cam_view = state.camera_set ? glm::make_mat4(state.camera.view) : glm::mat4(1.0f);
         glm::mat4 cam_world = glm::inverse(cam_view);
@@ -468,11 +494,13 @@ void renderer_internal_init() {
     state.shader_handles[1] = sg_make_shader(unlit_shader_desc(sg_query_backend()));
     state.shader_handles[2] = sg_make_shader(blinnphong_shader_desc(sg_query_backend()));
     state.shader_handles[3] = sg_make_shader(lambertian_shader_desc(sg_query_backend()));
+    state.shader_handles[4] = sg_make_shader(blinnphong_shadowed_shader_desc(sg_query_backend()));
 
     // Store handles in builtin_shaders array for API compatibility
     { RendererShaderHandle h; h.id = 1; state.builtin_shaders[(int)BuiltinShader::Unlit] = h; }
     { RendererShaderHandle h; h.id = 2; state.builtin_shaders[(int)BuiltinShader::BlinnPhong] = h; }
     { RendererShaderHandle h; h.id = 3; state.builtin_shaders[(int)BuiltinShader::Lambertian] = h; }
+    { RendererShaderHandle h; h.id = 4; state.builtin_shaders[(int)BuiltinShader::BlinnPhongShadowed] = h; }
 
     // Skybox
     state.pipeline_skybox = skybox_create_pipeline(pipeline_cache[0].pipeline);
@@ -484,6 +512,19 @@ void renderer_internal_init() {
         printf("[renderer] WARNING: shadow depth pipeline creation failed — shadows disabled\n");
     } else {
         printf("[renderer] shadow depth pipeline created\n");
+    }
+
+    // Blinn-Phong Shadowed pipeline (T-4: Phase 1)
+    state.pipeline_blinnphong_shadowed = create_pipeline_blinnphong_shadowed(pipeline_cache[0].pipeline);
+    if (sg_query_pipeline_state(state.pipeline_blinnphong_shadowed) != SG_RESOURCESTATE_VALID) {
+        printf("[renderer] WARNING: blinnphong_shadowed pipeline creation failed — shadows disabled\n");
+    } else {
+        printf("[renderer] blinnphong_shadowed pipeline created\n");
+    }
+
+    // Shadow map GPU resources (T-3: Phase 1)
+    if (!shadow_pass_init()) {
+        printf("[renderer] WARNING: shadow map resource init failed — shadows disabled\n");
     }
 
     // Line-quad pipelines (opaque + additive)
@@ -581,12 +622,16 @@ void renderer_shutdown() {
     if (state.pipeline_line_quad.id != 0)       { sg_destroy_pipeline(state.pipeline_line_quad); state.pipeline_line_quad = {}; }
     if (state.pipeline_line_quad_additive.id != 0) { sg_destroy_pipeline(state.pipeline_line_quad_additive); state.pipeline_line_quad_additive = {}; }
     if (state.pipeline_skybox.id != 0)          { sg_destroy_pipeline(state.pipeline_skybox); state.pipeline_skybox = {}; }
-    if (state.pipeline_shadow.id != 0)          { sg_destroy_pipeline(state.pipeline_shadow); state.pipeline_shadow = {}; }
+    if (state.pipeline_shadow.id != 0)                   { sg_destroy_pipeline(state.pipeline_shadow); state.pipeline_shadow = {}; }
+    if (state.pipeline_blinnphong_shadowed.id != 0)     { sg_destroy_pipeline(state.pipeline_blinnphong_shadowed); state.pipeline_blinnphong_shadowed = {}; }
 
     // Destroy dummy BlinnPhong resources
     if (state.dummy_blinnphong_tex.id != 0)     { sg_destroy_image(state.dummy_blinnphong_tex); state.dummy_blinnphong_tex = {}; }
     if (state.dummy_blinnphong_view.id != 0)    { sg_destroy_view(state.dummy_blinnphong_view); state.dummy_blinnphong_view = {}; }
     if (state.dummy_blinnphong_smp.id != 0)     { sg_destroy_sampler(state.dummy_blinnphong_smp); state.dummy_blinnphong_smp = {}; }
+
+    // Shadow map GPU resources (T-3)
+    shadow_pass_shutdown();
 
     sg_shutdown();
     sapp_quit();
@@ -612,11 +657,6 @@ void renderer_begin_frame() {
     simgui_fd.delta_time = sapp_frame_duration();
     simgui_fd.dpi_scale  = sapp_dpi_scale();
     simgui_new_frame(&simgui_fd);
-
-    sg_pass pass = {};
-    pass.action    = state.pass_action;
-    pass.swapchain = sglue_swapchain();
-    sg_begin_pass(&pass);
 }
 
 // ---------------------------------------------------------------------------
@@ -628,6 +668,64 @@ void renderer_end_frame() {
     if (!state.camera_set) {
         printf("[renderer] WARNING: renderer_set_camera not called before end_frame — using identity VP\n");
         state.vp = glm::mat4(1.0f);
+    }
+
+    // --- Compute light_view_proj once per frame (Phase 1 hard shadows) --------
+    glm::mat4 light_view_proj = glm::mat4(1.0f);
+    bool shadow_active = false;
+    if (state.light_set && state.pipeline_shadow.id != 0) {
+        const ShadowPassState* sps = shadow_pass_state();
+        if (sps && sps->shadow_attachments.depth_stencil.id != 0) {
+            light_view_proj = shadow_compute_light_view_proj(
+                state.light,
+                k_shadow_ortho_half_size,
+                k_shadow_near,
+                k_shadow_far);
+            shadow_active = true;
+        }
+    }
+
+    // --- Shadow pass (executed BEFORE main pass — writes shadow map depth) ---
+    if (shadow_active) {
+        const ShadowPassState* sps = shadow_pass_state();
+        sg_pass shadow_pass = {};
+        shadow_pass.action = state.pass_action;
+        shadow_pass.attachments = sps->shadow_attachments;
+        sg_begin_pass(&shadow_pass);
+        sg_apply_pipeline(state.pipeline_shadow);
+
+        // Iterate all render_queue=0 (opaque) draws to populate shadow map.
+        // Uses the same draw queue entries that will be drawn in the main pass.
+        for (int i = 0; i < state.draw_count; ++i) {
+            const DrawCommand& cmd = state.draw_queue[i];
+            if (cmd.material.pipeline.render_queue != 0) continue;
+
+            sg_bindings shadow_bind = {};
+            shadow_bind.vertex_buffers[0] = mesh_vbuf_get(cmd.mesh.id);
+            shadow_bind.index_buffer = mesh_ibuf_get(cmd.mesh.id);
+            sg_apply_bindings(&shadow_bind);
+
+            // Compute light-space MVP: light_view_proj * world_transform
+            glm::mat4 model = glm::make_mat4(cmd.world_transform);
+            glm::mat4 light_mvp = light_view_proj * model;
+
+            struct ShadowVSParams { glm::mat4 light_mvp; };
+            ShadowVSParams vs_p = { light_mvp };
+            sg_range r = { &vs_p, sizeof(vs_p) };
+            sg_apply_uniforms(UB_shadow_depth_vs_params, &r);
+
+            sg_draw(0, static_cast<int>(mesh_index_count_get(cmd.mesh.id)), 1);
+        }
+
+        sg_end_pass();
+    }
+
+    // --- Begin swapchain pass for main rendering -----------------------------
+    {
+        sg_pass main_pass = {};
+        main_pass.action = state.pass_action;
+        main_pass.swapchain = sglue_swapchain();
+        sg_begin_pass(&main_pass);
     }
 
     // --- Frustum plane extraction --------------------------------------------
@@ -750,6 +848,42 @@ void renderer_end_frame() {
                 }
                 bind.views[VIEW_albedo_tex] = tex_view;
                 bind.samplers[SMP_smp]      = tex_smp;
+            } else if (cmd.material.shader.id == 4) {
+                // BlinnPhongShadowed: albedo tex/sampler at bindings 4/5, shadow map/sampler at binding 0
+                sg_view tex_view = {};
+                sg_sampler tex_smp = {};
+                sg_view shadow_tex_view = {};
+                sg_sampler shadow_smp = {};
+                if (cmd.material.texture_count > 0 && cmd.material.textures[0].id != 0) {
+                    uint32_t tex_id = cmd.material.textures[0].id;
+                    tex_view = texture_get_view(tex_id);
+                    tex_smp  = texture_get_sampler(tex_id);
+                } else {
+                    tex_view   = state.dummy_blinnphong_view;
+                    tex_smp    = state.dummy_blinnphong_smp;
+                }
+                if (tex_view.id == 0 || tex_smp.id == 0) {
+                    tex_view   = state.dummy_blinnphong_view;
+                    tex_smp    = state.dummy_blinnphong_smp;
+                }
+                const ShadowPassState* sps = shadow_pass_state();
+                if (sps) {
+                    shadow_tex_view = sps->shadow_tex_view;
+                    shadow_smp      = sps->shadow_sampler;
+                }
+                bind.views[VIEW_shadowed_albedo_tex] = tex_view;
+                bind.samplers[SMP_shadowed_smp]      = tex_smp;
+                bind.views[0] = shadow_tex_view;
+                bind.samplers[0] = shadow_smp;
+
+                // Apply ShadowFrameParams at binding 2 for BlinnPhongShadowed draws.
+                // Using the sokol-shdc generated constant UB_blinnphong_shadowed_shadow_frame_params
+                // to avoid naming collisions with hardcoded index 2.
+                // light_view_proj is precomputed once per frame above — no recomputation here.
+                blinnphong_shadowed_shadow_frame_params_t shadow_fp;
+                shadow_fp.light_view_proj = light_view_proj;
+                sg_range sr = { &shadow_fp, sizeof(shadow_fp) };
+                sg_apply_uniforms(UB_blinnphong_shadowed_shadow_frame_params, &sr);
             } else if (cmd.material.shader.id != 1 && cmd.material.shader.id != 3) {
                 // Custom shader: bind textures from material
                 for (uint8_t t = 0; t < cmd.material.texture_count && t < k_material_texture_slots; ++t) {
@@ -1054,8 +1188,8 @@ void renderer_set_culling_enabled(bool enabled) {
 // ---------------------------------------------------------------------------
 
 static constexpr int k_shader_desc_max = 32;
-static const sg_shader_desc* custom_shader_descs[k_shader_desc_max] = {};
-static int next_custom_shader_id     = 4; // after magenta(0) + built-in(1-3)
+    static const sg_shader_desc* custom_shader_descs[k_shader_desc_max] = {};
+    static int next_custom_shader_id     = 5; // after magenta(0) + built-in(1-4: Unlit, BlinnPhong, Lambertian, BlinnPhongShadowed)
 
 RendererShaderHandle renderer_create_shader(const sg_shader_desc* desc) {
     if (next_custom_shader_id >= k_shader_desc_max) {
@@ -1177,6 +1311,27 @@ Material renderer_make_blinnphong_material(const float rgb[3], float shininess,
                                             RendererTextureHandle texture) {
     Material m{};
     m.shader = renderer_builtin_shader(BuiltinShader::BlinnPhong);
+    BlinnPhongFSParams p{};
+    if (rgb) {
+        p.base_color = glm::vec4(rgb[0], rgb[1], rgb[2], 1.0f);
+    } else {
+        p.base_color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    }
+    p.spec_shin = glm::vec4(1.0f, 1.0f, 1.0f, shininess);
+    p.flags = glm::vec4(texture.id != 0 ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f);
+    material_set_uniforms(m, p);
+
+    if (texture.id != 0) {
+        m.textures[0] = texture;
+        m.texture_count = 1;
+    }
+    return m;
+}
+
+Material renderer_make_blinnphong_shadowed_material(const float rgb[3], float shininess,
+                                                     RendererTextureHandle texture) {
+    Material m{};
+    m.shader = renderer_builtin_shader(BuiltinShader::BlinnPhongShadowed);
     BlinnPhongFSParams p{};
     if (rgb) {
         p.base_color = glm::vec4(rgb[0], rgb[1], rgb[2], 1.0f);

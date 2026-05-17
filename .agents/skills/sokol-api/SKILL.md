@@ -27,6 +27,7 @@ Use per-aspect references under `references/` when you need deeper detail on a s
 5. **`ASSET_ROOT` macro for all runtime file paths.** Never hardcode relative paths for textures or meshes.
 6. **Labels everywhere** (`.label = "my-thing"`). Required for RenderDoc and runtime diagnostics.
 7. **`sg_shutdown()` is always last** in `cleanup()`. Destroy individual resources before it if you want ordered teardown.
+8. **Only one pass may be active at a time.** `sg_begin_pass` must not be called while another pass is already open. In a multi-pass frame (e.g., shadow depth pass followed by swapchain pass), each pass must be fully closed with `sg_end_pass` before the next `sg_begin_pass`. If a plan says an off-screen pass runs "before pass 0", this means the swapchain pass must be deferred — it cannot be opened in `begin_frame` when an off-screen pass will execute first in `end_frame`. The required frame structure is: `[sg_begin_pass(offscreen) → draw → sg_end_pass] → [sg_begin_pass(swapchain) → draw → sg_end_pass] → sg_commit`.
 
 ---
 

@@ -55,7 +55,24 @@ cmake --build build
 
 Top-level `CMakeLists.txt` is co-owned by Renderer and Systems Architect.
 
-## 4. Ownership boundaries
+## 4. Coding standards
+
+Applies to new and significantly refactored code. Hackathon-era code is updated opportunistically, not retroactively.
+
+**Hot-path definition:** the renderer frame callback, engine `tick(dt)`, and any ECS system iterated per-frame.
+
+**Measure first.** Tier 2 rules prevent known costs, not hypothetical ones. Profile before restructuring for performance outside an identified hot-path.
+
+**Tier 1 — Game layer (`src/game/`):** Prioritize readability and ECS clarity. Standard heap allocation is fine at init and scene load; avoid it inside per-frame update loops.
+
+**Tier 2 — Engine and Renderer hot-paths (`src/engine/`, `src/renderer/`):**
+- No dynamic allocations (`new`, `malloc`, `make_shared`) per frame. Pre-allocate at startup or scene load.
+- Avoid growing containers in hot-paths (`push_back` on unbounded vectors). Reserve upfront or use fixed-size pools.
+- Prefer flat arrays and struct-of-arrays over pointer-chasing; avoid virtual dispatch in tight iteration.
+
+**Both tiers:** Pass large objects by `const&` (or `std::span` for contiguous ranges). Do not construct dynamic strings in a hot-path.
+
+## 5. Ownership boundaries
 
 - **Renderer owns** `sokol_app`, frame lifecycle, pipelines, shaders, textures, mesh upload, skybox, line quads.
 - **Engine owns** ECS lifecycle, component schema, physics, scene queries, asset import, camera matrices, renderer-facing scene submission.
@@ -63,11 +80,11 @@ Top-level `CMakeLists.txt` is co-owned by Renderer and Systems Architect.
 
 Do not move behavior across workstreams unless the feature explicitly requires it.
 
-## 5. Frozen interfaces
+## 6. Frozen interfaces
 
 `docs/interfaces/*-interface-spec.md` are cross-workstream contracts. Do not edit a frozen interface to make code compile. If a feature requires an interface change, stop and surface that clearly for human approval.
 
-## 6. Working rules
+## 7. Working rules
 
 - Read the active feature docs before editing code.
 - Use the relevant skill first; open large headers only if the skill is insufficient.
@@ -89,7 +106,7 @@ Do not move behavior across workstreams unless the feature explicitly requires i
 5. Tell the human to invoke Feature Planner once the checkpoint is written (for the next phase), or Doc Updater if this was the final phase.
 6. State explicitly: next-phase planning belongs to Feature Planner, not to this agent.
 
-## 7. Validation expectations
+## 8. Validation expectations
 
 - Use tests for deterministic math, ECS, parser, and helper logic.
 - Use human behavioral checks for rendering correctness, gameplay feel, and live demo behavior.
@@ -102,13 +119,23 @@ Implementing agents (`renderer-specialist`, `engine-specialist`, `game-developer
 
 **Finding entries after reviewer fixes.** When an implementing agent applies a fix from code-reviewer or spec-validator output, it must assess whether the defect has process implications (not a one-off typo). If yes, append one structured entry to `features/active/<feature-name>/review-findings.md` using the format in `.agents/skills/review-loop-retrospector/SKILL.md`. Assign: the abstract defect class, the suspected responsible party (planner/groomer | implementor-skill | reviewer | shared-docs), and a one-line abstract evidence note. This file is the input for `review-loop-retrospector` at phase completion.
 
-## 8. If stuck
+## 9. If stuck
 
 1. Re-read the active feature doc and the relevant skill.
 2. Open only the minimal supporting reference needed.
 3. If the task appears to require a frozen interface change, stop and flag it.
 4. If a skill is stale or missing key project facts, update the skill instead of inventing policy.
 
-## 9. Excluded directories
+## 10. Excluded directories
 
 - **Do not** perform file searches in `.agents-ignore` and `.specify` directories.
+
+## 11. Graphify Knowledge graph
+
+This project has a graphify knowledge graph at graphify-out/.
+
+Rules:
+- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
+- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
+- For cross-module "how does X relate to Y" questions, prefer `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"` over grep — these traverse the graph's EXTRACTED + INFERRED edges instead of scanning files
+- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)

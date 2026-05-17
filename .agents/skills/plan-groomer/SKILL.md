@@ -31,7 +31,7 @@ Identify the document type from its heading or structure before running checks.
 Run all checks. Flag every violation.
 
 ### Structural completeness
-1. Does every task row have a concrete, observable acceptance criterion — not "compiles" or "renders correctly"?
+1. Does every task row have a concrete, observable acceptance criterion — not "compiles" or "renders correctly"? Additionally, for any task whose primary deliverable is a new component (pipeline, GPU pass, resource group, shader, renderer subsystem), does the acceptance criterion also verify **integration** — i.e., does it name the call site or frame-path function from which the new component is invoked? "Created without validation errors" and "handle is non-zero" verify creation, not invocation; they are insufficient when the component's activation in the live frame path is the actual goal.
 2. Is there a **Human Checkpoint** section with all four fields: Run, Look for, Pass, Stop?
 3. Is the Stop condition specific? ("If X is missing" not "if it doesn't work")
 4. Are Fallbacks present for any task where the primary approach is non-trivial or API-dependent?
