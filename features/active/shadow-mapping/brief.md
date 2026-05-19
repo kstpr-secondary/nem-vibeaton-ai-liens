@@ -19,7 +19,7 @@ Subsequent phases will expand to full Cascaded Shadow Maps (Phase 2) and PCF sof
 ## Success Criteria
 
 - [ ] **Visual — shadow cast**: Opaque geometry rendered with `BlinnPhongShadowed` receives visible, correctly-positioned shadows from objects above/around it in the renderer demo scene.
-- [ ] **Visual — no acne**: The illuminated faces of shadow-casting objects show no shadow acne (self-shadowing noise). Front-face culling on the shadow pass eliminates static-bias tuning for Phase 1.
+- [ ] **Visual — no acne**: The illuminated faces of shadow-casting objects show no shadow acne (self-shadowing noise). The chosen culling/bias path must also avoid visibly detached shadows in the demo scene.
 - [ ] **Visual — shadow receiver opt-out**: Objects using the standard `BlinnPhong` shader render identically to before — no shadow darkening on them, confirming backward compatibility.
 - [ ] **Visual — transparent geometry unaffected**: Alpha-blended objects in the demo scene do not participate in shadow casting or receiving and render correctly.
 - [ ] **Visual — camera stability**: Shadows remain spatially stable as the orbiting demo camera moves. No per-frame crawl or severe flicker.
@@ -64,7 +64,7 @@ Subsequent phases will expand to full Cascaded Shadow Maps (Phase 2) and PCF sof
 ## Known Risks
 
 - **Ortho projection too small for Phase 1**: If the hardcoded ortho box (covering 1 km arena) is too large relative to the demo scene, shadow map resolution will be visibly poor even for hard shadows. Mitigate by using a separate tighter ortho for the demo scene and the large one for the in-game integration.
-- **Front-face culling trade-off**: Phase 1 uses `SG_CULLMODE_FRONT` in the shadow pass (standard acne prevention without static bias). This can produce "detached shadow" Peter Panning on very thin geometry. Demo scene meshes (spheres, cubes, thick box plane) are not thin, so this risk is low in Phase 1.
+- **Validated bias/culling trade-off**: Live demo validation kept `SG_CULLMODE_BACK` in the shadow pass plus a small receiver bias in `blinnphong_shadowed.glsl`. This avoids the visible Peter Panning seen with `SG_CULLMODE_FRONT` in the current demo scene, but excessive bias would reintroduce detached shadows and too little bias would reintroduce acne.
 - **CMakeLists.txt co-ownership**: Two new shaders (shadow_depth.glsl, blinnphong_shadowed.glsl, shadow_debug.glsl) require new sokol-shdc custom commands. CMakeLists.txt is co-owned by renderer and systems-architect — changes are additive only, no target restructuring.
 
 ---

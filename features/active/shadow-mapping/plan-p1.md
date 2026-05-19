@@ -5,6 +5,7 @@
 **Build target**: `cmake --build build --target renderer_app`
 **Groomer Verdict**: PASS
 **Revision**: r4 — resolved all three third-groomer defects via phase split: T-7 and T-8 (demo scene + debug overlay) removed from this plan; Phase 1 is now T1–T6 (core hard-shadow pipeline only). This also resolves defects 1 (T-7 weak acceptance) and 2 (T-8 ‖ overlap with T-7) since those tasks no longer exist in this phase. NOTE: brief.md still lists demo scene and debug overlay under Phase 1 scope — human must update brief.md (move those items to Phase 2) before plan-p2.md is written.
+**Implementation note (2026-05-20)**: Live validation kept the shadow pass on `SG_CULLMODE_BACK` with a small receiver bias in `blinnphong_shadowed.glsl`. Re-testing `SG_CULLMODE_FRONT` without receiver bias produced visible Peter Panning in the demo scene, so this validated renderer path supersedes Task 2's original culling detail.
 
 ## Expected Outcome
 

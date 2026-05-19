@@ -293,6 +293,8 @@ void shadow_debug_shutdown() {
 }
 
 void shadow_debug_draw(sg_pipeline debug_pip) {
+    if (!g_shadow_debug_visible) return;
+
     // Early-return if any required resource is missing (init failed or not yet initialized).
     if (debug_pip.id == 0 || g_shadow_debug_vbuf.id == 0 || g_shadow_debug_ibuf.id == 0) return;
 
