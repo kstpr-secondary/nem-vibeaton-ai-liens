@@ -1,16 +1,16 @@
 # Graph Report - nem-vibeaton-ai-liens  (2026-05-20)
 
 ## Corpus Check
-- 190 files · ~913,862 words
+- 192 files · ~914,072 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2527 nodes · 2966 edges · 296 communities (226 shown, 70 thin omitted)
+- 2532 nodes · 2970 edges · 301 communities (231 shown, 70 thin omitted)
 - Extraction: 89% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 325 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `9cb6b340`
+- Built from commit: `414b1e7e`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -218,6 +218,11 @@
 - [[_COMMUNITY_Community 293|Community 293]]
 - [[_COMMUNITY_Community 294|Community 294]]
 - [[_COMMUNITY_Community 295|Community 295]]
+- [[_COMMUNITY_Community 296|Community 296]]
+- [[_COMMUNITY_Community 297|Community 297]]
+- [[_COMMUNITY_Community 298|Community 298]]
+- [[_COMMUNITY_Community 299|Community 299]]
+- [[_COMMUNITY_Community 300|Community 300]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `2. sokol_gfx.h — Graphics Core` - 31 edges
@@ -263,7 +268,7 @@
 - **Mesh Asset Import Pipeline (glTF + OBJ + texture cache)** — asset_import_asset_import_gltf, obj_import_asset_import_obj, asset_import_texture_cache [INFERRED 0.85]
 - **Physics Fixed-Timestep Substep Loop** — physics_physics_system_tick, physics_physics_substep, collision_response_resolve_all_collisions [INFERRED 0.85]
 
-## Communities (296 total, 70 thin omitted)
+## Communities (301 total, 70 thin omitted)
 
 ### Community 0 - "Asset Import Pipeline"
 Cohesion: 0.14
@@ -278,32 +283,32 @@ Cohesion: 0.05
 Nodes (70): camera_rig_cursor_ray(), camera_rig_finalize(), camera_rig_init(), camera_rig_input(), AsteroidData Component, AsteroidTag Component, Boost Component, CameraRigState Component (+62 more)
 
 ### Community 3 - "Engine Runtime & Camera Rig"
-Cohesion: 0.05
-Nodes (80): frame_cb(), setup_scene(), update_camera(), update_highlight(), asteroid_field_init(), containment_update(), random_direction(), random_point_in_shell() (+72 more)
+Cohesion: 0.13
+Nodes (24): frame_cb(), setup_scene(), update_camera(), update_highlight(), engine_apply_force(), engine_apply_impulse(), engine_apply_impulse_at_point(), engine_create_entity() (+16 more)
 
 ### Community 4 - "Scene Management & Debug"
 Cohesion: 0.11
-Nodes (23): get_or_create_pipeline(), renderer_begin_frame(), renderer_builtin_shader(), renderer_create_shader(), renderer_enqueue_draw(), renderer_get_culled_count(), renderer_get_draw_count(), renderer_get_triangle_count() (+15 more)
+Nodes (22): get_or_create_pipeline(), renderer_begin_frame(), renderer_builtin_shader(), renderer_create_shader(), renderer_get_culled_count(), renderer_get_draw_count(), renderer_get_triangle_count(), renderer_init() (+14 more)
 
 ### Community 5 - "App Entry & Frame Loop"
-Cohesion: 0.1
-Nodes (40): main(), on_frame(), on_input(), render_shadow_demo(), ring_pos(), spawn_shape(), engine_init(), engine_shutdown() (+32 more)
+Cohesion: 0.14
+Nodes (32): main(), on_frame(), on_input(), render_shadow_demo(), ring_pos(), spawn_shape(), frame_callback(), main() (+24 more)
 
 ### Community 6 - "Spatial Containment & Line Rendering"
 Cohesion: 0.05
 Nodes (38): containment_update(), reflect_off_boundary() (static), debug_draw_compute_billboard(), LineQuadCommand (struct), LineQuadVertex (struct), renderer_upload_mesh(), MeshAABB (struct), create_pipeline_blinnphong() (+30 more)
 
 ### Community 7 - "Camera & Collision Systems"
-Cohesion: 0.1
-Nodes (22): camera_update(), engine_apply_force(), engine_apply_impulse(), engine_apply_impulse_at_point(), engine_init(), engine_on_collision(), engine_set_active_camera(), engine_shutdown() (+14 more)
+Cohesion: 0.06
+Nodes (38): camera_update(), positional_correction(), resolve_all_collisions(), resolve_collision(), engine_apply_force(), engine_apply_impulse(), engine_apply_impulse_at_point(), engine_init() (+30 more)
 
 ### Community 8 - "Gameplay Tuning & Combat"
 Cohesion: 0.06
 Nodes (45): containment_update() — reflect out-of-bounds entities, cap speed, Enemy AI constants (health, shield, speed, fire range, cooldown), Laser weapon constants (dps, range, charge, impulse, colors), Plasma weapon constants (damage, cooldown, speed, lifetime, radius), apply_damage() — shield-first damage absorption, damage_resolve() — AABB overlap damage resolution per frame, enemy_ai_update(float dt) — seek player + fire plasma, Engine Public API Contract (engine.h shape, FROZEN) (+37 more)
 
 ### Community 9 - "Convex Hull Geometry"
-Cohesion: 0.08
-Nodes (40): asset_bridge_upload(), asset_extract_textures(), asset_import_gltf(), compute_convex_hull(), compute_face_normals(), compute_half_extents(), gw_pivot(), hull_cache_get() (+32 more)
+Cohesion: 0.09
+Nodes (36): asset_bridge_upload(), compute_convex_hull(), compute_face_normals(), compute_half_extents(), gw_pivot(), hull_cache_get(), hull_cache_insert(), hull_vs_aabb_sat() (+28 more)
 
 ### Community 10 - "Game ECS Components"
 Cohesion: 0.11
@@ -314,8 +319,8 @@ Cohesion: 0.29
 Nodes (6): Checkpoint: Shadow Mapping — Phase 1, Next step, Observations, Result: PASS, Roadmap impact, What was tested
 
 ### Community 12 - "AABB Collision Detection"
-Cohesion: 0.14
-Nodes (18): aabb_overlap(), compute_contact(), compute_world_aabb(), detect_collisions(), positional_correction(), resolve_all_collisions(), resolve_collision(), integrate_angular() (+10 more)
+Cohesion: 0.26
+Nodes (8): aabb_overlap(), compute_contact(), compute_world_aabb(), detect_collisions(), engine_overlap_aabb(), engine_raycast(), ray_vs_aabb(), ray_vs_hull()
 
 ### Community 13 - "Game App Lifecycle"
 Cohesion: 0.05
@@ -354,16 +359,16 @@ Cohesion: 0.05
 Nodes (38): 🚀 1. Core Concepts, 🏗️ 2. Registry & Entity Management, 📦 3. Component Lifecycle, 🔍 4. Iteration & Systems (Views), 📡 5. Reactive Programming (Signals), 🌌 6. Space Shooter Scenarios, ⚡ 7. Performance & Advanced Tips, Adding & Removing (+30 more)
 
 ### Community 117 - "Community 117"
-Cohesion: 0.05
-Nodes (39): 3.10 Functions — Mouse, 3.11 Functions — Keyboard (Mobile), 3.12 Functions — App Lifecycle, 3.13 Functions — Frame Info, 3.14 Functions — Clipboard, 3.15 Functions — Window, 3.16 Functions — Drag & Drop, 3.17 Functions — Environment (for sokol_gfx bridge) (+31 more)
+Cohesion: 0.08
+Nodes (25): 3.10 Functions — Mouse, 3.11 Functions — Keyboard (Mobile), 3.14 Functions — Clipboard, 3.15 Functions — Window, 3.16 Functions — Drag & Drop, 3.17 Functions — Environment (for sokol_gfx bridge), 3.18 Functions — Other, 3.2 Key Codes (Common) (+17 more)
 
 ### Community 118 - "Community 118"
 Cohesion: 0.05
 Nodes (36): code:block1 (E-M1 (Phase 3) → E-M2 (Phase 4) ─┐), code:bash (# Launch tests in parallel (write-fail-first):), code:bash (# Launch independent loaders in parallel:), code:bash (# Iterative build (engine workstream only):), Dependencies & Execution Order, Format: `[ID] [P?] [Story] Description`, Implementation for User Story 1, Implementation for User Story 2 (+28 more)
 
 ### Community 119 - "Community 119"
-Cohesion: 0.09
-Nodes (23): 8.10 Full Render Loop Pattern, 8.12 Instanced Rendering, 8.13 Cleanup Pattern, 8.15 Pixel Format Query, 8.16 OpenGL 3.3 sapp_desc Configuration, 8.1 Create Immutable Vertex Buffer, 8.2 Create Index Buffer, 8.3 Create Dynamic Vertex Buffer (+15 more)
+Cohesion: 0.05
+Nodes (37): 8.10 Full Render Loop Pattern, 8.11 Input Handling Pattern, 8.12 Instanced Rendering, 8.13 Cleanup Pattern, 8.14 Resource Validity Check, 8.15 Pixel Format Query, 8.16 OpenGL 3.3 sapp_desc Configuration, 8.17 Quit Confirmation Pattern (+29 more)
 
 ### Community 120 - "Community 120"
 Cohesion: 0.06
@@ -518,8 +523,8 @@ Cohesion: 0.13
 Nodes (14): 1. When to invoke, 2. Workstream map and seams, 3. Build topology, 4. Confirmed facts, 6. Gotchas, 7. Output templates, Authoritative sources, code:block1 (sokol_app → renderer (static lib) → engine (static lib) → ga) (+6 more)
 
 ### Community 158 - "Community 158"
-Cohesion: 0.18
-Nodes (4): create_pipeline_shadow(), create_pipeline_shadow_debug(), BlendMode(), BuiltinShader()
+Cohesion: 0.14
+Nodes (15): enemy_ai_update(), enemy_death_update(), game_init(), game_shutdown(), game_tick(), handle_restart_quit_input(), match_state_update(), render_submit() (+7 more)
 
 ### Community 159 - "Community 159"
 Cohesion: 0.24
@@ -578,8 +583,8 @@ Cohesion: 0.15
 Nodes (12): Build, code:bash (# Full build (after milestone merges)), code:bash (./build/game), code:bash (cmake -B build -DUSE_ENGINE_MOCKS=ON -DUSE_RENDERER_MOCKS=ON), Controls, Development with Mocks, Gameplay Loop, Key Files (+4 more)
 
 ### Community 175 - "Community 175"
-Cohesion: 0.35
-Nodes (10): mesh_aabb_get(), mesh_ibuf_get(), mesh_index_count_get(), mesh_store_free(), mesh_store_ref_dec(), mesh_store_shutdown(), mesh_vbuf_get(), renderer_make_cube_mesh() (+2 more)
+Cohesion: 0.25
+Nodes (17): asteroid_field_init(), containment_update(), random_direction(), random_point_in_shell(), reflect_off_boundary(), spawn_tier(), asteroid_color_variation(), box_inv_inertia() (+9 more)
 
 ### Community 176 - "Community 176"
 Cohesion: 0.15
@@ -666,16 +671,16 @@ Cohesion: 0.31
 Nodes (9): DestroyPending (tag), EntityMaterial, Mesh, engine_registry(), engine_create_entity() impl, engine_destroy_entity() impl, engine_spawn_cube() impl, engine_spawn_sphere() impl (+1 more)
 
 ### Community 197 - "Community 197"
-Cohesion: 0.22
-Nodes (8): Finding: T-1 — 2026-05-16, Finding: T-2 — 2026-05-16, Finding: T-3 — 2026-05-17, Finding: T-4 — 2026-05-17, Finding: T-5 — 2026-05-17, Finding: T-6 — 2026-05-17, Finding: T-6 — 2026-05-17 (hot-path), Shadow Mapping — Review Findings
+Cohesion: 0.2
+Nodes (9): Finding: T-1 — 2026-05-16, Finding: T-2 — 2026-05-16, Finding: T-2 — 2026-05-20, Finding: T-3 — 2026-05-17, Finding: T-4 — 2026-05-17, Finding: T-5 — 2026-05-17, Finding: T-6 — 2026-05-17, Finding: T-6 — 2026-05-17 (hot-path) (+1 more)
 
 ### Community 198 - "Community 198"
 Cohesion: 0.22
 Nodes (8): Feature Brief: Freelancer-Style Navigation, Goal, Key Unknowns, Known Risks, Phase Plan, Scope, Strafe options, Success Criteria
 
 ### Community 200 - "Community 200"
-Cohesion: 0.21
-Nodes (8): create_pipeline_blinnphong_shadowed(), make_line_quad_pipelines(), make_magenta_pipeline(), renderer_internal_init(), shadow_debug_init(), skybox_create_pipeline(), skybox_init_resources(), skybox_shutdown()
+Cohesion: 0.12
+Nodes (10): create_pipeline_blinnphong_shadowed(), create_pipeline_shadow(), create_pipeline_shadow_debug(), make_line_quad_pipelines(), make_magenta_pipeline(), renderer_internal_init(), shadow_debug_init(), skybox_create_pipeline() (+2 more)
 
 ### Community 201 - "Community 201"
 Cohesion: 0.25
@@ -694,8 +699,8 @@ Cohesion: 0.25
 Nodes (7): Feature Brief: Shadow Mapping, Goal, Key Unknowns, Known Risks, Phase Roadmap (overview), Scope, Success Criteria
 
 ### Community 205 - "Community 205"
-Cohesion: 0.24
-Nodes (9): renderer_internal_cleanup(), renderer_shutdown(), cleanup_shadow_resources(), shadow_compute_light_view_proj(), shadow_debug_is_visible(), shadow_debug_set_visible(), shadow_debug_shutdown(), shadow_pass_init() (+1 more)
+Cohesion: 0.15
+Nodes (13): BlendMode(), BuiltinShader(), renderer_enqueue_draw(), renderer_handle_valid(), renderer_internal_cleanup(), renderer_shutdown(), cleanup_shadow_resources(), shadow_compute_light_view_proj() (+5 more)
 
 ### Community 206 - "Community 206"
 Cohesion: 0.29
@@ -797,19 +802,39 @@ Nodes (5): Game Architecture, Game Key Design Decisions (R1-R8), Game Entity Arc
 Cohesion: 0.5
 Nodes (3): Renderer SpecKit Research, Risks resolved, Summary of resolved items
 
+### Community 289 - "Community 289"
+Cohesion: 0.25
+Nodes (13): asset_extract_textures(), asset_import_gltf(), ensure_sampler(), ensure_view(), renderer_upload_cubemap(), renderer_upload_texture_2d(), renderer_upload_texture_from_file(), renderer_upload_texture_from_memory() (+5 more)
+
+### Community 290 - "Community 290"
+Cohesion: 0.26
+Nodes (9): camera_rig_aim_point(), camera_rig_finalize(), camera_rig_get_vp(), camera_rig_init(), camera_rig_input(), hud_render(), world_to_screen(), engine_mouse_delta() (+1 more)
+
+### Community 291 - "Community 291"
+Cohesion: 0.31
+Nodes (9): aabb_overlap(), apply_damage(), damage_resolve(), spawn_laser_impact(), spawn_plasma_impact(), spawn_shield_impact(), vfx_update(), engine_spawn_sphere() (+1 more)
+
+### Community 292 - "Community 292"
+Cohesion: 0.51
+Nodes (8): camera_rig_cursor_ray(), laser_charging(), laser_update(), plasma_fire(), sphere_intersect_t(), weapon_ready(), weapon_update(), engine_mouse_button()
+
+### Community 293 - "Community 293"
+Cohesion: 0.5
+Nodes (3): hooks, preToolUse, version
+
 ## Knowledge Gaps
-- **1133 isolated node(s):** `1. Project state`, `2. Active documentation model`, `code:bash (cmake --build build --target renderer_app renderer_tests)`, `4. Coding standards`, `5. Ownership boundaries` (+1128 more)
+- **1136 isolated node(s):** `version`, `preToolUse`, `1. Project state`, `2. Active documentation model`, `code:bash (cmake --build build --target renderer_app renderer_tests)` (+1131 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **70 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `frame_cb()` connect `Engine Runtime & Camera Rig` to `Scene Management & Debug`, `App Entry & Frame Loop`, `Community 166`, `Convex Hull Geometry`, `AABB Collision Detection`?**
+- **Why does `frame_cb()` connect `Engine Runtime & Camera Rig` to `Scene Management & Debug`, `App Entry & Frame Loop`, `Community 166`, `Camera & Collision Systems`, `Convex Hull Geometry`, `Community 205`?**
+  _High betweenness centrality (0.009) - this node is a cross-community bridge._
+- **Why does `engine_tick()` connect `Community 166` to `Engine Runtime & Camera Rig`, `Camera & Collision Systems`?**
   _High betweenness centrality (0.008) - this node is a cross-community bridge._
-- **Why does `renderer_handle_valid()` connect `Convex Hull Geometry` to `Engine Runtime & Camera Rig`, `Scene Management & Debug`, `App Entry & Frame Loop`, `Community 158`?**
-  _High betweenness centrality (0.006) - this node is a cross-community bridge._
-- **Why does `engine_tick()` connect `Community 166` to `Engine Runtime & Camera Rig`, `App Entry & Frame Loop`, `Camera & Collision Systems`?**
+- **Why does `engine_registry()` connect `Community 196` to `Asset Import Pipeline`, `Community 166`?**
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **Are the 22 inferred relationships involving `engine_now()` (e.g. with `projectile_update()` and `enemy_ai_update()`) actually correct?**
   _`engine_now()` has 22 INFERRED edges - model-reasoned connections that need verification._

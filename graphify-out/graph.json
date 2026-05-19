@@ -253,6 +253,42 @@
   },
   "nodes": [
     {
+      "label": "graphify.json",
+      "file_type": "code",
+      "source_file": ".github/hooks/graphify.json",
+      "source_location": "L1",
+      "id": "github_hooks_graphify_json",
+      "community": 293,
+      "norm_label": "graphify.json"
+    },
+    {
+      "label": "version",
+      "file_type": "code",
+      "source_file": ".github/hooks/graphify.json",
+      "source_location": "L2",
+      "id": "hooks_graphify_version",
+      "community": 293,
+      "norm_label": "version"
+    },
+    {
+      "label": "hooks",
+      "file_type": "code",
+      "source_file": ".github/hooks/graphify.json",
+      "source_location": "L3",
+      "id": "hooks_graphify_hooks",
+      "community": 293,
+      "norm_label": "hooks"
+    },
+    {
+      "label": "preToolUse",
+      "file_type": "code",
+      "source_file": ".github/hooks/graphify.json",
+      "source_location": "L4",
+      "id": "hooks_graphify_hooks_pretooluse",
+      "community": 293,
+      "norm_label": "pretooluse"
+    },
+    {
       "label": "projectile.h",
       "file_type": "code",
       "source_file": "src/game/projectile.h",
@@ -303,7 +339,7 @@
       "source_file": "src/game/projectile.cpp",
       "source_location": "L1",
       "id": "src_game_projectile_cpp",
-      "community": 3,
+      "community": 158,
       "norm_label": "projectile.cpp"
     },
     {
@@ -312,7 +348,7 @@
       "source_file": "src/game/projectile.cpp",
       "source_location": "L5",
       "id": "game_projectile_projectile_update",
-      "community": 3,
+      "community": 158,
       "norm_label": "projectile_update()"
     },
     {
@@ -339,7 +375,7 @@
       "source_file": "src/game/shield_vfx.cpp",
       "source_location": "L1",
       "id": "src_game_shield_vfx_cpp",
-      "community": 3,
+      "community": 158,
       "norm_label": "shield_vfx.cpp"
     },
     {
@@ -348,7 +384,7 @@
       "source_file": "src/game/shield_vfx.cpp",
       "source_location": "L13",
       "id": "game_shield_vfx_shield_vfx_update",
-      "community": 3,
+      "community": 158,
       "norm_label": "shield_vfx_update()"
     },
     {
@@ -375,7 +411,7 @@
       "source_file": "src/game/enemy_ai.cpp",
       "source_location": "L1",
       "id": "src_game_enemy_ai_cpp",
-      "community": 3,
+      "community": 158,
       "norm_label": "enemy_ai.cpp"
     },
     {
@@ -384,7 +420,7 @@
       "source_file": "src/game/enemy_ai.cpp",
       "source_location": "L19",
       "id": "game_enemy_ai_enemy_ai_update",
-      "community": 3,
+      "community": 158,
       "norm_label": "enemy_ai_update()"
     },
     {
@@ -393,7 +429,7 @@
       "source_file": "src/game/camera_rig.cpp",
       "source_location": "L1",
       "id": "src_game_camera_rig_cpp",
-      "community": 3,
+      "community": 290,
       "norm_label": "camera_rig.cpp"
     },
     {
@@ -402,7 +438,7 @@
       "source_file": "src/game/camera_rig.cpp",
       "source_location": "L31",
       "id": "game_camera_rig_camera_rig_init",
-      "community": 3,
+      "community": 290,
       "norm_label": "camera_rig_init()"
     },
     {
@@ -411,7 +447,7 @@
       "source_file": "src/game/camera_rig.cpp",
       "source_location": "L52",
       "id": "game_camera_rig_camera_rig_input",
-      "community": 3,
+      "community": 290,
       "norm_label": "camera_rig_input()"
     },
     {
@@ -420,7 +456,7 @@
       "source_file": "src/game/camera_rig.cpp",
       "source_location": "L127",
       "id": "game_camera_rig_camera_rig_finalize",
-      "community": 3,
+      "community": 290,
       "norm_label": "camera_rig_finalize()"
     },
     {
@@ -429,7 +465,7 @@
       "source_file": "src/game/camera_rig.cpp",
       "source_location": "L226",
       "id": "game_camera_rig_camera_rig_aim_point",
-      "community": 3,
+      "community": 290,
       "norm_label": "camera_rig_aim_point()"
     },
     {
@@ -438,7 +474,7 @@
       "source_file": "src/game/camera_rig.cpp",
       "source_location": "L232",
       "id": "game_camera_rig_camera_rig_cursor_ray",
-      "community": 3,
+      "community": 292,
       "norm_label": "camera_rig_cursor_ray()"
     },
     {
@@ -447,7 +483,7 @@
       "source_file": "src/game/camera_rig.cpp",
       "source_location": "L237",
       "id": "game_camera_rig_camera_rig_get_vp",
-      "community": 3,
+      "community": 290,
       "norm_label": "camera_rig_get_vp()"
     },
     {
@@ -456,7 +492,7 @@
       "source_file": "src/game/game.cpp",
       "source_location": "L1",
       "id": "src_game_game_cpp",
-      "community": 3,
+      "community": 158,
       "norm_label": "game.cpp"
     },
     {
@@ -465,7 +501,7 @@
       "source_file": "src/game/game.cpp",
       "source_location": "L42",
       "id": "game_game_render_submit",
-      "community": 3,
+      "community": 158,
       "norm_label": "render_submit()"
     },
     {
@@ -474,7 +510,7 @@
       "source_file": "src/game/game.cpp",
       "source_location": "L66",
       "id": "game_game_enemy_death_update",
-      "community": 3,
+      "community": 158,
       "norm_label": "enemy_death_update()"
     },
     {
@@ -483,7 +519,7 @@
       "source_file": "src/game/game.cpp",
       "source_location": "L99",
       "id": "game_game_vfx_cleanup",
-      "community": 3,
+      "community": 158,
       "norm_label": "vfx_cleanup()"
     },
     {
@@ -492,7 +528,7 @@
       "source_file": "src/game/game.cpp",
       "source_location": "L117",
       "id": "game_game_scene_reset",
-      "community": 3,
+      "community": 158,
       "norm_label": "scene_reset()"
     },
     {
@@ -501,7 +537,7 @@
       "source_file": "src/game/game.cpp",
       "source_location": "L132",
       "id": "game_game_handle_restart_quit_input",
-      "community": 3,
+      "community": 158,
       "norm_label": "handle_restart_quit_input()"
     },
     {
@@ -510,7 +546,7 @@
       "source_file": "src/game/game.cpp",
       "source_location": "L161",
       "id": "game_game_match_state_update",
-      "community": 3,
+      "community": 158,
       "norm_label": "match_state_update()"
     },
     {
@@ -519,7 +555,7 @@
       "source_file": "src/game/game.cpp",
       "source_location": "L204",
       "id": "game_game_game_init",
-      "community": 3,
+      "community": 158,
       "norm_label": "game_init()"
     },
     {
@@ -528,7 +564,7 @@
       "source_file": "src/game/game.cpp",
       "source_location": "L255",
       "id": "game_game_game_tick",
-      "community": 3,
+      "community": 158,
       "norm_label": "game_tick()"
     },
     {
@@ -537,7 +573,7 @@
       "source_file": "src/game/game.cpp",
       "source_location": "L276",
       "id": "game_game_game_shutdown",
-      "community": 3,
+      "community": 158,
       "norm_label": "game_shutdown()"
     },
     {
@@ -564,7 +600,7 @@
       "source_file": "src/game/player.cpp",
       "source_location": "L1",
       "id": "src_game_player_cpp",
-      "community": 3,
+      "community": 158,
       "norm_label": "player.cpp"
     },
     {
@@ -573,7 +609,7 @@
       "source_file": "src/game/player.cpp",
       "source_location": "L9",
       "id": "game_player_player_update",
-      "community": 3,
+      "community": 158,
       "norm_label": "player_update()"
     },
     {
@@ -591,7 +627,7 @@
       "source_file": "src/game/weapons.cpp",
       "source_location": "L1",
       "id": "src_game_weapons_cpp",
-      "community": 3,
+      "community": 292,
       "norm_label": "weapons.cpp"
     },
     {
@@ -600,7 +636,7 @@
       "source_file": "src/game/weapons.cpp",
       "source_location": "L19",
       "id": "game_weapons_weapon_ready",
-      "community": 3,
+      "community": 292,
       "norm_label": "weapon_ready()"
     },
     {
@@ -609,7 +645,7 @@
       "source_file": "src/game/weapons.cpp",
       "source_location": "L35",
       "id": "game_weapons_sphere_intersect_t",
-      "community": 3,
+      "community": 292,
       "norm_label": "sphere_intersect_t()"
     },
     {
@@ -618,7 +654,7 @@
       "source_file": "src/game/weapons.cpp",
       "source_location": "L50",
       "id": "game_weapons_laser_update",
-      "community": 3,
+      "community": 292,
       "norm_label": "laser_update()"
     },
     {
@@ -627,7 +663,7 @@
       "source_file": "src/game/weapons.cpp",
       "source_location": "L185",
       "id": "game_weapons_laser_charging",
-      "community": 3,
+      "community": 292,
       "norm_label": "laser_charging()"
     },
     {
@@ -636,7 +672,7 @@
       "source_file": "src/game/weapons.cpp",
       "source_location": "L269",
       "id": "game_weapons_plasma_fire",
-      "community": 3,
+      "community": 292,
       "norm_label": "plasma_fire()"
     },
     {
@@ -645,7 +681,7 @@
       "source_file": "src/game/weapons.cpp",
       "source_location": "L290",
       "id": "game_weapons_weapon_update",
-      "community": 3,
+      "community": 292,
       "norm_label": "weapon_update()"
     },
     {
@@ -663,7 +699,7 @@
       "source_file": "src/game/spawn.cpp",
       "source_location": "L1",
       "id": "src_game_spawn_cpp",
-      "community": 3,
+      "community": 175,
       "norm_label": "spawn.cpp"
     },
     {
@@ -672,7 +708,7 @@
       "source_file": "src/game/spawn.cpp",
       "source_location": "L53",
       "id": "game_spawn_asteroid_color_variation",
-      "community": 3,
+      "community": 175,
       "norm_label": "asteroid_color_variation()"
     },
     {
@@ -681,7 +717,7 @@
       "source_file": "src/game/spawn.cpp",
       "source_location": "L78",
       "id": "game_spawn_is_asteroid_model",
-      "community": 3,
+      "community": 175,
       "norm_label": "is_asteroid_model()"
     },
     {
@@ -690,7 +726,7 @@
       "source_file": "src/game/spawn.cpp",
       "source_location": "L86",
       "id": "game_spawn_random_asteroid_model",
-      "community": 3,
+      "community": 175,
       "norm_label": "random_asteroid_model()"
     },
     {
@@ -699,7 +735,7 @@
       "source_file": "src/game/spawn.cpp",
       "source_location": "L94",
       "id": "game_spawn_sphere_inv_inertia",
-      "community": 3,
+      "community": 175,
       "norm_label": "sphere_inv_inertia()"
     },
     {
@@ -708,7 +744,7 @@
       "source_file": "src/game/spawn.cpp",
       "source_location": "L99",
       "id": "game_spawn_box_inv_inertia",
-      "community": 3,
+      "community": 175,
       "norm_label": "box_inv_inertia()"
     },
     {
@@ -717,7 +753,7 @@
       "source_file": "src/game/spawn.cpp",
       "source_location": "L104",
       "id": "game_spawn_spawn_from_model",
-      "community": 3,
+      "community": 175,
       "norm_label": "spawn_from_model()"
     },
     {
@@ -726,7 +762,7 @@
       "source_file": "src/game/spawn.cpp",
       "source_location": "L173",
       "id": "game_spawn_spawn_shield_sphere",
-      "community": 3,
+      "community": 175,
       "norm_label": "spawn_shield_sphere()"
     },
     {
@@ -735,7 +771,7 @@
       "source_file": "src/game/spawn.cpp",
       "source_location": "L203",
       "id": "game_spawn_spawn_player",
-      "community": 3,
+      "community": 175,
       "norm_label": "spawn_player()"
     },
     {
@@ -744,7 +780,7 @@
       "source_file": "src/game/spawn.cpp",
       "source_location": "L252",
       "id": "game_spawn_spawn_enemy",
-      "community": 3,
+      "community": 175,
       "norm_label": "spawn_enemy()"
     },
     {
@@ -753,7 +789,7 @@
       "source_file": "src/game/spawn.cpp",
       "source_location": "L301",
       "id": "game_spawn_spawn_asteroid",
-      "community": 3,
+      "community": 175,
       "norm_label": "spawn_asteroid()"
     },
     {
@@ -762,7 +798,7 @@
       "source_file": "src/game/spawn.cpp",
       "source_location": "L366",
       "id": "game_spawn_spawn_projectile",
-      "community": 3,
+      "community": 175,
       "norm_label": "spawn_projectile()"
     },
     {
@@ -825,7 +861,7 @@
       "source_file": "src/game/damage.cpp",
       "source_location": "L1",
       "id": "src_game_damage_cpp",
-      "community": 3,
+      "community": 291,
       "norm_label": "damage.cpp"
     },
     {
@@ -834,7 +870,7 @@
       "source_file": "src/game/damage.cpp",
       "source_location": "L14",
       "id": "game_damage_apply_damage",
-      "community": 3,
+      "community": 291,
       "norm_label": "apply_damage()"
     },
     {
@@ -843,7 +879,7 @@
       "source_file": "src/game/damage.cpp",
       "source_location": "L42",
       "id": "game_damage_aabb_overlap",
-      "community": 3,
+      "community": 291,
       "norm_label": "aabb_overlap()"
     },
     {
@@ -852,7 +888,7 @@
       "source_file": "src/game/damage.cpp",
       "source_location": "L53",
       "id": "game_damage_damage_resolve",
-      "community": 3,
+      "community": 291,
       "norm_label": "damage_resolve()"
     },
     {
@@ -870,7 +906,7 @@
       "source_file": "src/game/hud.cpp",
       "source_location": "L1",
       "id": "src_game_hud_cpp",
-      "community": 3,
+      "community": 290,
       "norm_label": "hud.cpp"
     },
     {
@@ -879,7 +915,7 @@
       "source_file": "src/game/hud.cpp",
       "source_location": "L22",
       "id": "game_hud_world_to_screen",
-      "community": 3,
+      "community": 290,
       "norm_label": "world_to_screen()"
     },
     {
@@ -888,7 +924,7 @@
       "source_file": "src/game/hud.cpp",
       "source_location": "L35",
       "id": "game_hud_hud_render",
-      "community": 3,
+      "community": 290,
       "norm_label": "hud_render()"
     },
     {
@@ -897,7 +933,7 @@
       "source_file": "src/game/vfx.cpp",
       "source_location": "L1",
       "id": "src_game_vfx_cpp",
-      "community": 3,
+      "community": 291,
       "norm_label": "vfx.cpp"
     },
     {
@@ -906,7 +942,7 @@
       "source_file": "src/game/vfx.cpp",
       "source_location": "L12",
       "id": "game_vfx_vfx_update",
-      "community": 3,
+      "community": 291,
       "norm_label": "vfx_update()"
     },
     {
@@ -915,7 +951,7 @@
       "source_file": "src/game/vfx.cpp",
       "source_location": "L40",
       "id": "game_vfx_spawn_plasma_impact",
-      "community": 3,
+      "community": 291,
       "norm_label": "spawn_plasma_impact()"
     },
     {
@@ -924,7 +960,7 @@
       "source_file": "src/game/vfx.cpp",
       "source_location": "L64",
       "id": "game_vfx_spawn_laser_impact",
-      "community": 3,
+      "community": 291,
       "norm_label": "spawn_laser_impact()"
     },
     {
@@ -933,7 +969,7 @@
       "source_file": "src/game/vfx.cpp",
       "source_location": "L88",
       "id": "game_vfx_spawn_shield_impact",
-      "community": 3,
+      "community": 291,
       "norm_label": "spawn_shield_impact()"
     },
     {
@@ -942,7 +978,7 @@
       "source_file": "src/game/asteroid_field.cpp",
       "source_location": "L1",
       "id": "src_game_asteroid_field_cpp",
-      "community": 3,
+      "community": 175,
       "norm_label": "asteroid_field.cpp"
     },
     {
@@ -951,7 +987,7 @@
       "source_file": "src/game/asteroid_field.cpp",
       "source_location": "L18",
       "id": "game_asteroid_field_random_direction",
-      "community": 3,
+      "community": 175,
       "norm_label": "random_direction()"
     },
     {
@@ -960,7 +996,7 @@
       "source_file": "src/game/asteroid_field.cpp",
       "source_location": "L27",
       "id": "game_asteroid_field_random_point_in_shell",
-      "community": 3,
+      "community": 175,
       "norm_label": "random_point_in_shell()"
     },
     {
@@ -969,7 +1005,7 @@
       "source_file": "src/game/asteroid_field.cpp",
       "source_location": "L41",
       "id": "game_asteroid_field_spawn_tier",
-      "community": 3,
+      "community": 175,
       "norm_label": "spawn_tier()"
     },
     {
@@ -978,7 +1014,7 @@
       "source_file": "src/game/asteroid_field.cpp",
       "source_location": "L63",
       "id": "game_asteroid_field_asteroid_field_init",
-      "community": 3,
+      "community": 175,
       "norm_label": "asteroid_field_init()"
     },
     {
@@ -987,7 +1023,7 @@
       "source_file": "src/game/asteroid_field.cpp",
       "source_location": "L100",
       "id": "game_asteroid_field_reflect_off_boundary",
-      "community": 3,
+      "community": 175,
       "norm_label": "reflect_off_boundary()"
     },
     {
@@ -996,7 +1032,7 @@
       "source_file": "src/game/asteroid_field.cpp",
       "source_location": "L108",
       "id": "game_asteroid_field_containment_update",
-      "community": 3,
+      "community": 175,
       "norm_label": "containment_update()"
     },
     {
@@ -1005,7 +1041,7 @@
       "source_file": "src/game/game_shaders.cpp",
       "source_location": "L1",
       "id": "src_game_game_shaders_cpp",
-      "community": 5,
+      "community": 158,
       "norm_label": "game_shaders.cpp"
     },
     {
@@ -1014,7 +1050,7 @@
       "source_file": "src/game/game_shaders.cpp",
       "source_location": "L12",
       "id": "game_game_shaders_game_shaders_init",
-      "community": 5,
+      "community": 158,
       "norm_label": "game_shaders_init()"
     },
     {
@@ -1068,7 +1104,7 @@
       "source_file": "src/renderer/pipeline_shadow.cpp",
       "source_location": "L1",
       "id": "src_renderer_pipeline_shadow_cpp",
-      "community": 158,
+      "community": 200,
       "norm_label": "pipeline_shadow.cpp"
     },
     {
@@ -1077,16 +1113,16 @@
       "source_file": "src/renderer/pipeline_shadow.cpp",
       "source_location": "L15",
       "id": "renderer_pipeline_shadow_create_pipeline_shadow",
-      "community": 158,
+      "community": 200,
       "norm_label": "create_pipeline_shadow()"
     },
     {
       "label": "get_shadow_pipeline()",
       "file_type": "code",
       "source_file": "src/renderer/pipeline_shadow.cpp",
-      "source_location": "L56",
+      "source_location": "L57",
       "id": "renderer_pipeline_shadow_get_shadow_pipeline",
-      "community": 158,
+      "community": 200,
       "norm_label": "get_shadow_pipeline()"
     },
     {
@@ -1095,7 +1131,7 @@
       "source_file": "src/renderer/texture.cpp",
       "source_location": "L1",
       "id": "src_renderer_texture_cpp",
-      "community": 9,
+      "community": 289,
       "norm_label": "texture.cpp"
     },
     {
@@ -1104,7 +1140,7 @@
       "source_file": "src/renderer/texture.cpp",
       "source_location": "L30",
       "id": "renderer_texture_texture_get_view",
-      "community": 9,
+      "community": 289,
       "norm_label": "texture_get_view()"
     },
     {
@@ -1113,7 +1149,7 @@
       "source_file": "src/renderer/texture.cpp",
       "source_location": "L35",
       "id": "renderer_texture_texture_get",
-      "community": 9,
+      "community": 289,
       "norm_label": "texture_get()"
     },
     {
@@ -1122,7 +1158,7 @@
       "source_file": "src/renderer/texture.cpp",
       "source_location": "L40",
       "id": "renderer_texture_texture_get_sampler",
-      "community": 9,
+      "community": 289,
       "norm_label": "texture_get_sampler()"
     },
     {
@@ -1131,7 +1167,7 @@
       "source_file": "src/renderer/texture.cpp",
       "source_location": "L45",
       "id": "renderer_texture_ensure_view",
-      "community": 9,
+      "community": 289,
       "norm_label": "ensure_view()"
     },
     {
@@ -1140,7 +1176,7 @@
       "source_file": "src/renderer/texture.cpp",
       "source_location": "L52",
       "id": "renderer_texture_ensure_sampler",
-      "community": 9,
+      "community": 289,
       "norm_label": "ensure_sampler()"
     },
     {
@@ -1149,7 +1185,7 @@
       "source_file": "src/renderer/texture.cpp",
       "source_location": "L65",
       "id": "renderer_texture_texture_store_insert",
-      "community": 9,
+      "community": 289,
       "norm_label": "texture_store_insert()"
     },
     {
@@ -1158,7 +1194,7 @@
       "source_file": "src/renderer/texture.cpp",
       "source_location": "L77",
       "id": "renderer_texture_texture_store_shutdown",
-      "community": 9,
+      "community": 289,
       "norm_label": "texture_store_shutdown()"
     },
     {
@@ -1167,7 +1203,7 @@
       "source_file": "src/renderer/texture.cpp",
       "source_location": "L93",
       "id": "renderer_texture_renderer_upload_texture_from_memory",
-      "community": 9,
+      "community": 289,
       "norm_label": "renderer_upload_texture_from_memory()"
     },
     {
@@ -1176,7 +1212,7 @@
       "source_file": "src/renderer/texture.cpp",
       "source_location": "L100",
       "id": "renderer_texture_renderer_upload_texture_2d",
-      "community": 9,
+      "community": 289,
       "norm_label": "renderer_upload_texture_2d()"
     },
     {
@@ -1185,7 +1221,7 @@
       "source_file": "src/renderer/texture.cpp",
       "source_location": "L120",
       "id": "renderer_texture_renderer_upload_texture_from_file",
-      "community": 9,
+      "community": 289,
       "norm_label": "renderer_upload_texture_from_file()"
     },
     {
@@ -1194,7 +1230,7 @@
       "source_file": "src/renderer/texture.cpp",
       "source_location": "L143",
       "id": "renderer_texture_renderer_upload_cubemap",
-      "community": 9,
+      "community": 289,
       "norm_label": "renderer_upload_cubemap()"
     },
     {
@@ -1203,7 +1239,7 @@
       "source_file": "src/renderer/pipeline_shadow_debug.cpp",
       "source_location": "L1",
       "id": "src_renderer_pipeline_shadow_debug_cpp",
-      "community": 158,
+      "community": 200,
       "norm_label": "pipeline_shadow_debug.cpp"
     },
     {
@@ -1212,7 +1248,7 @@
       "source_file": "src/renderer/pipeline_shadow_debug.cpp",
       "source_location": "L13",
       "id": "renderer_pipeline_shadow_debug_create_pipeline_shadow_debug",
-      "community": 158,
+      "community": 200,
       "norm_label": "create_pipeline_shadow_debug()"
     },
     {
@@ -1221,7 +1257,7 @@
       "source_file": "src/renderer/renderer.h",
       "source_location": "L1",
       "id": "src_renderer_renderer_h",
-      "community": 158,
+      "community": 205,
       "norm_label": "renderer.h"
     },
     {
@@ -1230,7 +1266,7 @@
       "source_file": "src/renderer/renderer.h",
       "source_location": "L26",
       "id": "renderer_renderer_renderer_handle_valid",
-      "community": 9,
+      "community": 205,
       "norm_label": "renderer_handle_valid()"
     },
     {
@@ -1239,7 +1275,7 @@
       "source_file": "src/renderer/renderer.h",
       "source_location": "L58",
       "id": "renderer_renderer_blendmode",
-      "community": 158,
+      "community": 205,
       "norm_label": "blendmode()"
     },
     {
@@ -1248,7 +1284,7 @@
       "source_file": "src/renderer/renderer.h",
       "source_location": "L172",
       "id": "renderer_renderer_builtinshader",
-      "community": 158,
+      "community": 205,
       "norm_label": "builtinshader()"
     },
     {
@@ -1302,7 +1338,7 @@
       "source_file": "src/renderer/shadow_pass.h",
       "source_location": "L1",
       "id": "src_renderer_shadow_pass_h",
-      "community": 158,
+      "community": 205,
       "norm_label": "shadow_pass.h"
     },
     {
@@ -1500,7 +1536,7 @@
       "source_file": "src/renderer/pipeline_shadow.h",
       "source_location": "L1",
       "id": "src_renderer_pipeline_shadow_h",
-      "community": 158,
+      "community": 200,
       "norm_label": "pipeline_shadow.h"
     },
     {
@@ -1518,7 +1554,7 @@
       "source_file": "src/renderer/mesh_builders.cpp",
       "source_location": "L1",
       "id": "src_renderer_mesh_builders_cpp",
-      "community": 175,
+      "community": 9,
       "norm_label": "mesh_builders.cpp"
     },
     {
@@ -1527,7 +1563,7 @@
       "source_file": "src/renderer/mesh_builders.cpp",
       "source_location": "L31",
       "id": "renderer_mesh_builders_mesh_vbuf_get",
-      "community": 175,
+      "community": 9,
       "norm_label": "mesh_vbuf_get()"
     },
     {
@@ -1536,7 +1572,7 @@
       "source_file": "src/renderer/mesh_builders.cpp",
       "source_location": "L32",
       "id": "renderer_mesh_builders_mesh_ibuf_get",
-      "community": 175,
+      "community": 9,
       "norm_label": "mesh_ibuf_get()"
     },
     {
@@ -1545,7 +1581,7 @@
       "source_file": "src/renderer/mesh_builders.cpp",
       "source_location": "L33",
       "id": "renderer_mesh_builders_mesh_index_count_get",
-      "community": 175,
+      "community": 9,
       "norm_label": "mesh_index_count_get()"
     },
     {
@@ -1554,7 +1590,7 @@
       "source_file": "src/renderer/mesh_builders.cpp",
       "source_location": "L34",
       "id": "renderer_mesh_builders_mesh_aabb_get",
-      "community": 175,
+      "community": 9,
       "norm_label": "mesh_aabb_get()"
     },
     {
@@ -1563,7 +1599,7 @@
       "source_file": "src/renderer/mesh_builders.cpp",
       "source_location": "L36",
       "id": "renderer_mesh_builders_mesh_store_shutdown",
-      "community": 175,
+      "community": 9,
       "norm_label": "mesh_store_shutdown()"
     },
     {
@@ -1581,7 +1617,7 @@
       "source_file": "src/renderer/mesh_builders.cpp",
       "source_location": "L56",
       "id": "renderer_mesh_builders_mesh_store_free",
-      "community": 175,
+      "community": 9,
       "norm_label": "mesh_store_free()"
     },
     {
@@ -1590,7 +1626,7 @@
       "source_file": "src/renderer/mesh_builders.cpp",
       "source_location": "L68",
       "id": "renderer_mesh_builders_mesh_store_ref_dec",
-      "community": 175,
+      "community": 9,
       "norm_label": "mesh_store_ref_dec()"
     },
     {
@@ -1599,7 +1635,7 @@
       "source_file": "src/renderer/mesh_builders.cpp",
       "source_location": "L80",
       "id": "renderer_mesh_builders_renderer_upload_mesh",
-      "community": 175,
+      "community": 9,
       "norm_label": "renderer_upload_mesh()"
     },
     {
@@ -1608,7 +1644,7 @@
       "source_file": "src/renderer/mesh_builders.cpp",
       "source_location": "L166",
       "id": "renderer_mesh_builders_renderer_make_sphere_mesh",
-      "community": 175,
+      "community": 9,
       "norm_label": "renderer_make_sphere_mesh()"
     },
     {
@@ -1617,7 +1653,7 @@
       "source_file": "src/renderer/mesh_builders.cpp",
       "source_location": "L249",
       "id": "renderer_mesh_builders_renderer_make_cube_mesh",
-      "community": 175,
+      "community": 9,
       "norm_label": "renderer_make_cube_mesh()"
     },
     {
@@ -1887,7 +1923,7 @@
       "source_file": "src/renderer/renderer.cpp",
       "source_location": "L1267",
       "id": "renderer_renderer_renderer_enqueue_draw",
-      "community": 4,
+      "community": 205,
       "norm_label": "renderer_enqueue_draw()"
     },
     {
@@ -1959,7 +1995,7 @@
       "source_file": "src/renderer/pipeline_shadow_debug.h",
       "source_location": "L1",
       "id": "src_renderer_pipeline_shadow_debug_h",
-      "community": 158,
+      "community": 200,
       "norm_label": "pipeline_shadow_debug.h"
     },
     {
@@ -2184,7 +2220,7 @@
       "source_file": "src/renderer/mocks/renderer_mock.cpp",
       "source_location": "L36",
       "id": "mocks_renderer_mock_renderer_make_unlit_material",
-      "community": 5,
+      "community": 291,
       "norm_label": "renderer_make_unlit_material()"
     },
     {
@@ -2382,7 +2418,7 @@
       "source_file": "src/engine/collision_response.cpp",
       "source_location": "L1",
       "id": "src_engine_collision_response_cpp",
-      "community": 12,
+      "community": 7,
       "norm_label": "collision_response.cpp"
     },
     {
@@ -2391,7 +2427,7 @@
       "source_file": "src/engine/collision_response.cpp",
       "source_location": "L12",
       "id": "engine_collision_response_resolve_collision",
-      "community": 12,
+      "community": 7,
       "norm_label": "resolve_collision()"
     },
     {
@@ -2400,7 +2436,7 @@
       "source_file": "src/engine/collision_response.cpp",
       "source_location": "L58",
       "id": "engine_collision_response_positional_correction",
-      "community": 12,
+      "community": 7,
       "norm_label": "positional_correction()"
     },
     {
@@ -2409,7 +2445,7 @@
       "source_file": "src/engine/collision_response.cpp",
       "source_location": "L79",
       "id": "engine_collision_response_resolve_all_collisions",
-      "community": 12,
+      "community": 7,
       "norm_label": "resolve_all_collisions()"
     },
     {
@@ -2706,7 +2742,7 @@
       "source_file": "src/engine/physics.cpp",
       "source_location": "L1",
       "id": "src_engine_physics_cpp",
-      "community": 12,
+      "community": 7,
       "norm_label": "physics.cpp"
     },
     {
@@ -2715,7 +2751,7 @@
       "source_file": "src/engine/physics.cpp",
       "source_location": "L15",
       "id": "engine_physics_make_box_inv_inertia_body",
-      "community": 12,
+      "community": 7,
       "norm_label": "make_box_inv_inertia_body()"
     },
     {
@@ -2724,7 +2760,7 @@
       "source_file": "src/engine/physics.cpp",
       "source_location": "L27",
       "id": "engine_physics_make_sphere_inv_inertia_body",
-      "community": 12,
+      "community": 7,
       "norm_label": "make_sphere_inv_inertia_body()"
     },
     {
@@ -2733,7 +2769,7 @@
       "source_file": "src/engine/physics.cpp",
       "source_location": "L32",
       "id": "engine_physics_update_world_inertia",
-      "community": 12,
+      "community": 7,
       "norm_label": "update_world_inertia()"
     },
     {
@@ -2742,7 +2778,7 @@
       "source_file": "src/engine/physics.cpp",
       "source_location": "L42",
       "id": "engine_physics_integrate_linear",
-      "community": 12,
+      "community": 7,
       "norm_label": "integrate_linear()"
     },
     {
@@ -2751,7 +2787,7 @@
       "source_file": "src/engine/physics.cpp",
       "source_location": "L49",
       "id": "engine_physics_integrate_angular",
-      "community": 12,
+      "community": 7,
       "norm_label": "integrate_angular()"
     },
     {
@@ -2760,7 +2796,7 @@
       "source_file": "src/engine/physics.cpp",
       "source_location": "L66",
       "id": "engine_physics_physics_substep",
-      "community": 12,
+      "community": 7,
       "norm_label": "physics_substep()"
     },
     {
@@ -2769,7 +2805,7 @@
       "source_file": "src/engine/physics.cpp",
       "source_location": "L92",
       "id": "engine_physics_physics_system_tick",
-      "community": 12,
+      "community": 7,
       "norm_label": "physics_system_tick()"
     },
     {
@@ -3012,7 +3048,7 @@
       "source_file": "src/engine/asset_import.cpp",
       "source_location": "L1",
       "id": "src_engine_asset_import_cpp",
-      "community": 9,
+      "community": 289,
       "norm_label": "asset_import.cpp"
     },
     {
@@ -3021,7 +3057,7 @@
       "source_file": "src/engine/asset_import.cpp",
       "source_location": "L28",
       "id": "engine_asset_import_asset_extract_textures",
-      "community": 9,
+      "community": 289,
       "norm_label": "asset_extract_textures()"
     },
     {
@@ -3030,7 +3066,7 @@
       "source_file": "src/engine/asset_import.cpp",
       "source_location": "L115",
       "id": "engine_asset_import_asset_import_gltf",
-      "community": 9,
+      "community": 289,
       "norm_label": "asset_import_gltf()"
     },
     {
@@ -3228,7 +3264,7 @@
       "source_file": "src/engine/mocks/engine_mock.cpp",
       "source_location": "L51",
       "id": "mocks_engine_mock_engine_spawn_sphere",
-      "community": 3,
+      "community": 291,
       "norm_label": "engine_spawn_sphere()"
     },
     {
@@ -3282,7 +3318,7 @@
       "source_file": "src/engine/mocks/engine_mock.cpp",
       "source_location": "L70",
       "id": "mocks_engine_mock_engine_now",
-      "community": 3,
+      "community": 158,
       "norm_label": "engine_now()"
     },
     {
@@ -3309,7 +3345,7 @@
       "source_file": "src/engine/mocks/engine_mock.cpp",
       "source_location": "L78",
       "id": "mocks_engine_mock_engine_mouse_delta",
-      "community": 3,
+      "community": 290,
       "norm_label": "engine_mouse_delta()"
     },
     {
@@ -3318,7 +3354,7 @@
       "source_file": "src/engine/mocks/engine_mock.cpp",
       "source_location": "L79",
       "id": "mocks_engine_mock_engine_mouse_button",
-      "community": 3,
+      "community": 292,
       "norm_label": "engine_mouse_button()"
     },
     {
@@ -3381,7 +3417,7 @@
       "source_file": "src/engine/mocks/engine_mock.cpp",
       "source_location": "L106",
       "id": "mocks_engine_mock_engine_set_active_camera",
-      "community": 3,
+      "community": 290,
       "norm_label": "engine_set_active_camera()"
     },
     {
@@ -4560,7 +4596,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L962",
       "id": "sokol_sokol_cheatsheet_3_1_event_types",
-      "community": 117,
+      "community": 297,
       "norm_label": "3.1 event types"
     },
     {
@@ -4569,7 +4605,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L964",
       "id": "sokol_sokol_cheatsheet_codeblock_32",
-      "community": 117,
+      "community": 297,
       "norm_label": "code:c (typedef enum sapp_event_type {)"
     },
     {
@@ -4614,7 +4650,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1049",
       "id": "sokol_sokol_cheatsheet_3_4_mouse_cursor",
-      "community": 117,
+      "community": 298,
       "norm_label": "3.4 mouse cursor"
     },
     {
@@ -4623,7 +4659,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1051",
       "id": "sokol_sokol_cheatsheet_codeblock_35",
-      "community": 117,
+      "community": 298,
       "norm_label": "code:c (typedef enum sapp_mouse_cursor {)"
     },
     {
@@ -4632,7 +4668,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1067",
       "id": "sokol_sokol_cheatsheet_3_5_event_struct",
-      "community": 117,
+      "community": 299,
       "norm_label": "3.5 event struct"
     },
     {
@@ -4641,7 +4677,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1069",
       "id": "sokol_sokol_cheatsheet_codeblock_36",
-      "community": 117,
+      "community": 299,
       "norm_label": "code:c (typedef struct sapp_event {)"
     },
     {
@@ -4668,7 +4704,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1142",
       "id": "sokol_sokol_cheatsheet_3_7_gl_platform_desc",
-      "community": 117,
+      "community": 300,
       "norm_label": "3.7 gl platform desc"
     },
     {
@@ -4677,7 +4713,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1144",
       "id": "sokol_sokol_cheatsheet_codeblock_38",
-      "community": 117,
+      "community": 300,
       "norm_label": "code:c (typedef struct sapp_gl_desc {)"
     },
     {
@@ -4758,7 +4794,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1194",
       "id": "sokol_sokol_cheatsheet_3_12_functions_app_lifecycle",
-      "community": 117,
+      "community": 294,
       "norm_label": "3.12 functions \u2014 app lifecycle"
     },
     {
@@ -4767,7 +4803,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1196",
       "id": "sokol_sokol_cheatsheet_codeblock_43",
-      "community": 117,
+      "community": 294,
       "norm_label": "code:c (void sapp_request_quit(void);          // sends quit_request)"
     },
     {
@@ -4776,7 +4812,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1203",
       "id": "sokol_sokol_cheatsheet_3_13_functions_frame_info",
-      "community": 117,
+      "community": 295,
       "norm_label": "3.13 functions \u2014 frame info"
     },
     {
@@ -4785,7 +4821,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1205",
       "id": "sokol_sokol_cheatsheet_codeblock_44",
-      "community": 117,
+      "community": 295,
       "norm_label": "code:c (uint64_t sapp_frame_count(void);               // total fram)"
     },
     {
@@ -4884,7 +4920,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1247",
       "id": "sokol_sokol_cheatsheet_3_19_entry_point",
-      "community": 117,
+      "community": 296,
       "norm_label": "3.19 entry point"
     },
     {
@@ -4893,7 +4929,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1249",
       "id": "sokol_sokol_cheatsheet_codeblock_50",
-      "community": 117,
+      "community": 296,
       "norm_label": "code:c (// default entry: implement sokol_main instead of main())"
     },
     {
@@ -5235,7 +5271,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1558",
       "id": "sokol_sokol_cheatsheet_8_4_create_streaming_buffer_append",
-      "community": 293,
+      "community": 119,
       "norm_label": "8.4 create streaming buffer (append)"
     },
     {
@@ -5244,7 +5280,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1560",
       "id": "sokol_sokol_cheatsheet_codeblock_65",
-      "community": 293,
+      "community": 119,
       "norm_label": "code:c (sg_buffer stream_vbuf = sg_make_buffer(&(sg_buffer_desc){)"
     },
     {
@@ -5289,7 +5325,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1604",
       "id": "sokol_sokol_cheatsheet_8_7_create_sampler",
-      "community": 294,
+      "community": 119,
       "norm_label": "8.7 create sampler"
     },
     {
@@ -5298,7 +5334,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1606",
       "id": "sokol_sokol_cheatsheet_codeblock_68",
-      "community": 294,
+      "community": 119,
       "norm_label": "code:c (// standard filtered sampler)"
     },
     {
@@ -5307,7 +5343,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1635",
       "id": "sokol_sokol_cheatsheet_8_8_alpha_blend_pipeline",
-      "community": 295,
+      "community": 119,
       "norm_label": "8.8 alpha-blend pipeline"
     },
     {
@@ -5316,7 +5352,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1637",
       "id": "sokol_sokol_cheatsheet_codeblock_69",
-      "community": 295,
+      "community": 119,
       "norm_label": "code:c (sg_pipeline alpha_pip = sg_make_pipeline(&(sg_pipeline_desc))"
     },
     {
@@ -5361,7 +5397,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1729",
       "id": "sokol_sokol_cheatsheet_8_11_input_handling_pattern",
-      "community": 289,
+      "community": 119,
       "norm_label": "8.11 input handling pattern"
     },
     {
@@ -5370,7 +5406,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1731",
       "id": "sokol_sokol_cheatsheet_codeblock_72",
-      "community": 289,
+      "community": 119,
       "norm_label": "code:c (void event(const sapp_event* ev) {)"
     },
     {
@@ -5415,7 +5451,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1823",
       "id": "sokol_sokol_cheatsheet_8_14_resource_validity_check",
-      "community": 290,
+      "community": 119,
       "norm_label": "8.14 resource validity check"
     },
     {
@@ -5424,7 +5460,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1825",
       "id": "sokol_sokol_cheatsheet_codeblock_75",
-      "community": 290,
+      "community": 119,
       "norm_label": "code:c (// check if resource creation succeeded)"
     },
     {
@@ -5469,7 +5505,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1870",
       "id": "sokol_sokol_cheatsheet_8_17_quit_confirmation_pattern",
-      "community": 291,
+      "community": 119,
       "norm_label": "8.17 quit confirmation pattern"
     },
     {
@@ -5478,7 +5514,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1872",
       "id": "sokol_sokol_cheatsheet_codeblock_78",
-      "community": 291,
+      "community": 119,
       "norm_label": "code:c (void event(const sapp_event* ev) {)"
     },
     {
@@ -5487,7 +5523,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1884",
       "id": "sokol_sokol_cheatsheet_8_18_multi_pass_rendering_shadow_map_example",
-      "community": 292,
+      "community": 119,
       "norm_label": "8.18 multi-pass rendering (shadow map example)"
     },
     {
@@ -5496,7 +5532,7 @@
       "source_file": "pre_planning_docs/libs/sokol/SOKOL_CHEATSHEET.md",
       "source_location": "L1886",
       "id": "sokol_sokol_cheatsheet_codeblock_79",
-      "community": 292,
+      "community": 119,
       "norm_label": "code:c (// pass 1: render shadow map (depth only))"
     },
     {
@@ -17320,7 +17356,7 @@
       "label": "Expected Outcome",
       "file_type": "document",
       "source_file": "features/active/shadow-mapping/plan-p1.md",
-      "source_location": "L9",
+      "source_location": "L10",
       "id": "shadow_mapping_plan_p1_expected_outcome",
       "community": 220,
       "norm_label": "expected outcome"
@@ -17329,7 +17365,7 @@
       "label": "Tasks",
       "file_type": "document",
       "source_file": "features/active/shadow-mapping/plan-p1.md",
-      "source_location": "L15",
+      "source_location": "L16",
       "id": "shadow_mapping_plan_p1_tasks",
       "community": 220,
       "norm_label": "tasks"
@@ -17338,7 +17374,7 @@
       "label": "Fallbacks",
       "file_type": "document",
       "source_file": "features/active/shadow-mapping/plan-p1.md",
-      "source_location": "L35",
+      "source_location": "L36",
       "id": "shadow_mapping_plan_p1_fallbacks",
       "community": 220,
       "norm_label": "fallbacks"
@@ -17347,7 +17383,7 @@
       "label": "Human Checkpoint",
       "file_type": "document",
       "source_file": "features/active/shadow-mapping/plan-p1.md",
-      "source_location": "L43",
+      "source_location": "L44",
       "id": "shadow_mapping_plan_p1_human_checkpoint",
       "community": 220,
       "norm_label": "human checkpoint"
@@ -17540,6 +17576,24 @@
       "id": "shadow_mapping_checkpoint_p1_next_step",
       "community": 11,
       "norm_label": "next step"
+    },
+    {
+      "label": "review-findings.md",
+      "file_type": "document",
+      "source_file": "features/active/shadow-mapping/review-findings.md",
+      "source_location": "L1",
+      "id": "features_active_shadow_mapping_review_findings_md",
+      "community": 197,
+      "norm_label": "review-findings.md"
+    },
+    {
+      "label": "Finding: T-2 \u2014 2026-05-20",
+      "file_type": "document",
+      "source_file": "features/active/shadow-mapping/review-findings.md",
+      "source_location": "L1",
+      "id": "shadow_mapping_review_findings_finding_t_2_2026_05_20",
+      "community": 197,
+      "norm_label": "finding: t-2 \u2014 2026-05-20"
     },
     {
       "label": "plan-p1.md",
@@ -18514,15 +18568,6 @@
       "norm_label": "next step"
     },
     {
-      "label": "review-findings.md",
-      "file_type": "document",
-      "source_file": "features/active/shadow-mapping/review-findings.md",
-      "source_location": "L1",
-      "community": 197,
-      "norm_label": "review-findings.md",
-      "id": "features_active_shadow_mapping_review_findings_md"
-    },
-    {
       "label": "Shadow Mapping \u2014 Review Findings",
       "file_type": "document",
       "source_file": "features/active/shadow-mapping/review-findings.md",
@@ -18635,7 +18680,7 @@
       "file_type": "code",
       "source_file": "game/projectile.cpp",
       "source_location": "L1",
-      "community": 3,
+      "community": 158,
       "norm_label": "projectile.cpp",
       "id": "game_projectile_cpp"
     },
@@ -18662,7 +18707,7 @@
       "file_type": "code",
       "source_file": "game/shield_vfx.cpp",
       "source_location": "L1",
-      "community": 3,
+      "community": 158,
       "norm_label": "shield_vfx.cpp",
       "id": "game_shield_vfx_cpp"
     },
@@ -18689,7 +18734,7 @@
       "file_type": "code",
       "source_file": "game/enemy_ai.cpp",
       "source_location": "L1",
-      "community": 3,
+      "community": 158,
       "norm_label": "enemy_ai.cpp",
       "id": "game_enemy_ai_cpp"
     },
@@ -18698,7 +18743,7 @@
       "file_type": "code",
       "source_file": "game/camera_rig.cpp",
       "source_location": "L1",
-      "community": 3,
+      "community": 290,
       "norm_label": "camera_rig.cpp",
       "id": "game_camera_rig_cpp"
     },
@@ -18707,7 +18752,7 @@
       "file_type": "code",
       "source_file": "game/game.cpp",
       "source_location": "L1",
-      "community": 3,
+      "community": 158,
       "norm_label": "game.cpp",
       "id": "game_game_cpp"
     },
@@ -18734,7 +18779,7 @@
       "file_type": "code",
       "source_file": "game/player.cpp",
       "source_location": "L1",
-      "community": 3,
+      "community": 158,
       "norm_label": "player.cpp",
       "id": "game_player_cpp"
     },
@@ -18752,7 +18797,7 @@
       "file_type": "code",
       "source_file": "game/weapons.cpp",
       "source_location": "L1",
-      "community": 3,
+      "community": 292,
       "norm_label": "weapons.cpp",
       "id": "game_weapons_cpp"
     },
@@ -18770,7 +18815,7 @@
       "file_type": "code",
       "source_file": "game/spawn.cpp",
       "source_location": "L1",
-      "community": 3,
+      "community": 175,
       "norm_label": "spawn.cpp",
       "id": "game_spawn_cpp"
     },
@@ -18806,7 +18851,7 @@
       "file_type": "code",
       "source_file": "game/damage.cpp",
       "source_location": "L1",
-      "community": 3,
+      "community": 291,
       "norm_label": "damage.cpp",
       "id": "game_damage_cpp"
     },
@@ -18824,7 +18869,7 @@
       "file_type": "code",
       "source_file": "game/hud.cpp",
       "source_location": "L1",
-      "community": 3,
+      "community": 290,
       "norm_label": "hud.cpp",
       "id": "game_hud_cpp"
     },
@@ -18833,7 +18878,7 @@
       "file_type": "code",
       "source_file": "game/vfx.cpp",
       "source_location": "L1",
-      "community": 3,
+      "community": 291,
       "norm_label": "vfx.cpp",
       "id": "game_vfx_cpp"
     },
@@ -18842,7 +18887,7 @@
       "file_type": "code",
       "source_file": "game/asteroid_field.cpp",
       "source_location": "L1",
-      "community": 3,
+      "community": 175,
       "norm_label": "asteroid_field.cpp",
       "id": "game_asteroid_field_cpp"
     },
@@ -18851,7 +18896,7 @@
       "file_type": "code",
       "source_file": "game/game_shaders.cpp",
       "source_location": "L1",
-      "community": 5,
+      "community": 158,
       "norm_label": "game_shaders.cpp",
       "id": "game_game_shaders_cpp"
     },
@@ -18887,7 +18932,7 @@
       "file_type": "code",
       "source_file": "renderer/texture.cpp",
       "source_location": "L1",
-      "community": 9,
+      "community": 289,
       "norm_label": "texture.cpp",
       "id": "renderer_texture_cpp"
     },
@@ -18896,7 +18941,7 @@
       "file_type": "code",
       "source_file": "renderer/renderer.h",
       "source_location": "L1",
-      "community": 158,
+      "community": 205,
       "norm_label": "renderer.h",
       "id": "renderer_renderer_h"
     },
@@ -18959,7 +19004,7 @@
       "file_type": "code",
       "source_file": "renderer/mesh_builders.cpp",
       "source_location": "L1",
-      "community": 175,
+      "community": 9,
       "norm_label": "mesh_builders.cpp",
       "id": "renderer_mesh_builders_cpp"
     },
@@ -19058,7 +19103,7 @@
       "file_type": "code",
       "source_file": "engine/collision_response.cpp",
       "source_location": "L1",
-      "community": 12,
+      "community": 7,
       "norm_label": "collision_response.cpp",
       "id": "engine_collision_response_cpp"
     },
@@ -19148,7 +19193,7 @@
       "file_type": "code",
       "source_file": "engine/physics.cpp",
       "source_location": "L1",
-      "community": 12,
+      "community": 7,
       "norm_label": "physics.cpp",
       "id": "engine_physics_cpp"
     },
@@ -19229,7 +19274,7 @@
       "file_type": "code",
       "source_file": "engine/asset_import.cpp",
       "source_location": "L1",
-      "community": 9,
+      "community": 289,
       "norm_label": "asset_import.cpp",
       "id": "engine_asset_import_cpp"
     },
@@ -23263,7 +23308,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 7,
       "norm_label": "engine_init()",
       "id": "engine_engine_init"
     },
@@ -23289,7 +23334,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 7,
       "norm_label": "engine_shutdown()",
       "id": "engine_engine_shutdown"
     },
@@ -23679,7 +23724,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 7,
       "norm_label": "input_init()",
       "id": "input_input_init"
     },
@@ -23705,7 +23750,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 7,
       "norm_label": "inputstate",
       "id": "input_inputstate"
     },
@@ -23718,7 +23763,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 7,
       "norm_label": "input_event_cb()",
       "id": "input_input_event_cb"
     },
@@ -24563,7 +24608,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 7,
       "norm_label": "enginefixture (test fixture)",
       "id": "test_ecs_enginefixture"
     },
@@ -24621,6 +24666,36 @@
     }
   ],
   "links": [
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".github/hooks/graphify.json",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "github_hooks_graphify_json",
+      "target": "hooks_graphify_version",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".github/hooks/graphify.json",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "github_hooks_graphify_json",
+      "target": "hooks_graphify_hooks",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".github/hooks/graphify.json",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "hooks_graphify_hooks",
+      "target": "hooks_graphify_hooks_pretooluse",
+      "confidence_score": 1.0
+    },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
@@ -27166,9 +27241,9 @@
       "source_file": "src/renderer/renderer.cpp",
       "source_location": "L24",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_renderer_cpp",
-      "target": "src_renderer_texture_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_texture_h"
     },
     {
       "relation": "imports",
@@ -27177,9 +27252,9 @@
       "source_file": "src/renderer/renderer.cpp",
       "source_location": "L23",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_renderer_cpp",
-      "target": "src_renderer_debug_draw_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_debug_draw_h"
     },
     {
       "relation": "imports",
@@ -27188,9 +27263,9 @@
       "source_file": "src/renderer/renderer.cpp",
       "source_location": "L49",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_renderer_cpp",
-      "target": "src_renderer_pipeline_blinnphong_shadowed_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_pipeline_blinnphong_shadowed_h"
     },
     {
       "relation": "contains",
@@ -27219,9 +27294,9 @@
       "source_file": "src/renderer/pipeline_shadow.cpp",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_pipeline_shadow_cpp",
-      "target": "src_renderer_pipeline_shadow_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_pipeline_shadow_h"
     },
     {
       "relation": "imports",
@@ -27230,9 +27305,9 @@
       "source_file": "src/renderer/pipeline_shadow.cpp",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_pipeline_shadow_cpp",
-      "target": "src_renderer_renderer_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_renderer_h"
     },
     {
       "relation": "contains",
@@ -27629,9 +27704,9 @@
       "source_file": "src/renderer/pipeline_shadow_debug.cpp",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_pipeline_shadow_debug_cpp",
-      "target": "src_renderer_pipeline_shadow_debug_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_pipeline_shadow_debug_h"
     },
     {
       "relation": "imports",
@@ -27640,9 +27715,9 @@
       "source_file": "src/renderer/pipeline_shadow_debug.cpp",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_pipeline_shadow_debug_cpp",
-      "target": "src_renderer_renderer_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_renderer_h"
     },
     {
       "relation": "contains",
@@ -27650,9 +27725,9 @@
       "source_file": "src/renderer/pipeline_shadow_debug.cpp",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_pipeline_shadow_debug_cpp",
-      "target": "renderer_pipeline_shadow_debug_create_pipeline_shadow_debug",
-      "confidence_score": 1.0
+      "target": "renderer_pipeline_shadow_debug_create_pipeline_shadow_debug"
     },
     {
       "relation": "calls",
@@ -27702,9 +27777,9 @@
       "source_file": "src/renderer/shadow_pass.h",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_shadow_pass_h",
-      "target": "src_renderer_renderer_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_renderer_h"
     },
     {
       "relation": "imports",
@@ -27713,9 +27788,9 @@
       "source_file": "src/renderer/shadow_pass.cpp",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_shadow_pass_cpp",
-      "target": "src_renderer_renderer_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_renderer_h"
     },
     {
       "relation": "imports",
@@ -27724,9 +27799,9 @@
       "source_file": "src/renderer/renderer.cpp",
       "source_location": "L22",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_renderer_cpp",
-      "target": "src_renderer_renderer_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_renderer_h"
     },
     {
       "relation": "calls",
@@ -27926,9 +28001,9 @@
       "source_file": "src/renderer/shadow_pass.cpp",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_shadow_pass_cpp",
-      "target": "src_renderer_shadow_pass_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_shadow_pass_h"
     },
     {
       "relation": "imports",
@@ -27937,9 +28012,9 @@
       "source_file": "src/renderer/renderer.cpp",
       "source_location": "L53",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_renderer_cpp",
-      "target": "src_renderer_shadow_pass_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_shadow_pass_h"
     },
     {
       "relation": "contains",
@@ -28116,9 +28191,9 @@
       "source_file": "src/renderer/renderer.cpp",
       "source_location": "L46",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_renderer_cpp",
-      "target": "src_renderer_pipeline_unlit_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_pipeline_unlit_h"
     },
     {
       "relation": "imports",
@@ -28127,9 +28202,9 @@
       "source_file": "src/renderer/renderer.cpp",
       "source_location": "L47",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_renderer_cpp",
-      "target": "src_renderer_pipeline_lambertian_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_pipeline_lambertian_h"
     },
     {
       "relation": "contains",
@@ -28227,9 +28302,9 @@
       "source_file": "src/renderer/shadow_pass.cpp",
       "source_location": "L229",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_shadow_pass_cpp",
-      "target": "renderer_shadow_pass_shadow_debug_set_visible",
-      "confidence_score": 1.0
+      "target": "renderer_shadow_pass_shadow_debug_set_visible"
     },
     {
       "relation": "contains",
@@ -28237,9 +28312,9 @@
       "source_file": "src/renderer/shadow_pass.cpp",
       "source_location": "L233",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_shadow_pass_cpp",
-      "target": "renderer_shadow_pass_shadow_debug_is_visible",
-      "confidence_score": 1.0
+      "target": "renderer_shadow_pass_shadow_debug_is_visible"
     },
     {
       "relation": "contains",
@@ -28247,9 +28322,9 @@
       "source_file": "src/renderer/shadow_pass.cpp",
       "source_location": "L237",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_shadow_pass_cpp",
-      "target": "renderer_shadow_pass_shadow_debug_init",
-      "confidence_score": 1.0
+      "target": "renderer_shadow_pass_shadow_debug_init"
     },
     {
       "relation": "contains",
@@ -28257,9 +28332,9 @@
       "source_file": "src/renderer/shadow_pass.cpp",
       "source_location": "L284",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_shadow_pass_cpp",
-      "target": "renderer_shadow_pass_shadow_debug_shutdown",
-      "confidence_score": 1.0
+      "target": "renderer_shadow_pass_shadow_debug_shutdown"
     },
     {
       "relation": "contains",
@@ -28267,9 +28342,9 @@
       "source_file": "src/renderer/shadow_pass.cpp",
       "source_location": "L295",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_shadow_pass_cpp",
-      "target": "renderer_shadow_pass_shadow_debug_draw",
-      "confidence_score": 1.0
+      "target": "renderer_shadow_pass_shadow_debug_draw"
     },
     {
       "relation": "calls",
@@ -28311,9 +28386,9 @@
       "source_file": "src/renderer/shadow_pass.cpp",
       "source_location": "L300",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "renderer_shadow_pass_shadow_debug_draw",
-      "target": "renderer_shadow_pass_shadow_pass_state",
-      "confidence_score": 1.0
+      "target": "renderer_shadow_pass_shadow_pass_state"
     },
     {
       "relation": "calls",
@@ -28432,9 +28507,9 @@
       "source_file": "src/renderer/renderer.cpp",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_renderer_cpp",
-      "target": "src_renderer_pipeline_shadow_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_pipeline_shadow_h"
     },
     {
       "relation": "imports",
@@ -28443,9 +28518,9 @@
       "source_file": "src/renderer/renderer.cpp",
       "source_location": "L54",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_renderer_cpp",
-      "target": "src_renderer_mesh_internal_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_mesh_internal_h"
     },
     {
       "relation": "contains",
@@ -28887,9 +28962,9 @@
       "source_file": "src/renderer/renderer.cpp",
       "source_location": "L25",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_renderer_cpp",
-      "target": "src_renderer_skybox_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_skybox_h"
     },
     {
       "relation": "imports",
@@ -28898,9 +28973,9 @@
       "source_file": "src/renderer/renderer.cpp",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_renderer_cpp",
-      "target": "src_renderer_pipeline_shadow_debug_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_pipeline_shadow_debug_h"
     },
     {
       "relation": "imports",
@@ -28909,9 +28984,9 @@
       "source_file": "src/renderer/renderer.cpp",
       "source_location": "L48",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_renderer_cpp",
-      "target": "src_renderer_pipeline_blinnphong_h",
-      "confidence_score": 1.0
+      "target": "src_renderer_pipeline_blinnphong_h"
     },
     {
       "relation": "contains",
@@ -30689,9 +30764,9 @@
       "source_file": "src/renderer/app/main.cpp",
       "source_location": "L133",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_renderer_app_main_cpp",
-      "target": "app_main_render_shadow_demo",
-      "confidence_score": 1.0
+      "target": "app_main_render_shadow_demo"
     },
     {
       "relation": "contains",
@@ -30772,9 +30847,9 @@
       "source_file": "src/renderer/app/main.cpp",
       "source_location": "L297",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_main_on_frame",
-      "target": "app_main_render_shadow_demo",
-      "confidence_score": 1.0
+      "target": "app_main_render_shadow_demo"
     },
     {
       "relation": "contains",
@@ -48362,9 +48437,9 @@
       "source_file": "features/active/shadow-mapping/plan-p2.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "features_active_shadow_mapping_plan_p2_md",
-      "target": "shadow_mapping_plan_p2_phase_plan_shadow_mapping_phase_2_visual_validation",
-      "confidence_score": 1.0
+      "target": "shadow_mapping_plan_p2_phase_plan_shadow_mapping_phase_2_visual_validation"
     },
     {
       "relation": "contains",
@@ -48372,9 +48447,9 @@
       "source_file": "features/active/shadow-mapping/plan-p2.md",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "shadow_mapping_plan_p2_phase_plan_shadow_mapping_phase_2_visual_validation",
-      "target": "shadow_mapping_plan_p2_expected_outcome",
-      "confidence_score": 1.0
+      "target": "shadow_mapping_plan_p2_expected_outcome"
     },
     {
       "relation": "contains",
@@ -48382,9 +48457,9 @@
       "source_file": "features/active/shadow-mapping/plan-p2.md",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "shadow_mapping_plan_p2_phase_plan_shadow_mapping_phase_2_visual_validation",
-      "target": "shadow_mapping_plan_p2_tasks",
-      "confidence_score": 1.0
+      "target": "shadow_mapping_plan_p2_tasks"
     },
     {
       "relation": "contains",
@@ -48392,9 +48467,9 @@
       "source_file": "features/active/shadow-mapping/plan-p2.md",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "shadow_mapping_plan_p2_phase_plan_shadow_mapping_phase_2_visual_validation",
-      "target": "shadow_mapping_plan_p2_fallbacks",
-      "confidence_score": 1.0
+      "target": "shadow_mapping_plan_p2_fallbacks"
     },
     {
       "relation": "contains",
@@ -48402,9 +48477,9 @@
       "source_file": "features/active/shadow-mapping/plan-p2.md",
       "source_location": "L38",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "shadow_mapping_plan_p2_phase_plan_shadow_mapping_phase_2_visual_validation",
-      "target": "shadow_mapping_plan_p2_human_checkpoint",
-      "confidence_score": 1.0
+      "target": "shadow_mapping_plan_p2_human_checkpoint"
     },
     {
       "relation": "contains",
@@ -48482,9 +48557,9 @@
       "source_file": "features/active/shadow-mapping/checkpoint-p1.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "features_active_shadow_mapping_checkpoint_p1_md",
-      "target": "shadow_mapping_checkpoint_p1_checkpoint_shadow_mapping_phase_1",
-      "confidence_score": 1.0
+      "target": "shadow_mapping_checkpoint_p1_checkpoint_shadow_mapping_phase_1"
     },
     {
       "relation": "contains",
@@ -48492,9 +48567,9 @@
       "source_file": "features/active/shadow-mapping/checkpoint-p1.md",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "shadow_mapping_checkpoint_p1_checkpoint_shadow_mapping_phase_1",
-      "target": "shadow_mapping_checkpoint_p1_result_pass",
-      "confidence_score": 1.0
+      "target": "shadow_mapping_checkpoint_p1_result_pass"
     },
     {
       "relation": "contains",
@@ -48502,9 +48577,9 @@
       "source_file": "features/active/shadow-mapping/checkpoint-p1.md",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "shadow_mapping_checkpoint_p1_checkpoint_shadow_mapping_phase_1",
-      "target": "shadow_mapping_checkpoint_p1_what_was_tested",
-      "confidence_score": 1.0
+      "target": "shadow_mapping_checkpoint_p1_what_was_tested"
     },
     {
       "relation": "contains",
@@ -48512,9 +48587,9 @@
       "source_file": "features/active/shadow-mapping/checkpoint-p1.md",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "shadow_mapping_checkpoint_p1_checkpoint_shadow_mapping_phase_1",
-      "target": "shadow_mapping_checkpoint_p1_observations",
-      "confidence_score": 1.0
+      "target": "shadow_mapping_checkpoint_p1_observations"
     },
     {
       "relation": "contains",
@@ -48522,9 +48597,9 @@
       "source_file": "features/active/shadow-mapping/checkpoint-p1.md",
       "source_location": "L22",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "shadow_mapping_checkpoint_p1_checkpoint_shadow_mapping_phase_1",
-      "target": "shadow_mapping_checkpoint_p1_roadmap_impact",
-      "confidence_score": 1.0
+      "target": "shadow_mapping_checkpoint_p1_roadmap_impact"
     },
     {
       "relation": "contains",
@@ -48532,9 +48607,29 @@
       "source_file": "features/active/shadow-mapping/checkpoint-p1.md",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "shadow_mapping_checkpoint_p1_checkpoint_shadow_mapping_phase_1",
-      "target": "shadow_mapping_checkpoint_p1_next_step",
+      "target": "shadow_mapping_checkpoint_p1_next_step"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "features/active/shadow-mapping/review-findings.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "features_active_shadow_mapping_review_findings_md",
+      "target": "shadow_mapping_review_findings_finding_t_2_2026_05_20",
       "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "features/active/shadow-mapping/review-findings.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "features_active_shadow_mapping_review_findings_md",
+      "target": "shadow_mapping_review_findings_shadow_mapping_review_findings"
     },
     {
       "relation": "contains",
@@ -49465,16 +49560,6 @@
       "confidence_score": 1.0,
       "source": "freelancer_navigation_checkpoint_p1_checkpoint_freelancer_navigation_phase_1",
       "target": "freelancer_navigation_checkpoint_p1_next_step"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "features/active/shadow-mapping/review-findings.md",
-      "source_location": "L1",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "features_active_shadow_mapping_review_findings_md",
-      "target": "shadow_mapping_review_findings_shadow_mapping_review_findings"
     },
     {
       "relation": "contains",
@@ -54695,5 +54780,5 @@
       "source_file": "src/engine/physics.h"
     }
   ],
-  "built_at_commit": "9cb6b34052f7a8aa6246f97ab62913f4ec6126e5"
+  "built_at_commit": "414b1e7e58e5b6db80e4b588a8da63aabfdf2d58"
 }
