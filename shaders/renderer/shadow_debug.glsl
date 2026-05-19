@@ -23,7 +23,12 @@ out vec4 frag_color;
 void main() {
     // Raw depth read (no comparison sampling — debug_smp has compare=NEVER).
     float d = texture(sampler2D(shadow_tex, debug_smp), v_uv).r;
-    frag_color = vec4(d, d, d, 1.0);
+    
+    // Invert depth so background (1.0) is black (0.0) and objects (closer) are lighter.
+    float display_d = 1.0 - d;
+    
+    // Boost contrast slightly if needed, but keep it simple first.
+    frag_color = vec4(display_d, display_d, display_d, 1.0);
 }
 @end
 

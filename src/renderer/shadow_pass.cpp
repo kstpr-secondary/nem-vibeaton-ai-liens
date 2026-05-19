@@ -262,8 +262,9 @@ void shadow_debug_init() {
     // Index buffer: 6 indices for two triangles
     uint32_t quad_indices[6] = { 0, 1, 2, 0, 2, 3 };
 
-  sg_buffer_desc idesc = {};
+    sg_buffer_desc idesc = {};
     idesc.size             = sizeof(quad_indices);
+    idesc.usage.index_buffer = true;
     idesc.usage.immutable  = true;
     idesc.data             = { quad_indices, sizeof(quad_indices) };
     idesc.label            = "shadow-debug-ibuf";

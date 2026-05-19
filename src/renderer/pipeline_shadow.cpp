@@ -32,9 +32,8 @@ sg_pipeline create_pipeline_shadow(sg_pipeline magenta_fallback) {
     desc.layout.attrs[ATTR_shadow_depth_position].format = SG_VERTEXFORMAT_FLOAT3;
     desc.layout.attrs[ATTR_shadow_depth_position].offset = offsetof(Vertex, position);
 
-    // Back-face-lit shadow pass — cull front faces to eliminate acne without a static bias.
-    // Acceptable trade-off: Peter Panning on very thin geometry is fine for MVP.
-    desc.cull_mode           = SG_CULLMODE_FRONT;
+    // Use BACK culling for shadow pass to fix Peter Panning. We'll handle acne with depth bias in the shader.
+    desc.cull_mode           = SG_CULLMODE_BACK;
     desc.depth.pixel_format  = SG_PIXELFORMAT_DEPTH;
     desc.depth.compare       = SG_COMPAREFUNC_LESS_EQUAL;
     desc.depth.write_enabled = true;

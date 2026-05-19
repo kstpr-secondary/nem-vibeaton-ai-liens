@@ -712,6 +712,9 @@ void renderer_end_frame() {
         const ShadowPassState* sps = shadow_pass_state();
         sg_pass shadow_pass = {};
         shadow_pass.action = state.pass_action;
+        // Ensure the R32F debug color attachment is cleared to 1.0 (far plane)
+        // rather than the main screen's clear color.
+        shadow_pass.action.colors[0].clear_value = { 1.0f, 1.0f, 1.0f, 1.0f };
         shadow_pass.attachments = sps->shadow_attachments;
         sg_begin_pass(&shadow_pass);
         sg_apply_pipeline(state.pipeline_shadow);

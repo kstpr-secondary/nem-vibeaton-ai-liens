@@ -90,6 +90,9 @@ void main() {
 #endif
 
     // Hardware-accelerated PCF comparison.
+    float bias = max(0.002 + 0.005 * (1.0 - dot(N, L)), 0.001);
+    shadow_uv.z -= bias;
+    
     float shadow_factor = texture(sampler2DShadow(shadow_map, shadow_sampler), shadow_uv);
 
     vec3 diffuse   = albedo_rgb * light_color_inten.rgb * light_color_inten.w * NdotL * shadow_factor;
