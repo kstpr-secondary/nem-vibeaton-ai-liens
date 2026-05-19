@@ -106,6 +106,7 @@ AGENTS.md §3 already fixes: OpenGL 3.3 Core backend, sokol-shdc precompilation,
 - **Prefer the magenta fallback over exception-throwing shader loads.** Crashing the renderer breaks every downstream workstream.
 - **Prefer CPU-side normal matrices** computed as `transpose(inverse(model))` and uploaded in the universal VS block.
 - **Escalate (do not resolve unilaterally):** any Vulkan request, any runtime-GLSL request, any FetchContent→non-FetchContent substitution, any frozen-interface change, any engine-side edit from a renderer agent.
+- **Spec deviation.** If the implementation requires substituting a different technique or tradeoff than what the phase plan specifies (even when the observable acceptance criteria can still be met), flag the deviation to the human before proceeding. Do not silently replace a planned strategy with an alternative — record what was changed, why, and what the acceptance criteria implications are.
 
 ---
 

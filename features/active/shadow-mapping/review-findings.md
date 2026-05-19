@@ -4,4 +4,5 @@
 - **Defect class**: missing-skill-pattern
 - **Suspected owner**: implementor-skill
 - **Evidence** (one line): The implementation replaced a planned shadow-artifact mitigation strategy with a different renderer tradeoff without treating it as a spec deviation requiring explicit confirmation.
-- **Retrospected**: false
+- **Retrospected**: true
+- **Immediate edit**: Added spec-deviation escalation rule to `renderer-specialist/SKILL.md` §4 Decision Rules — requires flagging technique/tradeoff substitutions to the human rather than silently replacing a planned strategy.
