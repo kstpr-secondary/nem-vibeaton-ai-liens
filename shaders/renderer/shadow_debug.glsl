@@ -21,14 +21,19 @@ in vec2 v_uv;
 out vec4 frag_color;
 
 void main() {
-    // Raw depth read (no comparison sampling — debug_smp has compare=NEVER).
+    // Read linear depth [0,1] from R32F color attachment.
     float d = texture(sampler2D(shadow_tex, debug_smp), v_uv).r;
     
-    // Invert depth so background (1.0) is black (0.0) and objects (closer) are lighter.
-    float display_d = 1.0 - d;
+    // Invert so closer-to-light surfaces are brighter (dark shadow on bright ground).
+    float inverted = 1.0 - d;
     
-    // Boost contrast slightly if needed, but keep it simple first.
-    frag_color = vec4(display_d, display_d, display_d, 1.0);
+    // Aggressive contrast stretch: small depth differences become visible.
+    float contrast = pow(max(inverted, 0.0), 0.4);
+    
+    // Gamma for perceptual uniformity.
+    contrast = pow(max(contrast, 0.0), 1.0 / 2.2);
+    
+    frag_color = vec4(contrast, contrast, contrast, 1.0);
 }
 @end
 
